@@ -1,0 +1,82 @@
+﻿[
+    {
+        "source":  "source/global/AGENTS.md",
+        "target":  "C:/Users/sciman/.codex/AGENTS.md"
+    },
+    {
+        "source":  "source/project/ClassroomToolkit/AGENTS.md",
+        "target":  "E:/CODE/ClassroomToolkit/AGENTS.md"
+    },
+    {
+        "source":  "source/project/ClassroomToolkit/CLAUDE.md",
+        "target":  "E:/CODE/ClassroomToolkit/CLAUDE.md"
+    },
+    {
+        "source":  "source/project/ClassroomToolkit/GEMINI.md",
+        "target":  "E:/CODE/ClassroomToolkit/GEMINI.md"
+    },
+    {
+        "source":  "source/global/CLAUDE.md",
+        "target":  "C:/Users/sciman/.claude/CLAUDE.md"
+    },
+    {
+        "source":  "source/global/GEMINI.md",
+        "target":  "C:/Users/sciman/.gemini/GEMINI.md"
+    },
+    {
+        "source":  "source/project/ClassroomToolkit/custom/.github/workflows/quality-gate.yml",
+        "target":  "E:/CODE/ClassroomToolkit/.github/workflows/quality-gate.yml"
+    },
+    {
+        "source":  "source/project/ClassroomToolkit/custom/scripts/validation/run-stable-tests.ps1",
+        "target":  "E:/CODE/ClassroomToolkit/scripts/validation/run-stable-tests.ps1"
+    },
+    {
+        "source":  "source/project/ClassroomToolkit/custom/scripts/validation/resolve-stable-profile.ps1",
+        "target":  "E:/CODE/ClassroomToolkit/scripts/validation/resolve-stable-profile.ps1"
+    },
+    {
+        "source":  "source/project/ClassroomToolkit/custom/scripts/validation/stable-test-filters.json",
+        "target":  "E:/CODE/ClassroomToolkit/scripts/validation/stable-test-filters.json"
+    },
+    {
+        "source":  "source/project/ClassroomToolkit/custom/scripts/validation/validate-stable-test-config.ps1",
+        "target":  "E:/CODE/ClassroomToolkit/scripts/validation/validate-stable-test-config.ps1"
+    },
+    {
+        "source":  "source/project/skills-manager/AGENTS.md",
+        "target":  "E:/CODE/skills-manager/AGENTS.md"
+    },
+    {
+        "source":  "source/project/skills-manager/CLAUDE.md",
+        "target":  "E:/CODE/skills-manager/CLAUDE.md"
+    },
+    {
+        "source":  "source/project/skills-manager/GEMINI.md",
+        "target":  "E:/CODE/skills-manager/GEMINI.md"
+    },
+    {
+        "source":  "source/project/skills-manager/custom/.github/workflows/quality-gates.yml",
+        "target":  "E:/CODE/skills-manager/.github/workflows/quality-gates.yml"
+    },
+    {
+        "source":  "source/project/skills-manager/custom/scripts/install-githooks.ps1",
+        "target":  "E:/CODE/skills-manager/scripts/install-githooks.ps1"
+    },
+    {
+        "source":  "source/project/skills-manager/custom/scripts/prebuild-check.ps1",
+        "target":  "E:/CODE/skills-manager/scripts/prebuild-check.ps1"
+    },
+    {
+        "source":  "source/project/governance-kit/AGENTS.md",
+        "target":  "E:/CODE/governance-kit/AGENTS.md"
+    },
+    {
+        "source":  "source/project/governance-kit/CLAUDE.md",
+        "target":  "E:/CODE/governance-kit/CLAUDE.md"
+    },
+    {
+        "source":  "source/project/governance-kit/GEMINI.md",
+        "target":  "E:/CODE/governance-kit/GEMINI.md"
+    }
+]

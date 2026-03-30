@@ -1,0 +1,22 @@
+name: Governance Self Check
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+jobs:
+  self-check:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Doctor
+        shell: powershell
+        run: powershell -NoProfile -ExecutionPolicy Bypass -File scripts/doctor.ps1
+
+      - name: Pester
+        shell: powershell
+        run: powershell -NoProfile -ExecutionPolicy Bypass -Command "Invoke-Pester -Path tests/governance-kit.optimization.tests.ps1"

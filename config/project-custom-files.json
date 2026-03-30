@@ -1,0 +1,31 @@
+﻿{
+    "default":  [
+
+                ],
+    "repos":  [
+                  {
+                      "repoName":  "ClassroomToolkit",
+                      "files":  [
+                                    ".github/workflows/quality-gate.yml",
+                                    "scripts/validation/run-stable-tests.ps1",
+                                    "scripts/validation/resolve-stable-profile.ps1",
+                                    "scripts/validation/stable-test-filters.json",
+                                    "scripts/validation/validate-stable-test-config.ps1"
+                                ]
+                  },
+                  {
+                      "repoName":  "skills-manager",
+                      "files":  [
+                                    ".github/workflows/quality-gates.yml",
+                                    "scripts/install-githooks.ps1",
+                                    "scripts/prebuild-check.ps1"
+                                ]
+                  },
+                  {
+                      "repoName":  "governance-kit",
+                      "files":  [
+
+                                ]
+                  }
+              ]
+}

@@ -1,0 +1,61 @@
+# Changelog
+
+## 2026-03-30
+- Added orphan cleanup script `scripts/prune-orphan-custom-sources.ps1` with backup-first pruning (`plan/safe`).
+- Added `scripts/check-orphan-custom-sources.ps1` to detect unmapped/unmanaged files under `source/project/*/custom`.
+- Wired orphan-custom check into `audit-governance-readiness.ps1` and added strict mode (`-FailOnOrphans`) for CI-style blocking.
+- Reduced over-design in custom backflow scope: moved generic templates/CI ownership back to `install-extras.ps1`, and kept `project-custom-files.json` focused on repo-specific files.
+- Added governance baseline metadata file: `config/governance-baseline.json`.
+- Added one-command readiness audit: `scripts/audit-governance-readiness.ps1` (runs key checks and emits Markdown/JSON report).
+- Added regression tests for custom-file backflow mapping append and readiness audit report generation.
+- Added execution scope preview switch `-ShowScope` to `install.ps1`, `optimize-project-rules.ps1`, `backflow-project-rules.ps1`, and `run-project-governance-cycle.ps1` for pre-run file list visibility.
+- Extended `backflow-project-rules.ps1` to support project custom-file backflow (beyond AGENTS/CLAUDE/GEMINI) via `config/project-custom-files.json`.
+- Added automatic `targets.json` mapping insertion for backflowed custom files under `source/project/<RepoName>/custom/*`.
+- Added `config/project-custom-files.json` and wired `scripts/lib/common.ps1` parser helper (`Get-ProjectCustomFilesForRepo`).
+- Updated docs to clarify custom-file backflow/distribution and new switch `-IncludeCustomFiles:$false`.
+- Simplified distribution policy: global user-level rules are now user-home only (`.codex/.claude/.gemini`), no target-repo `GlobalUser/*` mapping.
+- Updated `scripts/add-repo.ps1` to stop adding `source/global/* -> <repo>/GlobalUser/*` targets by default.
+- Updated `config/targets.json` and README mapping/examples to align with the new policy.
+- Fixed UTF-8 encoding corruption risk in `scripts/optimize-project-rules.ps1` by switching project-rule read/write to explicit UTF-8 (no BOM) I/O.
+- Enhanced `scripts/analyze-repo-governance.ps1` to detect:
+  - dual GitHub workflow entries (`quality-gate.yml` + `quality-gates.yml`)
+  - `scripts/validation/run-stable-tests.ps1` quick-gate fallback
+  - installed governance hook block state
+  - local git config state (`commit.template`, `governance.kitRoot`)
+  - governance template presence in target repo.
+- Enhanced `scripts/optimize-project-rules.ps1` to write C.8/C.9 with CI differences and hooks/templates/git-config snapshot from real target facts.
+- Added `scripts/analyze-repo-governance.ps1` for step-2 repository fact discovery (structure/gates/CI/evidence recommendations).
+- Added `scripts/optimize-project-rules.ps1` to auto-optimize target repo project-level rule docs from discovered facts.
+- Added `scripts/run-project-governance-cycle.ps1` to orchestrate install + analyze + optimize + backflow + re-verify in one command.
+- Added regression coverage for analyze/optimize and updated README with new one-command workflow.
+- Added `scripts/backflow-project-rules.ps1` for one-command project-rule backflow with automatic source-before backup and target snapshot.
+- Documented backflow usage in README and clarified that global user-level files are excluded by default.
+- Documented integrated operating model in README: "主流程（系统安装） + 项目级定制回路（目标仓试改 -> 回灌 -> 再分发校验)".
+- Clarified new/old repository execution order and updated task checklist status for ClassroomToolkit git/hook enablement.
+- Introduced repo-scoped project rule layout support: `source/project/<RepoName>/{AGENTS,CLAUDE,GEMINI}.md`.
+- Migrated ClassroomToolkit mappings to `source/project/ClassroomToolkit/*` in `config/targets.json`.
+- Updated `add-repo.ps1` to prefer repo-scoped project rules and fallback to legacy `source/project/*`.
+- Updated `verify.ps1` project-rule policy detection and `verify-kit.ps1` integrity checks to support recursive project-rule files.
+- Updated `bump-rule-version.ps1` to update all project-rule files under `source/project/**`.
+- Added regression test coverage for repo-scoped source selection in `add-repo.ps1`.
+- Reduced duplicate validation in `doctor` pipeline: `doctor.ps1` now calls `verify.ps1 -SkipConfigValidation` after `validate-config` step.
+- Added `verify.ps1` optional switch `-SkipConfigValidation` (default behavior unchanged).
+- Added regression tests for skip-validation path and doctor pass-through behavior.
+- Simplified `doctor.ps1` step orchestration from repeated blocks to a single ordered step table loop (same output contract).
+- Reduced test duplication in `tests/governance-kit.optimization.tests.ps1` by adding reusable stub-script helpers for doctor/verify scenarios.
+- Added `doctor.ps1 -SkipVerifyTargets` for local structural health checks that intentionally skip target consistency verification.
+- Added regression coverage for `-SkipVerifyTargets` and documented usage in README.
+- Added self-check CI workflow: `.github/workflows/governance-self-check.yml`.
+- Fixed test fixtures to include `config/project-rule-policy.json` where required.
+- Added `scripts/bump-rule-version.ps1` for batch rule metadata updates (`version/date`, `plan/safe`).
+- Enhanced `scripts/verify-kit.ps1` with rule metadata consistency checks across 6 rule files.
+- Added structured summary output support (`-AsJson`) in `scripts/install.ps1` and `scripts/sync.ps1`.
+- Added Pester coverage for `bump-rule-version` (`plan` and `safe` paths).
+- Simplified metadata matching/replacement logic to reduce encoding-coupled complexity.
+- Centralized rule metadata parsing in `scripts/lib/common.ps1` (`Get-RuleDocMetadata`) and reused it in `verify-kit` / `collect-governance-metrics`.
+- Added regression coverage for metrics version extraction with non-Chinese metadata labels.
+
+## 2026-03-29
+- Refined global rule documents (`source/global/*`) for clearer platform-specific diagnostics and fallback behavior.
+- Refined project rule documents (`source/project/*`) with explicit scope boundary and `E1/E2/E4/E5/E6` mapping.
+- Synced updated rule sources to all configured targets and verified `ok=9 fail=0`.

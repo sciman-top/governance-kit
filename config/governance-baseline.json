@@ -1,0 +1,5 @@
+{
+  "version": "1.0.0",
+  "frozen_at": "2026-03-30",
+  "notes": "Phase baseline: layered rules, custom-file backflow, pre-run scope visibility, and green doctor/verify chain."
+}
