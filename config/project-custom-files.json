@@ -7,6 +7,9 @@
                       "repoName":  "ClassroomToolkit",
                       "files":  [
                                     ".github/workflows/quality-gate.yml",
+                                    "scripts/quality/check-hotspot-line-budgets.ps1",
+                                    "scripts/quality/hotspot-line-budgets.json",
+                                    "scripts/quality/run-local-quality-gates.ps1",
                                     "scripts/validation/run-stable-tests.ps1",
                                     "scripts/validation/resolve-stable-profile.ps1",
                                     "scripts/validation/stable-test-filters.json",

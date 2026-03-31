@@ -28,6 +28,18 @@
         "target":  "E:/CODE/ClassroomToolkit/.github/workflows/quality-gate.yml"
     },
     {
+        "source":  "source/project/ClassroomToolkit/custom/scripts/quality/check-hotspot-line-budgets.ps1",
+        "target":  "E:/CODE/ClassroomToolkit/scripts/quality/check-hotspot-line-budgets.ps1"
+    },
+    {
+        "source":  "source/project/ClassroomToolkit/custom/scripts/quality/hotspot-line-budgets.json",
+        "target":  "E:/CODE/ClassroomToolkit/scripts/quality/hotspot-line-budgets.json"
+    },
+    {
+        "source":  "source/project/ClassroomToolkit/custom/scripts/quality/run-local-quality-gates.ps1",
+        "target":  "E:/CODE/ClassroomToolkit/scripts/quality/run-local-quality-gates.ps1"
+    },
+    {
         "source":  "source/project/ClassroomToolkit/custom/scripts/validation/run-stable-tests.ps1",
         "target":  "E:/CODE/ClassroomToolkit/scripts/validation/run-stable-tests.ps1"
     },

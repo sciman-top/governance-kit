@@ -3,7 +3,7 @@
 **类型**: Windows WPF (.NET 10)  
 **适用范围**: 项目级（仓库根）  
 **版本**: 3.78  
-**最后更新**: 2026-03-30
+**最后更新**: 2026-03-31
 
 ## 1. 阅读指引（必读）
 - 本文件承接 `GlobalUser/CLAUDE.md`，仅定义本仓落地动作（WHERE/HOW）。
@@ -64,7 +64,7 @@
 - test：`dotnet test tests/ClassroomToolkit.Tests/ClassroomToolkit.Tests.csproj -c Debug`
 - contract/invariant：
   `dotnet test tests/ClassroomToolkit.Tests/ClassroomToolkit.Tests.csproj -c Debug --filter "FullyQualifiedName~ArchitectureDependencyTests|FullyQualifiedName~InteropHookLifecycleContractTests|FullyQualifiedName~InteropHookEventDispatchContractTests|FullyQualifiedName~GlobalHookServiceLifecycleContractTests|FullyQualifiedName~CrossPageDisplayLifecycleContractTests"`
-- hotspot：`gate_na (hotspot script not found)`
+- hotspot：`powershell -File scripts/quality/check-hotspot-line-budgets.ps1`
 - fixed order：`build -> test -> contract/invariant -> hotspot`
 - quick gate（开发快速复验，不替代硬门禁）：
   `powershell -File scripts/validation/run-stable-tests.ps1 -Configuration Debug -SkipBuild -Profile quick`
@@ -100,7 +100,7 @@
 
 ### C.8 Hooks/模板/Git 校验
 - quick gate：`scripts/validation/run-stable-tests.ps1`
-- hotspot script：`gate_na (script not found)`
+- hotspot script：`scripts/quality/check-hotspot-line-budgets.ps1`
 - hooks 校验：`Test-Path .git/hooks/pre-commit`、`Test-Path .git/hooks/pre-push`
 - git config 校验：`git config --get commit.template`、`git config --get governance.kitRoot`
 - 模板校验：`Test-Path docs/change-evidence/template.md`、`Test-Path docs/governance/waiver-template.md`、`Test-Path docs/governance/metrics-template.md`
