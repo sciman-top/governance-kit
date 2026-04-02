@@ -73,6 +73,25 @@ function Get-ProjectRuleSourceForRepo([string]$KitRoot, [string]$RepoPath, [stri
     return $legacyRel
   }
 
+  $templateRel = Get-DefaultProjectRuleTemplateSource -KitRoot $KitRoot -FileName $FileName
+  if ($null -ne $templateRel) {
+    return $templateRel
+  }
+
+  return $null
+}
+
+function Get-DefaultProjectRuleTemplateSource([string]$KitRoot, [string]$FileName) {
+  if ([string]::IsNullOrWhiteSpace($FileName)) {
+    return $null
+  }
+
+  $templateRel = "source/template/project/$FileName"
+  $templateAbs = Join-Path $KitRoot ($templateRel -replace '/', '\')
+  if (Test-Path -LiteralPath $templateAbs -PathType Leaf) {
+    return $templateRel
+  }
+
   return $null
 }
 

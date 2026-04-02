@@ -24,6 +24,20 @@ $repo = [System.IO.Path]::GetFullPath($repoResolved.Path)
 if ([string]::IsNullOrWhiteSpace($RepoName)) {
   $RepoName = Split-Path -Leaf $repo
 }
+$allowProjectRuleRepos = Read-ProjectRuleAllowRepos $kitRoot
+$allowProjectRules = Is-RepoAllowedForProjectRules -Repo $repo -AllowRepos $allowProjectRuleRepos
+$effectiveSkipOptimize = $SkipOptimize.IsPresent
+$effectiveSkipBackflow = $SkipBackflow.IsPresent
+if (-not $allowProjectRules) {
+  if (-not $effectiveSkipOptimize) {
+    Write-Host "[INFO] project rules are not allow-listed for repo; auto-skip optimize-project-rules."
+  }
+  if (-not $effectiveSkipBackflow) {
+    Write-Host "[INFO] project rules are not allow-listed for repo; auto-skip backflow-project-rules."
+  }
+  $effectiveSkipOptimize = $true
+  $effectiveSkipBackflow = $true
+}
 
 function Step([string]$Name, [scriptblock]$Action) {
   Write-Host "=== $Name ==="
@@ -56,7 +70,7 @@ Step "custom-policy-check" {
   }
 }
 
-if (-not $SkipOptimize) {
+if (-not $effectiveSkipOptimize) {
   Step "optimize-project-rules" {
     $argsOptimize = @("-RepoPath", $repo, "-Mode", $Mode)
     if ($ShowScope) { $argsOptimize += "-ShowScope" }
@@ -64,7 +78,7 @@ if (-not $SkipOptimize) {
   }
 }
 
-if (-not $SkipBackflow) {
+if (-not $effectiveSkipBackflow) {
   Step "backflow-project-rules" {
     $argsBackflow = @("-RepoPath", $repo, "-RepoName", $RepoName, "-Mode", $Mode)
     if ($ShowScope) { $argsBackflow += "-ShowScope" }

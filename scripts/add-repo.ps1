@@ -97,15 +97,20 @@ if (-not $customEntryExists) {
 }
 
 $desired = [System.Collections.Generic.List[object]]::new()
-if ($allowProjectRules) {
-  foreach ($fileName in @("AGENTS.md", "CLAUDE.md", "GEMINI.md")) {
+foreach ($fileName in @("AGENTS.md", "CLAUDE.md", "GEMINI.md")) {
+  $projectSource = $null
+  if ($allowProjectRules) {
     $projectSource = Get-ProjectRuleSourceForRepo -KitRoot $kitRoot -RepoPath $repo -FileName $fileName
-    if ($null -eq $projectSource) {
-      Write-Host "[WARN] project rule source not found for $repo ($fileName), skipped"
-      continue
-    }
-    [void]$desired.Add([pscustomobject]@{ source = $projectSource; target = "$repo/$fileName" })
+  } else {
+    $projectSource = Get-DefaultProjectRuleTemplateSource -KitRoot $kitRoot -FileName $fileName
   }
+
+  if ($null -eq $projectSource) {
+    Write-Host "[WARN] project rule source not found for $repo ($fileName), skipped"
+    continue
+  }
+
+  [void]$desired.Add([pscustomobject]@{ source = $projectSource; target = "$repo/$fileName" })
 }
 
 $customFiles = @(Get-ProjectCustomFilesForRepo -KitRoot $kitRoot -RepoPath $repo -RepoName $repoName)

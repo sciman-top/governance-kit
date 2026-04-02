@@ -92,10 +92,12 @@ Required:
 2) Apply minimal fix.
 3) Re-run relevant verification commands.
 4) Output concise evidence with STATUS lines.
+5) Continue autonomously; do not ask for routine confirmation unless blocked by irreversible risk or missing credentials.
 
 Safety:
 - Do not run destructive git commands.
 - Preserve backwards compatibility for configuration contracts.
+- Avoid speculative architecture changes or evidence-free optimization.
 "@
 
   Set-Content -LiteralPath $promptPath -Value $prompt -Encoding UTF8

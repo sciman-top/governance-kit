@@ -763,6 +763,99 @@ exit 0
     }
   }
 
+  it "add-repo injects generic template project rules for repos outside allow-list" {
+    $tmp = Join-Path $env:TEMP ("govkit-test-" + [guid]::NewGuid().ToString("N"))
+    $repo = Join-Path $tmp "OutsideAllowListRepo"
+    try {
+      New-Item -ItemType Directory -Path (Join-Path $tmp "scripts\lib") -Force | Out-Null
+      New-Item -ItemType Directory -Path (Join-Path $tmp "scripts") -Force | Out-Null
+      New-Item -ItemType Directory -Path (Join-Path $tmp "config") -Force | Out-Null
+      New-Item -ItemType Directory -Path (Join-Path $tmp "source\template\project") -Force | Out-Null
+      New-Item -ItemType Directory -Path $repo -Force | Out-Null
+
+      Copy-Item -Path (Join-Path $repoRoot "scripts\add-repo.ps1") -Destination (Join-Path $tmp "scripts\add-repo.ps1") -Force
+      Copy-Item -Path (Join-Path $repoRoot "scripts\lib\common.ps1") -Destination (Join-Path $tmp "scripts\lib\common.ps1") -Force
+
+      @{
+        allowProjectRulesForRepos = @()
+      } | ConvertTo-Json -Depth 4 | Set-Content -Path (Join-Path $tmp "config\project-rule-policy.json") -Encoding UTF8
+      @() | ConvertTo-Json -Depth 3 | Set-Content -Path (Join-Path $tmp "config\repositories.json") -Encoding UTF8
+      @() | ConvertTo-Json -Depth 3 | Set-Content -Path (Join-Path $tmp "config\targets.json") -Encoding UTF8
+      @{
+        default = @()
+        repos = @()
+      } | ConvertTo-Json -Depth 6 | Set-Content -Path (Join-Path $tmp "config\project-custom-files.json") -Encoding UTF8
+
+      Set-Content -Path (Join-Path $tmp "source\template\project\AGENTS.md") -Value "template-agents" -Encoding UTF8
+      Set-Content -Path (Join-Path $tmp "source\template\project\CLAUDE.md") -Value "template-claude" -Encoding UTF8
+      Set-Content -Path (Join-Path $tmp "source\template\project\GEMINI.md") -Value "template-gemini" -Encoding UTF8
+
+      & powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $tmp "scripts\add-repo.ps1") -RepoPath $repo -Mode safe | Out-Null
+      if ($LASTEXITCODE -ne 0) { throw "add-repo.ps1 failed with exit code $LASTEXITCODE" }
+
+      $targets = Get-Content -Raw (Join-Path $tmp "config\targets.json") | ConvertFrom-Json
+      (@($targets | Where-Object { $_.source -eq "source/template/project/AGENTS.md" })).Count | should be 1
+      (@($targets | Where-Object { $_.source -eq "source/template/project/CLAUDE.md" })).Count | should be 1
+      (@($targets | Where-Object { $_.source -eq "source/template/project/GEMINI.md" })).Count | should be 1
+      (@($targets | Where-Object { $_.target -eq "$(($repo -replace '\\','/'))/AGENTS.md" })).Count | should be 1
+      (@($targets | Where-Object { $_.target -eq "$(($repo -replace '\\','/'))/CLAUDE.md" })).Count | should be 1
+      (@($targets | Where-Object { $_.target -eq "$(($repo -replace '\\','/'))/GEMINI.md" })).Count | should be 1
+    } finally {
+      if (Test-Path $tmp) { Remove-Item -LiteralPath $tmp -Recurse -Force }
+    }
+  }
+
+  it "run-project-governance-cycle auto-skips optimize and backflow for repos outside allow-list" {
+    $tmp = Join-Path $env:TEMP ("govkit-test-" + [guid]::NewGuid().ToString("N"))
+    $repo = Join-Path $tmp "OutsideAllowListRepo"
+    try {
+      New-Item -ItemType Directory -Path (Join-Path $tmp "scripts\lib") -Force | Out-Null
+      New-Item -ItemType Directory -Path (Join-Path $tmp "scripts") -Force | Out-Null
+      New-Item -ItemType Directory -Path (Join-Path $tmp "config") -Force | Out-Null
+      New-Item -ItemType Directory -Path $repo -Force | Out-Null
+
+      Copy-Item -Path (Join-Path $repoRoot "scripts\run-project-governance-cycle.ps1") -Destination (Join-Path $tmp "scripts\run-project-governance-cycle.ps1") -Force
+      Copy-Item -Path (Join-Path $repoRoot "scripts\lib\common.ps1") -Destination (Join-Path $tmp "scripts\lib\common.ps1") -Force
+
+      @{
+        allowProjectRulesForRepos = @()
+      } | ConvertTo-Json -Depth 4 | Set-Content -Path (Join-Path $tmp "config\project-rule-policy.json") -Encoding UTF8
+      @{
+        default = @()
+        repos = @(
+          @{
+            repoName = "OutsideAllowListRepo"
+            files = @()
+          }
+        )
+      } | ConvertTo-Json -Depth 8 | Set-Content -Path (Join-Path $tmp "config\project-custom-files.json") -Encoding UTF8
+
+      Set-StubScript -Path (Join-Path $tmp "scripts\install.ps1")
+      Set-StubScript -Path (Join-Path $tmp "scripts\install-extras.ps1")
+      Set-StubScript -Path (Join-Path $tmp "scripts\doctor.ps1")
+      Set-StubScript -Path (Join-Path $tmp "scripts\analyze-repo-governance.ps1")
+      @"
+param()
+Set-Content -Path "$tmp\optimize.marker" -Value "called" -Encoding UTF8
+exit 0
+"@ | Set-Content -Path (Join-Path $tmp "scripts\optimize-project-rules.ps1") -Encoding UTF8
+      @"
+param()
+Set-Content -Path "$tmp\backflow.marker" -Value "called" -Encoding UTF8
+exit 0
+"@ | Set-Content -Path (Join-Path $tmp "scripts\backflow-project-rules.ps1") -Encoding UTF8
+      Set-StubScript -Path (Join-Path $tmp "scripts\suggest-project-custom-files.ps1")
+
+      & powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $tmp "scripts\run-project-governance-cycle.ps1") -RepoPath $repo -RepoName OutsideAllowListRepo -Mode safe | Out-Null
+      if ($LASTEXITCODE -ne 0) { throw "run-project-governance-cycle.ps1 failed with exit code $LASTEXITCODE" }
+
+      (Test-Path (Join-Path $tmp "optimize.marker")) | should be $false
+      (Test-Path (Join-Path $tmp "backflow.marker")) | should be $false
+    } finally {
+      if (Test-Path $tmp) { Remove-Item -LiteralPath $tmp -Recurse -Force }
+    }
+  }
+
   it "backflow-project-rules copies target project docs to repo-scoped source with backup" {
     $tmp = Join-Path $env:TEMP ("govkit-test-" + [guid]::NewGuid().ToString("N"))
     $repo = Join-Path $tmp "ClassroomToolkit"

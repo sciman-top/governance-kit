@@ -39,6 +39,7 @@
 - `scripts/run-project-governance-cycle.ps1`：一键执行“安装 -> 分析 -> 优化 -> 回拷 -> 再分发校验”闭环
 - `scripts/run-endstate-onboarding.ps1`：一键执行“接入 -> 安装 -> 证据收敛 -> 终态门禁 -> doctor”终态接入闭环
 - `scripts/audit-governance-readiness.ps1`：生成一键治理就绪审计报告（Markdown/JSON）
+- `scripts/governance/run-target-autopilot.ps1`：纯门禁编排器（`build -> test -> contract/invariant -> hotspot`），不内嵌 `codex/claude/gemini exec`；智能修复与规则优化由外层 AI 会话负责。
 - `scripts/check-orphan-custom-sources.ps1`：检查 `source/project/*/custom` 未映射且不在清单中的孤儿文件
 - `scripts/prune-orphan-custom-sources.ps1`：归档并清理孤儿 custom 源文件
 - `scripts/prune-backups.ps1`：按保留天数/保留数量清理 `backups/` 历史快照（支持 `plan` 预演）
@@ -64,6 +65,7 @@
 - 目标仓项目级“非三规则文档”的文件清单由 `config/project-custom-files.json` 控制。
 - 通用模板/通用 CI 由 `install-extras.ps1` 维护；`project-custom-files.json` 建议只保留仓库特有文件，避免双轨维护。
 - 新仓默认会分发通用自动化脚本（`source/project/_common/custom/scripts/governance/*`），用于目标仓本地连续自动执行。
+- 新仓若未命中 `project-rule-policy` 白名单，仍会注入通用项目级三规则模板（`source/template/project/{AGENTS,CLAUDE,GEMINI}.md`），确保“持续自动执行 + 最佳实践终态 + 防过度设计/过度优化”基线可落地。
 - 建议每个仓在 `project-custom-files.json` 都保留显式条目（可空 `files: []`），以便审计与自动化一致性校验。
 - 备份目录结构按目标绝对路径镜像生成。
 
@@ -78,6 +80,7 @@ powershell -File E:\CODE\governance-kit\scripts\install-full-stack.ps1 -RepoPath
 说明：
 - 自动执行：`bootstrap-repo -> run-project-governance-cycle -> target-autopilot dry-run -> doctor`。
 - 目标仓会安装通用脚本：`scripts/governance/run-project-governance-cycle.ps1`、`scripts/governance/run-target-autopilot.ps1`。
+- 对不在 `project-rule-policy` 白名单的仓库，`run-project-governance-cycle` 会自动跳过 `optimize/backflow`，避免将临时仓规则回灌到 `source/project/*`。
 
 主流程（系统安装流）：
 1. 新仓先接入（旧仓可跳过）：
