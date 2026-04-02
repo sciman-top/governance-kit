@@ -24,6 +24,7 @@
 - `scripts/doctor.ps1`：一键健康检查（verify-kit -> validate-config -> verify -> waiver-check -> status -> rollout-status）
 - `scripts/bootstrap-repo.ps1`：一键接入新仓（add-repo -> merge-rules -> install-extras -> install -> doctor）
 - `scripts/bootstrap-here.ps1`：在目标仓目录执行时，自动以当前目录作为 `RepoPath` 一键接入
+- `scripts/install-full-stack.ps1`：新仓/旧仓一键全量安装（bootstrap -> governance-cycle -> target-autopilot smoke -> doctor）
 - `scripts/verify-kit.ps1`：校验 governance-kit 目录完整性
 - `scripts/validate-config.ps1`：校验 `repositories/targets/rule-rollout/project-rule-policy` 结构与关键字段格式（含 ISO 日期）
 - `scripts/merge-rules.ps1`：按章节锚点将治理规则与目标仓既有规则做半自动整合（输出 merge report）
@@ -36,6 +37,7 @@
 - `scripts/analyze-repo-governance.ps1`：自动勘察目标仓结构/门禁/CI/证据目录并输出推荐配置
 - `scripts/optimize-project-rules.ps1`：按勘察结果自动优化目标仓项目级规则文档
 - `scripts/run-project-governance-cycle.ps1`：一键执行“安装 -> 分析 -> 优化 -> 回拷 -> 再分发校验”闭环
+- `scripts/run-endstate-onboarding.ps1`：一键执行“接入 -> 安装 -> 证据收敛 -> 终态门禁 -> doctor”终态接入闭环
 - `scripts/audit-governance-readiness.ps1`：生成一键治理就绪审计报告（Markdown/JSON）
 - `scripts/check-orphan-custom-sources.ps1`：检查 `source/project/*/custom` 未映射且不在清单中的孤儿文件
 - `scripts/prune-orphan-custom-sources.ps1`：归档并清理孤儿 custom 源文件
@@ -55,17 +57,27 @@
 - `source/project/ClassroomToolkit/CLAUDE.md -> E:\CODE\ClassroomToolkit\CLAUDE.md`
 - `source/project/ClassroomToolkit/GEMINI.md -> E:\CODE\ClassroomToolkit\GEMINI.md`
 - `source/project/ClassroomToolkit/custom/* -> E:\CODE\ClassroomToolkit\<relative-path>`
+- `source/project/_common/custom/* -> <AnyTargetRepo>/<relative-path>`（新仓默认通用能力）
 
 说明：
 - 全局用户级规则只分发到本机用户目录（`.codex` / `.claude` / `.gemini`），不再复制到目标仓 `GlobalUser/*`。
 - 目标仓项目级“非三规则文档”的文件清单由 `config/project-custom-files.json` 控制。
 - 通用模板/通用 CI 由 `install-extras.ps1` 维护；`project-custom-files.json` 建议只保留仓库特有文件，避免双轨维护。
+- 新仓默认会分发通用自动化脚本（`source/project/_common/custom/scripts/governance/*`），用于目标仓本地连续自动执行。
 - 建议每个仓在 `project-custom-files.json` 都保留显式条目（可空 `files: []`），以便审计与自动化一致性校验。
 - 备份目录结构按目标绝对路径镜像生成。
 
 ## 使用
 ### 推荐流程（系统安装 + 项目级定制回路）
 适用于新仓与旧仓，差别仅在“是否需要先接入仓库映射”。
+
+一键全量安装（推荐）：
+```powershell
+powershell -File E:\CODE\governance-kit\scripts\install-full-stack.ps1 -RepoPath E:\CODE\NewRepo -Mode safe
+```
+说明：
+- 自动执行：`bootstrap-repo -> run-project-governance-cycle -> target-autopilot dry-run -> doctor`。
+- 目标仓会安装通用脚本：`scripts/governance/run-project-governance-cycle.ps1`、`scripts/governance/run-target-autopilot.ps1`。
 
 主流程（系统安装流）：
 1. 新仓先接入（旧仓可跳过）：
@@ -318,6 +330,15 @@ powershell -File E:\CODE\governance-kit\scripts\bump-rule-version.ps1 -Scope all
 只更新全局规则：
 ```powershell
 powershell -File E:\CODE\governance-kit\scripts\bump-rule-version.ps1 -Scope global -Version 9.32 -Date 2026-03-29
+
+16. 新仓/旧仓一键终态接入（推荐）
+```powershell
+powershell -File E:\CODE\governance-kit\scripts\run-endstate-onboarding.ps1 -RepoPath E:\CODE\NewRepo -Mode safe -EvidenceMode all
+```
+说明：
+- 自动执行：`add-repo -> install -> install-extras -> evidence-check -> (可选backfill) -> run-endstate-loop -> doctor`。
+- 默认 `AutoBackfillEvidence=true`，用于旧仓证据存量收敛。
+- 若仓库不具备 `scripts/governance/*`，会自动跳过对应步骤，仅执行通用接入与健康检查。
 ```
 
 16. 一键回拷目标仓项目级规则到治理源（默认不处理全局用户级文件）

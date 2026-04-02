@@ -108,6 +108,23 @@ if ($allowProjectRules) {
   }
 }
 
+$customFiles = @(Get-ProjectCustomFilesForRepo -KitRoot $kitRoot -RepoPath $repo -RepoName $repoName)
+foreach ($customRelRaw in $customFiles) {
+  $customRel = ([string]$customRelRaw -replace '\\', '/').TrimStart('/')
+  if ([string]::IsNullOrWhiteSpace($customRel)) { continue }
+
+  $customSourceRel = Get-ProjectCustomSourceForRepo -KitRoot $kitRoot -RepoName $repoName -CustomRelativePath $customRel
+  if ([string]::IsNullOrWhiteSpace($customSourceRel)) {
+    Write-Host "[WARN] custom source not found for repo/common fallback: $repoName/$customRel"
+    continue
+  }
+
+  [void]$desired.Add([pscustomobject]@{
+    source = $customSourceRel
+    target = "$repo/$customRel"
+  })
+}
+
 $removedDisallowed = 0
 if (-not $allowProjectRules) {
   $repoPrefix = "$repo/"

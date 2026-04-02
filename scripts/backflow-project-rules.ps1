@@ -125,15 +125,47 @@ function Ensure-ParentDir([string]$FilePath) {
 
 function Ensure-TargetMapping([System.Collections.Generic.List[object]]$Targets, [string]$SourceRel, [string]$TargetAbs) {
   $targetNorm = ($TargetAbs -replace '\\', '/')
-  $exists = @($Targets | Where-Object { ([string]$_.source -eq $SourceRel) -and ([string]$_.target -eq $targetNorm) }).Count -gt 0
-  if (-not $exists) {
-    [void]$Targets.Add([pscustomobject]@{
-      source = $SourceRel
-      target = $targetNorm
-    })
+  $targetMatches = @($Targets | Where-Object { ([string]$_.target -eq $targetNorm) })
+  if ($targetMatches.Count -gt 0) {
+    $primary = $targetMatches[0]
+    if ([string]$primary.source -eq $SourceRel) {
+      return $false
+    }
+
+    $primary.source = $SourceRel
     return $true
   }
-  return $false
+
+  [void]$Targets.Add([pscustomobject]@{
+    source = $SourceRel
+    target = $targetNorm
+  })
+  return $true
+}
+
+function Remove-DuplicateTargets([System.Collections.Generic.List[object]]$Targets) {
+  $seen = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::OrdinalIgnoreCase)
+  $deduped = [System.Collections.Generic.List[object]]::new()
+  $removed = 0
+
+  foreach ($item in $Targets) {
+    if ($null -eq $item -or [string]::IsNullOrWhiteSpace([string]$item.target)) {
+      continue
+    }
+
+    $targetNorm = [string]$item.target
+    if ($seen.Add($targetNorm)) {
+      [void]$deduped.Add($item)
+      continue
+    }
+
+    $removed++
+  }
+
+  return [pscustomobject]@{
+    items = @($deduped)
+    removed = $removed
+  }
 }
 
 $copied = 0
@@ -226,9 +258,22 @@ if ($shouldIncludeCustomFiles) {
       Write-Host "[COPIED] custom $targetFile -> $sourceFile"
     }
 
-    if (-not $modePlan -and $targetsAdded -gt 0) {
-      Write-JsonArray -Path $targetsPath -Items @($targets) -Depth 8
-      Write-Host "[UPDATED] targets.json added_custom_mappings=$targetsAdded"
+    if (-not $modePlan) {
+      $dedupe = Remove-DuplicateTargets -Targets $targets
+      $targets = [System.Collections.Generic.List[object]]::new()
+      foreach ($item in @($dedupe.items)) {
+        [void]$targets.Add($item)
+      }
+
+      if ($targetsAdded -gt 0 -or [int]$dedupe.removed -gt 0) {
+        Write-JsonArray -Path $targetsPath -Items @($targets) -Depth 8
+      }
+      if ($targetsAdded -gt 0) {
+        Write-Host "[UPDATED] targets.json added_or_updated_custom_mappings=$targetsAdded"
+      }
+      if ([int]$dedupe.removed -gt 0) {
+        Write-Host "[UPDATED] targets.json removed_duplicate_targets=$([int]$dedupe.removed)"
+      }
     }
   }
 }

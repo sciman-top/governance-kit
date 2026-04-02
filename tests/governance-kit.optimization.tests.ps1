@@ -725,6 +725,44 @@ exit 0
     }
   }
 
+  it "add-repo falls back to _common custom source for default custom files" {
+    $tmp = Join-Path $env:TEMP ("govkit-test-" + [guid]::NewGuid().ToString("N"))
+    $repo = Join-Path $tmp "FreshRepo"
+    try {
+      New-Item -ItemType Directory -Path (Join-Path $tmp "scripts\lib") -Force | Out-Null
+      New-Item -ItemType Directory -Path (Join-Path $tmp "scripts") -Force | Out-Null
+      New-Item -ItemType Directory -Path (Join-Path $tmp "config") -Force | Out-Null
+      New-Item -ItemType Directory -Path (Join-Path $tmp "source\project\FreshRepo") -Force | Out-Null
+      New-Item -ItemType Directory -Path (Join-Path $tmp "source\project\_common\custom\scripts\governance") -Force | Out-Null
+      New-Item -ItemType Directory -Path $repo -Force | Out-Null
+
+      Copy-Item -Path (Join-Path $repoRoot "scripts\add-repo.ps1") -Destination (Join-Path $tmp "scripts\add-repo.ps1") -Force
+      Copy-Item -Path (Join-Path $repoRoot "scripts\lib\common.ps1") -Destination (Join-Path $tmp "scripts\lib\common.ps1") -Force
+
+      Set-MinProjectRulePolicy -ConfigDir (Join-Path $tmp "config") -RepoPath $repo
+      @() | ConvertTo-Json -Depth 3 | Set-Content -Path (Join-Path $tmp "config\repositories.json") -Encoding UTF8
+      @() | ConvertTo-Json -Depth 3 | Set-Content -Path (Join-Path $tmp "config\targets.json") -Encoding UTF8
+      @{
+        default = @("scripts/governance/run-target-autopilot.ps1")
+        repos = @()
+      } | ConvertTo-Json -Depth 6 | Set-Content -Path (Join-Path $tmp "config\project-custom-files.json") -Encoding UTF8
+
+      Set-Content -Path (Join-Path $tmp "source\project\FreshRepo\AGENTS.md") -Value "scoped" -Encoding UTF8
+      Set-Content -Path (Join-Path $tmp "source\project\FreshRepo\CLAUDE.md") -Value "scoped" -Encoding UTF8
+      Set-Content -Path (Join-Path $tmp "source\project\FreshRepo\GEMINI.md") -Value "scoped" -Encoding UTF8
+      Set-Content -Path (Join-Path $tmp "source\project\_common\custom\scripts\governance\run-target-autopilot.ps1") -Value "param()" -Encoding UTF8
+
+      & powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $tmp "scripts\add-repo.ps1") -RepoPath $repo -Mode safe | Out-Null
+      if ($LASTEXITCODE -ne 0) { throw "add-repo.ps1 failed with exit code $LASTEXITCODE" }
+
+      $targets = Get-Content -Raw (Join-Path $tmp "config\targets.json") | ConvertFrom-Json
+      (@($targets | Where-Object { $_.source -eq "source/project/_common/custom/scripts/governance/run-target-autopilot.ps1" })).Count | should be 1
+      (@($targets | Where-Object { $_.target -eq "$(($repo -replace '\\','/'))/scripts/governance/run-target-autopilot.ps1" })).Count | should be 1
+    } finally {
+      if (Test-Path $tmp) { Remove-Item -LiteralPath $tmp -Recurse -Force }
+    }
+  }
+
   it "backflow-project-rules copies target project docs to repo-scoped source with backup" {
     $tmp = Join-Path $env:TEMP ("govkit-test-" + [guid]::NewGuid().ToString("N"))
     $repo = Join-Path $tmp "ClassroomToolkit"

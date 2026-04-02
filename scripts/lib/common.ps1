@@ -43,7 +43,15 @@ function Get-RelativePathSafe([string]$BasePath, [string]$TargetPath) {
 
 function Is-ProjectRuleSource([string]$Source) {
   $s = ([string]$Source -replace '\\', '/')
-  return $s.StartsWith("source/project/", [System.StringComparison]::OrdinalIgnoreCase)
+  if (-not $s.StartsWith("source/project/", [System.StringComparison]::OrdinalIgnoreCase)) {
+    return $false
+  }
+  # project custom files are installable for any repo matching repoName policy;
+  # only top-level project rule docs are controlled by allowProjectRulesForRepos.
+  if ($s -match "^source/project/[^/]+/custom/") {
+    return $false
+  }
+  return $true
 }
 
 function Get-RepoName([string]$RepoPath) {
@@ -161,6 +169,31 @@ function Get-ProjectCustomFilesForRepo([string]$KitRoot, [string]$RepoPath, [str
   }
 
   return @($ordered)
+}
+
+function Get-ProjectCustomSourceForRepo([string]$KitRoot, [string]$RepoName, [string]$CustomRelativePath) {
+  if ([string]::IsNullOrWhiteSpace($CustomRelativePath)) {
+    return $null
+  }
+
+  $customRel = ([string]$CustomRelativePath -replace '\\', '/').TrimStart('/')
+  $repoNameSafe = if ([string]::IsNullOrWhiteSpace($RepoName)) { "" } else { [string]$RepoName }
+
+  $repoScopedRel = if ([string]::IsNullOrWhiteSpace($repoNameSafe)) { $null } else { "source/project/$repoNameSafe/custom/$customRel" }
+  if (-not [string]::IsNullOrWhiteSpace($repoScopedRel)) {
+    $repoScopedAbs = Join-Path $KitRoot ($repoScopedRel -replace '/', '\')
+    if (Test-Path -LiteralPath $repoScopedAbs -PathType Leaf) {
+      return $repoScopedRel
+    }
+  }
+
+  $commonRel = "source/project/_common/custom/$customRel"
+  $commonAbs = Join-Path $KitRoot ($commonRel -replace '/', '\')
+  if (Test-Path -LiteralPath $commonAbs -PathType Leaf) {
+    return $commonRel
+  }
+
+  return $null
 }
 
 function Parse-KeyValueFile([string]$Path) {

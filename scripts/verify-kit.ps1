@@ -18,6 +18,7 @@ $mustExist = @(
   "scripts\doctor.ps1",
   "scripts\bootstrap-repo.ps1",
   "scripts\bootstrap-here.ps1",
+  "scripts\install-full-stack.ps1",
   "scripts\install.ps1",
   "scripts\sync.ps1",
   "scripts\verify.ps1",
@@ -37,6 +38,7 @@ $mustExist = @(
   "scripts\analyze-repo-governance.ps1",
   "scripts\optimize-project-rules.ps1",
   "scripts\run-project-governance-cycle.ps1",
+  "scripts\run-endstate-onboarding.ps1",
   "scripts\run-real-repo-regression.ps1",
   "scripts\verify-json-contract.ps1",
   "scripts\audit-governance-readiness.ps1",
@@ -59,6 +61,8 @@ $mustExist = @(
   "source\global\AGENTS.md",
   "source\global\CLAUDE.md",
   "source\global\GEMINI.md",
+  "source\project\_common\custom\scripts\governance\run-project-governance-cycle.ps1",
+  "source\project\_common\custom\scripts\governance\run-target-autopilot.ps1",
   "source\project"
 )
 

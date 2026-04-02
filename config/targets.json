@@ -90,5 +90,37 @@
     {
         "source":  "source/project/governance-kit/GEMINI.md",
         "target":  "E:/CODE/governance-kit/GEMINI.md"
+    },
+    {
+        "source":  "source/project/ClassroomToolkit/custom/.github/workflows/quality-gates.yml",
+        "target":  "E:/CODE/ClassroomToolkit/.github/workflows/quality-gates.yml"
+    },
+    {
+        "source":  "source/project/ClassroomToolkit/custom/scripts/governance/check-waiver-health.ps1",
+        "target":  "E:/CODE/ClassroomToolkit/scripts/governance/check-waiver-health.ps1"
+    },
+    {
+        "source":  "source/project/ClassroomToolkit/custom/scripts/governance/check-evidence-completeness.ps1",
+        "target":  "E:/CODE/ClassroomToolkit/scripts/governance/check-evidence-completeness.ps1"
+    },
+    {
+        "source":  "source/project/ClassroomToolkit/custom/scripts/governance/run-doctor-endstate.ps1",
+        "target":  "E:/CODE/ClassroomToolkit/scripts/governance/run-doctor-endstate.ps1"
+    },
+    {
+        "source":  "source/project/ClassroomToolkit/custom/scripts/governance/run-endstate-loop.ps1",
+        "target":  "E:/CODE/ClassroomToolkit/scripts/governance/run-endstate-loop.ps1"
+    },
+    {
+        "source":  "source/project/ClassroomToolkit/custom/scripts/governance/backfill-evidence-template-fields.ps1",
+        "target":  "E:/CODE/ClassroomToolkit/scripts/governance/backfill-evidence-template-fields.ps1"
+    },
+    {
+        "source":  "source/project/ClassroomToolkit/custom/scripts/governance/run-project-governance-cycle.ps1",
+        "target":  "E:/CODE/ClassroomToolkit/scripts/governance/run-project-governance-cycle.ps1"
+    },
+    {
+        "source":  "source/project/ClassroomToolkit/custom/scripts/governance/run-target-autopilot.ps1",
+        "target":  "E:/CODE/ClassroomToolkit/scripts/governance/run-target-autopilot.ps1"
     }
 ]
