@@ -1,12 +1,19 @@
 param(
   [string]$BackupName,
-  [switch]$AllowOutOfScope
+  [switch]$AllowOutOfScope,
+  [ValidateRange(1, 3600)]
+  [int]$LockTimeoutSeconds = 120
 )
 
 $ErrorActionPreference = "Stop"
 $kitRoot = Split-Path -Parent $PSScriptRoot
+$commonPath = Join-Path $PSScriptRoot "lib\common.ps1"
+. $commonPath
 $backupRoot = Join-Path $kitRoot "backups"
 $targetsPath = Join-Path $kitRoot "config\targets.json"
+$scriptLock = New-ScriptLock -KitRoot $kitRoot -LockName "restore" -TimeoutSeconds $LockTimeoutSeconds
+
+try {
 
 if (!(Test-Path $backupRoot)) {
   throw "Backup root not found: $backupRoot"
@@ -62,3 +69,6 @@ foreach ($f in $files) {
 }
 
 Write-Host "Restore done. files=$restored snapshot=$snapshot"
+} finally {
+  Release-ScriptLock -LockHandle $scriptLock
+}

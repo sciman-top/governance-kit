@@ -171,6 +171,32 @@ exit 0
     }
   }
 
+  it "install counts unchanged entries in skipped summary" {
+    $tmp = Join-Path $env:TEMP ("govkit-test-" + [guid]::NewGuid().ToString("N"))
+    try {
+      New-Item -ItemType Directory -Path (Join-Path $tmp "scripts\lib") -Force | Out-Null
+      New-Item -ItemType Directory -Path (Join-Path $tmp "config") -Force | Out-Null
+      New-Item -ItemType Directory -Path (Join-Path $tmp "source") -Force | Out-Null
+      New-Item -ItemType Directory -Path (Join-Path $tmp "target") -Force | Out-Null
+
+      Copy-Item -Path (Join-Path $repoRoot "scripts\install.ps1") -Destination (Join-Path $tmp "scripts\install.ps1") -Force
+      Copy-Item -Path (Join-Path $repoRoot "scripts\lib\common.ps1") -Destination (Join-Path $tmp "scripts\lib\common.ps1") -Force
+
+      $src = Join-Path $tmp "source\AGENTS.md"
+      $dst = Join-Path $tmp "target\AGENTS.md"
+      Set-Content -Path $src -Value "same-content" -Encoding UTF8
+      Set-Content -Path $dst -Value "same-content" -Encoding UTF8
+      @(@{ source = "source/AGENTS.md"; target = $dst }) | ConvertTo-Json -Depth 3 | Set-Content -Path (Join-Path $tmp "config\targets.json") -Encoding UTF8
+
+      $output = & powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $tmp "scripts\install.ps1") -Mode safe -NoBackup -SkipPostVerify -AsJson 2>&1 | Out-String
+      if ($LASTEXITCODE -ne 0) { throw "install.ps1 safe failed with exit code $LASTEXITCODE" }
+      $output | should match '"skipped"\s*:\s*1'
+      $output | should match '"copied"\s*:\s*0'
+    } finally {
+      if (Test-Path $tmp) { Remove-Item -LiteralPath $tmp -Recurse -Force }
+    }
+  }
+
   it "validate-config fails on non-ISO planned_enforce_date" {
     $tmp = Join-Path $env:TEMP ("govkit-test-" + [guid]::NewGuid().ToString("N"))
     try {
@@ -399,6 +425,171 @@ exit 0
       $LASTEXITCODE | should be 0
       $output | should match "\[SKIP\] verify-targets"
       $output | should match "HEALTH=GREEN"
+    } finally {
+      if (Test-Path $tmp) { Remove-Item -LiteralPath $tmp -Recurse -Force }
+    }
+  }
+
+  it "doctor supports AsJson output for machine consumption" {
+    $tmp = Join-Path $env:TEMP ("govkit-test-" + [guid]::NewGuid().ToString("N"))
+    try {
+      New-Item -ItemType Directory -Path (Join-Path $tmp "scripts") -Force | Out-Null
+
+      Copy-Item -Path (Join-Path $repoRoot "scripts\doctor.ps1") -Destination (Join-Path $tmp "scripts\doctor.ps1") -Force
+
+      Set-StubScript -Path (Join-Path $tmp "scripts\verify-kit.ps1")
+      Set-StubScript -Path (Join-Path $tmp "scripts\validate-config.ps1")
+      Set-RequireSkipValidationVerifyScript -Path (Join-Path $tmp "scripts\verify.ps1")
+      Set-StubScript -Path (Join-Path $tmp "scripts\check-waivers.ps1")
+      Set-StubScript -Path (Join-Path $tmp "scripts\status.ps1")
+      Set-StubScript -Path (Join-Path $tmp "scripts\rollout-status.ps1")
+
+      $json = & powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $tmp "scripts\doctor.ps1") -AsJson
+      if ($LASTEXITCODE -ne 0) { throw "doctor.ps1 -AsJson failed with exit code $LASTEXITCODE" }
+      $obj = ($json | Out-String | ConvertFrom-Json)
+
+      $obj.schema_version | should be "1.0"
+      $obj.health | should be "GREEN"
+      @($obj.failed_steps).Count | should be 0
+      (@($obj.steps).Count -ge 5) | should be $true
+    } finally {
+      if (Test-Path $tmp) { Remove-Item -LiteralPath $tmp -Recurse -Force }
+    }
+  }
+
+  it "status supports AsJson output" {
+    $tmp = Join-Path $env:TEMP ("govkit-test-" + [guid]::NewGuid().ToString("N"))
+    try {
+      New-Item -ItemType Directory -Path (Join-Path $tmp "scripts\lib") -Force | Out-Null
+      New-Item -ItemType Directory -Path (Join-Path $tmp "scripts") -Force | Out-Null
+      New-Item -ItemType Directory -Path (Join-Path $tmp "config") -Force | Out-Null
+
+      Copy-Item -Path (Join-Path $repoRoot "scripts\status.ps1") -Destination (Join-Path $tmp "scripts\status.ps1") -Force
+      Copy-Item -Path (Join-Path $repoRoot "scripts\lib\common.ps1") -Destination (Join-Path $tmp "scripts\lib\common.ps1") -Force
+
+      @("E:/CODE/FakeRepo") | ConvertTo-Json -Depth 3 | Set-Content -Path (Join-Path $tmp "config\repositories.json") -Encoding UTF8
+      @(@{ source = "source/global/AGENTS.md"; target = "C:/Users/sciman/.codex/AGENTS.md" }) | ConvertTo-Json -Depth 4 | Set-Content -Path (Join-Path $tmp "config\targets.json") -Encoding UTF8
+      @{
+        default = @{ phase = "observe"; blockExpiredWaiver = $false }
+        repos = @(
+          @{
+            repo = "E:/CODE/FakeRepo"
+            phase = "observe"
+            planned_enforce_date = "2026-04-15"
+          }
+        )
+      } | ConvertTo-Json -Depth 8 | Set-Content -Path (Join-Path $tmp "config\rule-rollout.json") -Encoding UTF8
+
+      $json = & powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $tmp "scripts\status.ps1") -AsJson
+      if ($LASTEXITCODE -ne 0) { throw "status.ps1 -AsJson failed with exit code $LASTEXITCODE" }
+      $obj = ($json | Out-String | ConvertFrom-Json)
+
+      $obj.schema_version | should be "1.0"
+      $obj.repositories | should be 1
+      $obj.targets | should be 1
+      $obj.rollout.default_phase | should be "observe"
+      @($obj.warnings).Count | should be 0
+    } finally {
+      if (Test-Path $tmp) { Remove-Item -LiteralPath $tmp -Recurse -Force }
+    }
+  }
+
+  it "rollout-status supports AsJson output" {
+    $tmp = Join-Path $env:TEMP ("govkit-test-" + [guid]::NewGuid().ToString("N"))
+    try {
+      New-Item -ItemType Directory -Path (Join-Path $tmp "scripts\lib") -Force | Out-Null
+      New-Item -ItemType Directory -Path (Join-Path $tmp "scripts") -Force | Out-Null
+      New-Item -ItemType Directory -Path (Join-Path $tmp "config") -Force | Out-Null
+
+      Copy-Item -Path (Join-Path $repoRoot "scripts\rollout-status.ps1") -Destination (Join-Path $tmp "scripts\rollout-status.ps1") -Force
+      Copy-Item -Path (Join-Path $repoRoot "scripts\lib\common.ps1") -Destination (Join-Path $tmp "scripts\lib\common.ps1") -Force
+
+      @("E:/CODE/FakeRepo") | ConvertTo-Json -Depth 3 | Set-Content -Path (Join-Path $tmp "config\repositories.json") -Encoding UTF8
+      @{
+        default = @{ phase = "observe"; blockExpiredWaiver = $false }
+        repos = @(
+          @{
+            repo = "E:/CODE/FakeRepo"
+            phase = "observe"
+            planned_enforce_date = "2026-04-15"
+          }
+        )
+      } | ConvertTo-Json -Depth 8 | Set-Content -Path (Join-Path $tmp "config\rule-rollout.json") -Encoding UTF8
+
+      $json = & powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $tmp "scripts\rollout-status.ps1") -AsJson
+      if ($LASTEXITCODE -ne 0) { throw "rollout-status.ps1 -AsJson failed with exit code $LASTEXITCODE" }
+      $obj = ($json | Out-String | ConvertFrom-Json)
+
+      $obj.schema_version | should be "1.0"
+      $obj.default_phase | should be "observe"
+      $obj.observe | should be 1
+      $obj.enforce | should be 0
+      @($obj.warnings).Count | should be 0
+    } finally {
+      if (Test-Path $tmp) { Remove-Item -LiteralPath $tmp -Recurse -Force }
+    }
+  }
+
+  it "status uses strict ISO date parsing for rollout planned_enforce_date" {
+    $tmp = Join-Path $env:TEMP ("govkit-test-" + [guid]::NewGuid().ToString("N"))
+    try {
+      New-Item -ItemType Directory -Path (Join-Path $tmp "scripts\lib") -Force | Out-Null
+      New-Item -ItemType Directory -Path (Join-Path $tmp "scripts") -Force | Out-Null
+      New-Item -ItemType Directory -Path (Join-Path $tmp "config") -Force | Out-Null
+
+      Copy-Item -Path (Join-Path $repoRoot "scripts\status.ps1") -Destination (Join-Path $tmp "scripts\status.ps1") -Force
+      Copy-Item -Path (Join-Path $repoRoot "scripts\lib\common.ps1") -Destination (Join-Path $tmp "scripts\lib\common.ps1") -Force
+
+      @("E:/CODE/FakeRepo") | ConvertTo-Json -Depth 3 | Set-Content -Path (Join-Path $tmp "config\repositories.json") -Encoding UTF8
+      @(@{ source = "source/global/AGENTS.md"; target = "C:/Users/sciman/.codex/AGENTS.md" }) | ConvertTo-Json -Depth 4 | Set-Content -Path (Join-Path $tmp "config\targets.json") -Encoding UTF8
+      @{
+        default = @{ phase = "observe"; blockExpiredWaiver = $false }
+        repos = @(
+          @{
+            repo = "E:/CODE/FakeRepo"
+            phase = "observe"
+            planned_enforce_date = "2026/04/15"
+          }
+        )
+      } | ConvertTo-Json -Depth 8 | Set-Content -Path (Join-Path $tmp "config\rule-rollout.json") -Encoding UTF8
+
+      $output = & powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $tmp "scripts\status.ps1") 2>&1 | Out-String
+      $LASTEXITCODE | should be 0
+      $output | should match "invalid planned_enforce_date"
+      $output | should match "expected yyyy-MM-dd"
+      $output | should match "rollout\.observe_overdue=0"
+    } finally {
+      if (Test-Path $tmp) { Remove-Item -LiteralPath $tmp -Recurse -Force }
+    }
+  }
+
+  it "rollout-status uses strict ISO date parsing for planned_enforce_date" {
+    $tmp = Join-Path $env:TEMP ("govkit-test-" + [guid]::NewGuid().ToString("N"))
+    try {
+      New-Item -ItemType Directory -Path (Join-Path $tmp "scripts\lib") -Force | Out-Null
+      New-Item -ItemType Directory -Path (Join-Path $tmp "scripts") -Force | Out-Null
+      New-Item -ItemType Directory -Path (Join-Path $tmp "config") -Force | Out-Null
+
+      Copy-Item -Path (Join-Path $repoRoot "scripts\rollout-status.ps1") -Destination (Join-Path $tmp "scripts\rollout-status.ps1") -Force
+      Copy-Item -Path (Join-Path $repoRoot "scripts\lib\common.ps1") -Destination (Join-Path $tmp "scripts\lib\common.ps1") -Force
+
+      @("E:/CODE/FakeRepo") | ConvertTo-Json -Depth 3 | Set-Content -Path (Join-Path $tmp "config\repositories.json") -Encoding UTF8
+      @{
+        default = @{ phase = "observe"; blockExpiredWaiver = $false }
+        repos = @(
+          @{
+            repo = "E:/CODE/FakeRepo"
+            phase = "observe"
+            planned_enforce_date = "2026/04/15"
+          }
+        )
+      } | ConvertTo-Json -Depth 8 | Set-Content -Path (Join-Path $tmp "config\rule-rollout.json") -Encoding UTF8
+
+      $output = & powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $tmp "scripts\rollout-status.ps1") 2>&1 | Out-String
+      $LASTEXITCODE | should be 0
+      $output | should match "invalid planned_enforce_date"
+      $output | should match "expected yyyy-MM-dd"
+      $output | should match "phase\.observe_overdue=0"
     } finally {
       if (Test-Path $tmp) { Remove-Item -LiteralPath $tmp -Recurse -Force }
     }
@@ -735,6 +926,77 @@ exit 0
     }
   }
 
+  it "backflow-project-rules supports -SkipCustomFiles to avoid custom copy" {
+    $tmp = Join-Path $env:TEMP ("govkit-test-" + [guid]::NewGuid().ToString("N"))
+    $repo = Join-Path $tmp "ClassroomToolkit"
+    try {
+      New-Item -ItemType Directory -Path (Join-Path $tmp "scripts\lib") -Force | Out-Null
+      New-Item -ItemType Directory -Path (Join-Path $tmp "scripts") -Force | Out-Null
+      New-Item -ItemType Directory -Path (Join-Path $tmp "config") -Force | Out-Null
+      New-Item -ItemType Directory -Path (Join-Path $tmp "source\project\ClassroomToolkit") -Force | Out-Null
+      New-Item -ItemType Directory -Path (Join-Path $repo ".github\workflows") -Force | Out-Null
+      New-Item -ItemType Directory -Path $repo -Force | Out-Null
+
+      Copy-Item -Path (Join-Path $repoRoot "scripts\backflow-project-rules.ps1") -Destination (Join-Path $tmp "scripts\backflow-project-rules.ps1") -Force
+      Copy-Item -Path (Join-Path $repoRoot "scripts\lib\common.ps1") -Destination (Join-Path $tmp "scripts\lib\common.ps1") -Force
+
+      Set-Content -Path (Join-Path $tmp "source\project\ClassroomToolkit\AGENTS.md") -Value "old-source-agents" -Encoding UTF8
+      Set-Content -Path (Join-Path $tmp "source\project\ClassroomToolkit\CLAUDE.md") -Value "old-source-claude" -Encoding UTF8
+      Set-Content -Path (Join-Path $tmp "source\project\ClassroomToolkit\GEMINI.md") -Value "old-source-gemini" -Encoding UTF8
+      Set-Content -Path (Join-Path $repo "AGENTS.md") -Value "new-target-agents" -Encoding UTF8
+      Set-Content -Path (Join-Path $repo "CLAUDE.md") -Value "new-target-claude" -Encoding UTF8
+      Set-Content -Path (Join-Path $repo "GEMINI.md") -Value "new-target-gemini" -Encoding UTF8
+      Set-Content -Path (Join-Path $repo ".github\workflows\quality-gate.yml") -Value "name: quality-gate" -Encoding UTF8
+
+      @{
+        default = @()
+        repos = @(
+          @{
+            repoName = "ClassroomToolkit"
+            files = @(".github/workflows/quality-gate.yml")
+          }
+        )
+      } | ConvertTo-Json -Depth 8 | Set-Content -Path (Join-Path $tmp "config\project-custom-files.json") -Encoding UTF8
+
+      @(
+        @{ source = "source/project/ClassroomToolkit/AGENTS.md"; target = "$($repo -replace '\\','/')/AGENTS.md" }
+      ) | ConvertTo-Json -Depth 8 | Set-Content -Path (Join-Path $tmp "config\targets.json") -Encoding UTF8
+
+      & powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $tmp "scripts\backflow-project-rules.ps1") -RepoPath $repo -RepoName ClassroomToolkit -Mode safe -SkipCustomFiles | Out-Null
+      if ($LASTEXITCODE -ne 0) { throw "backflow-project-rules.ps1 with -SkipCustomFiles failed with exit code $LASTEXITCODE" }
+
+      (Test-Path (Join-Path $tmp "source\project\ClassroomToolkit\custom\.github\workflows\quality-gate.yml")) | should be $false
+      $targets = Get-Content -Raw (Join-Path $tmp "config\targets.json") | ConvertFrom-Json
+      (@($targets | Where-Object { $_.source -eq "source/project/ClassroomToolkit/custom/.github/workflows/quality-gate.yml" })).Count | should be 0
+    } finally {
+      if (Test-Path $tmp) { Remove-Item -LiteralPath $tmp -Recurse -Force }
+    }
+  }
+
+  it "backflow-project-rules rejects conflicting custom file switches" {
+    $tmp = Join-Path $env:TEMP ("govkit-test-" + [guid]::NewGuid().ToString("N"))
+    $repo = Join-Path $tmp "ClassroomToolkit"
+    try {
+      New-Item -ItemType Directory -Path (Join-Path $tmp "scripts\lib") -Force | Out-Null
+      New-Item -ItemType Directory -Path (Join-Path $tmp "scripts") -Force | Out-Null
+      New-Item -ItemType Directory -Path (Join-Path $tmp "source\project\ClassroomToolkit") -Force | Out-Null
+      New-Item -ItemType Directory -Path $repo -Force | Out-Null
+
+      Copy-Item -Path (Join-Path $repoRoot "scripts\backflow-project-rules.ps1") -Destination (Join-Path $tmp "scripts\backflow-project-rules.ps1") -Force
+      Copy-Item -Path (Join-Path $repoRoot "scripts\lib\common.ps1") -Destination (Join-Path $tmp "scripts\lib\common.ps1") -Force
+
+      Set-Content -Path (Join-Path $repo "AGENTS.md") -Value "x" -Encoding UTF8
+      Set-Content -Path (Join-Path $repo "CLAUDE.md") -Value "x" -Encoding UTF8
+      Set-Content -Path (Join-Path $repo "GEMINI.md") -Value "x" -Encoding UTF8
+
+      $output = & powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $tmp "scripts\backflow-project-rules.ps1") -RepoPath $repo -RepoName ClassroomToolkit -Mode safe -SkipCustomFiles -IncludeCustomFiles:$true 2>&1 | Out-String
+      $LASTEXITCODE | should be 1
+      $output | should match "Conflicting arguments"
+    } finally {
+      if (Test-Path $tmp) { Remove-Item -LiteralPath $tmp -Recurse -Force }
+    }
+  }
+
   it "audit-governance-readiness writes markdown report and passes with healthy stubs" {
     $tmp = Join-Path $env:TEMP ("govkit-test-" + [guid]::NewGuid().ToString("N"))
     try {
@@ -857,6 +1119,265 @@ exit 0
 
       $after = & powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $tmp "scripts\check-orphan-custom-sources.ps1") -AsJson
       (($after | ConvertFrom-Json).orphan_count) | should be 0
+    } finally {
+      if (Test-Path $tmp) { Remove-Item -LiteralPath $tmp -Recurse -Force }
+    }
+  }
+
+  it "install fails fast when script lock cannot be acquired" {
+    $tmp = Join-Path $env:TEMP ("govkit-test-" + [guid]::NewGuid().ToString("N"))
+    $hold = $null
+    try {
+      New-Item -ItemType Directory -Path (Join-Path $tmp "scripts\lib") -Force | Out-Null
+      New-Item -ItemType Directory -Path (Join-Path $tmp "scripts") -Force | Out-Null
+      New-Item -ItemType Directory -Path (Join-Path $tmp "config") -Force | Out-Null
+      New-Item -ItemType Directory -Path (Join-Path $tmp "source") -Force | Out-Null
+      New-Item -ItemType Directory -Path (Join-Path $tmp ".locks") -Force | Out-Null
+
+      Copy-Item -Path (Join-Path $repoRoot "scripts\install.ps1") -Destination (Join-Path $tmp "scripts\install.ps1") -Force
+      Copy-Item -Path (Join-Path $repoRoot "scripts\lib\common.ps1") -Destination (Join-Path $tmp "scripts\lib\common.ps1") -Force
+
+      $src = Join-Path $tmp "source\AGENTS.md"
+      Set-Content -Path $src -Value "x" -Encoding UTF8
+      @(@{ source = "source/AGENTS.md"; target = (Join-Path $tmp "target\AGENTS.md") }) | ConvertTo-Json -Depth 3 | Set-Content -Path (Join-Path $tmp "config\targets.json") -Encoding UTF8
+
+      $hold = [System.IO.File]::Open((Join-Path $tmp ".locks\install.lock"), [System.IO.FileMode]::OpenOrCreate, [System.IO.FileAccess]::ReadWrite, [System.IO.FileShare]::None)
+      $output = & powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $tmp "scripts\install.ps1") -Mode plan -LockTimeoutSeconds 1 2>&1 | Out-String
+      $LASTEXITCODE | should be 1
+      $output | should match "Failed to acquire script lock 'install'"
+    } finally {
+      if ($null -ne $hold) { $hold.Dispose() }
+      if (Test-Path $tmp) { Remove-Item -LiteralPath $tmp -Recurse -Force }
+    }
+  }
+
+  it "backflow fails fast when script lock cannot be acquired" {
+    $tmp = Join-Path $env:TEMP ("govkit-test-" + [guid]::NewGuid().ToString("N"))
+    $repo = Join-Path $tmp "ClassroomToolkit"
+    $hold = $null
+    try {
+      New-Item -ItemType Directory -Path (Join-Path $tmp "scripts\lib") -Force | Out-Null
+      New-Item -ItemType Directory -Path (Join-Path $tmp "scripts") -Force | Out-Null
+      New-Item -ItemType Directory -Path (Join-Path $tmp "source\project\ClassroomToolkit") -Force | Out-Null
+      New-Item -ItemType Directory -Path (Join-Path $tmp ".locks") -Force | Out-Null
+      New-Item -ItemType Directory -Path $repo -Force | Out-Null
+
+      Copy-Item -Path (Join-Path $repoRoot "scripts\backflow-project-rules.ps1") -Destination (Join-Path $tmp "scripts\backflow-project-rules.ps1") -Force
+      Copy-Item -Path (Join-Path $repoRoot "scripts\lib\common.ps1") -Destination (Join-Path $tmp "scripts\lib\common.ps1") -Force
+
+      Set-Content -Path (Join-Path $repo "AGENTS.md") -Value "x" -Encoding UTF8
+      Set-Content -Path (Join-Path $repo "CLAUDE.md") -Value "x" -Encoding UTF8
+      Set-Content -Path (Join-Path $repo "GEMINI.md") -Value "x" -Encoding UTF8
+
+      $hold = [System.IO.File]::Open((Join-Path $tmp ".locks\backflow-project-rules.lock"), [System.IO.FileMode]::OpenOrCreate, [System.IO.FileAccess]::ReadWrite, [System.IO.FileShare]::None)
+      $output = & powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $tmp "scripts\backflow-project-rules.ps1") -RepoPath $repo -RepoName ClassroomToolkit -Mode plan -SkipCustomFiles -LockTimeoutSeconds 1 2>&1 | Out-String
+      $LASTEXITCODE | should be 1
+      $output | should match "Failed to acquire script lock 'backflow-project-rules'"
+    } finally {
+      if ($null -ne $hold) { $hold.Dispose() }
+      if (Test-Path $tmp) { Remove-Item -LiteralPath $tmp -Recurse -Force }
+    }
+  }
+
+  it "restore fails fast when script lock cannot be acquired" {
+    $tmp = Join-Path $env:TEMP ("govkit-test-" + [guid]::NewGuid().ToString("N"))
+    $hold = $null
+    try {
+      New-Item -ItemType Directory -Path (Join-Path $tmp "scripts\lib") -Force | Out-Null
+      New-Item -ItemType Directory -Path (Join-Path $tmp "scripts") -Force | Out-Null
+      New-Item -ItemType Directory -Path (Join-Path $tmp "config") -Force | Out-Null
+      New-Item -ItemType Directory -Path (Join-Path $tmp "backups\20260101-000000\C\temp") -Force | Out-Null
+      New-Item -ItemType Directory -Path (Join-Path $tmp ".locks") -Force | Out-Null
+
+      Copy-Item -Path (Join-Path $repoRoot "scripts\restore.ps1") -Destination (Join-Path $tmp "scripts\restore.ps1") -Force
+      Copy-Item -Path (Join-Path $repoRoot "scripts\lib\common.ps1") -Destination (Join-Path $tmp "scripts\lib\common.ps1") -Force
+
+      Set-Content -Path (Join-Path $tmp "backups\20260101-000000\C\temp\x.txt") -Value "x" -Encoding UTF8
+      @(@{ source = "source/global/AGENTS.md"; target = "C:/temp/x.txt" }) | ConvertTo-Json -Depth 4 | Set-Content -Path (Join-Path $tmp "config\targets.json") -Encoding UTF8
+
+      $hold = [System.IO.File]::Open((Join-Path $tmp ".locks\restore.lock"), [System.IO.FileMode]::OpenOrCreate, [System.IO.FileAccess]::ReadWrite, [System.IO.FileShare]::None)
+      $output = & powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $tmp "scripts\restore.ps1") -LockTimeoutSeconds 1 2>&1 | Out-String
+      $LASTEXITCODE | should be 1
+      $output | should match "Failed to acquire script lock 'restore'"
+    } finally {
+      if ($null -ne $hold) { $hold.Dispose() }
+      if (Test-Path $tmp) { Remove-Item -LiteralPath $tmp -Recurse -Force }
+    }
+  }
+
+  it "prune-backups supports plan mode without deleting directories" {
+    $tmp = Join-Path $env:TEMP ("govkit-test-" + [guid]::NewGuid().ToString("N"))
+    try {
+      New-Item -ItemType Directory -Path (Join-Path $tmp "scripts\lib") -Force | Out-Null
+      New-Item -ItemType Directory -Path (Join-Path $tmp "scripts") -Force | Out-Null
+      New-Item -ItemType Directory -Path (Join-Path $tmp "backups\a") -Force | Out-Null
+      New-Item -ItemType Directory -Path (Join-Path $tmp "backups\b") -Force | Out-Null
+      New-Item -ItemType Directory -Path (Join-Path $tmp "backups\c") -Force | Out-Null
+
+      Copy-Item -Path (Join-Path $repoRoot "scripts\prune-backups.ps1") -Destination (Join-Path $tmp "scripts\prune-backups.ps1") -Force
+      Copy-Item -Path (Join-Path $repoRoot "scripts\lib\common.ps1") -Destination (Join-Path $tmp "scripts\lib\common.ps1") -Force
+
+      (Get-Item (Join-Path $tmp "backups\a")).LastWriteTime = (Get-Date).AddDays(-20)
+      (Get-Item (Join-Path $tmp "backups\b")).LastWriteTime = (Get-Date).AddDays(-10)
+      (Get-Item (Join-Path $tmp "backups\c")).LastWriteTime = (Get-Date).AddDays(-1)
+
+      $json = & powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $tmp "scripts\prune-backups.ps1") -Mode plan -RetainDays 0 -RetainCount 1 -AsJson
+      if ($LASTEXITCODE -ne 0) { throw "prune-backups.ps1 plan failed with exit code $LASTEXITCODE" }
+      $obj = $json | ConvertFrom-Json
+      $obj.removed | should be 0
+      (@($obj.actions | Where-Object { $_.action -eq "PLAN_PRUNE" }).Count -ge 2) | should be $true
+      (Test-Path (Join-Path $tmp "backups\a")) | should be $true
+      (Test-Path (Join-Path $tmp "backups\b")) | should be $true
+      (Test-Path (Join-Path $tmp "backups\c")) | should be $true
+    } finally {
+      if (Test-Path $tmp) { Remove-Item -LiteralPath $tmp -Recurse -Force }
+    }
+  }
+
+  it "prune-backups removes expired backup directories in safe mode" {
+    $tmp = Join-Path $env:TEMP ("govkit-test-" + [guid]::NewGuid().ToString("N"))
+    try {
+      New-Item -ItemType Directory -Path (Join-Path $tmp "scripts\lib") -Force | Out-Null
+      New-Item -ItemType Directory -Path (Join-Path $tmp "scripts") -Force | Out-Null
+      New-Item -ItemType Directory -Path (Join-Path $tmp "backups\a") -Force | Out-Null
+      New-Item -ItemType Directory -Path (Join-Path $tmp "backups\b") -Force | Out-Null
+      New-Item -ItemType Directory -Path (Join-Path $tmp "backups\c") -Force | Out-Null
+
+      Copy-Item -Path (Join-Path $repoRoot "scripts\prune-backups.ps1") -Destination (Join-Path $tmp "scripts\prune-backups.ps1") -Force
+      Copy-Item -Path (Join-Path $repoRoot "scripts\lib\common.ps1") -Destination (Join-Path $tmp "scripts\lib\common.ps1") -Force
+
+      (Get-Item (Join-Path $tmp "backups\a")).LastWriteTime = (Get-Date).AddDays(-20)
+      (Get-Item (Join-Path $tmp "backups\b")).LastWriteTime = (Get-Date).AddDays(-10)
+      (Get-Item (Join-Path $tmp "backups\c")).LastWriteTime = (Get-Date).AddDays(-1)
+
+      $json = & powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $tmp "scripts\prune-backups.ps1") -Mode safe -RetainDays 0 -RetainCount 1 -AsJson
+      if ($LASTEXITCODE -ne 0) { throw "prune-backups.ps1 safe failed with exit code $LASTEXITCODE" }
+      $obj = $json | ConvertFrom-Json
+      $obj.removed | should be 2
+      (Test-Path (Join-Path $tmp "backups\c")) | should be $true
+      (Test-Path (Join-Path $tmp "backups\a")) | should be $false
+      (Test-Path (Join-Path $tmp "backups\b")) | should be $false
+    } finally {
+      if (Test-Path $tmp) { Remove-Item -LiteralPath $tmp -Recurse -Force }
+    }
+  }
+
+  it "prune-backups keeps protected prefix directories even when expired" {
+    $tmp = Join-Path $env:TEMP ("govkit-test-" + [guid]::NewGuid().ToString("N"))
+    try {
+      New-Item -ItemType Directory -Path (Join-Path $tmp "scripts\lib") -Force | Out-Null
+      New-Item -ItemType Directory -Path (Join-Path $tmp "scripts") -Force | Out-Null
+      New-Item -ItemType Directory -Path (Join-Path $tmp "backups\backflow-aaa") -Force | Out-Null
+      New-Item -ItemType Directory -Path (Join-Path $tmp "backups\old-normal") -Force | Out-Null
+
+      Copy-Item -Path (Join-Path $repoRoot "scripts\prune-backups.ps1") -Destination (Join-Path $tmp "scripts\prune-backups.ps1") -Force
+      Copy-Item -Path (Join-Path $repoRoot "scripts\lib\common.ps1") -Destination (Join-Path $tmp "scripts\lib\common.ps1") -Force
+
+      (Get-Item (Join-Path $tmp "backups\backflow-aaa")).LastWriteTime = (Get-Date).AddDays(-90)
+      (Get-Item (Join-Path $tmp "backups\old-normal")).LastWriteTime = (Get-Date).AddDays(-90)
+
+      $json = & powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $tmp "scripts\prune-backups.ps1") -Mode safe -RetainDays 0 -RetainCount 0 -ProtectPrefixes backflow- -AsJson
+      if ($LASTEXITCODE -ne 0) { throw "prune-backups.ps1 protect prefix failed with exit code $LASTEXITCODE" }
+      $obj = $json | ConvertFrom-Json
+
+      (Test-Path (Join-Path $tmp "backups\backflow-aaa")) | should be $true
+      (Test-Path (Join-Path $tmp "backups\old-normal")) | should be $false
+      (@($obj.actions | Where-Object { $_.path -like "*backflow-aaa" -and $_.reason -like "prefix*" }).Count -ge 1) | should be $true
+    } finally {
+      if (Test-Path $tmp) { Remove-Item -LiteralPath $tmp -Recurse -Force }
+    }
+  }
+
+  it "verify-json-contract validates schema fields and versions" {
+    $tmp = Join-Path $env:TEMP ("govkit-test-" + [guid]::NewGuid().ToString("N"))
+    try {
+      New-Item -ItemType Directory -Path (Join-Path $tmp "scripts\lib") -Force | Out-Null
+      New-Item -ItemType Directory -Path (Join-Path $tmp "scripts") -Force | Out-Null
+
+      Copy-Item -Path (Join-Path $repoRoot "scripts\verify-json-contract.ps1") -Destination (Join-Path $tmp "scripts\verify-json-contract.ps1") -Force
+      Copy-Item -Path (Join-Path $repoRoot "scripts\lib\common.ps1") -Destination (Join-Path $tmp "scripts\lib\common.ps1") -Force
+
+      @'
+param([switch]$AsJson)
+if ($AsJson) {
+  @{ schema_version="1.0"; repositories=1; targets=1; repos=@(); global_home_targets=1; missing_repositories=0; orphan_targets=0; rollout=$null; warnings=@() } | ConvertTo-Json -Depth 6 | Write-Output
+  exit 0
+}
+'@ | Set-Content -Path (Join-Path $tmp "scripts\status.ps1") -Encoding UTF8
+
+      @'
+param([switch]$AsJson)
+if ($AsJson) {
+  @{ schema_version="1.0"; default_phase="observe"; default_block_expired_waiver=$false; observe=1; enforce=0; observe_overdue=0; repos=@(); warnings=@() } | ConvertTo-Json -Depth 6 | Write-Output
+  exit 0
+}
+'@ | Set-Content -Path (Join-Path $tmp "scripts\rollout-status.ps1") -Encoding UTF8
+
+      @'
+param([switch]$AsJson)
+if ($AsJson) {
+  @{ schema_version="1.0"; generated_at="2026-04-02 00:00:00"; health="GREEN"; failed_steps=@(); skipped_steps=@(); steps=@() } | ConvertTo-Json -Depth 6 | Write-Output
+  exit 0
+}
+'@ | Set-Content -Path (Join-Path $tmp "scripts\doctor.ps1") -Encoding UTF8
+
+      $json = & powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $tmp "scripts\verify-json-contract.ps1") -AsJson
+      if ($LASTEXITCODE -ne 0) { throw "verify-json-contract.ps1 failed with exit code $LASTEXITCODE" }
+      $obj = $json | ConvertFrom-Json
+      $obj.status | should be "PASS"
+      $obj.expected_schema_version | should be "1.0"
+    } finally {
+      if (Test-Path $tmp) { Remove-Item -LiteralPath $tmp -Recurse -Force }
+    }
+  }
+
+  it "run-real-repo-regression supports plan and smoke modes with matrix config" {
+    $tmp = Join-Path $env:TEMP ("govkit-test-" + [guid]::NewGuid().ToString("N"))
+    $repoA = Join-Path $tmp "RepoA"
+    try {
+      New-Item -ItemType Directory -Path (Join-Path $tmp "scripts\lib") -Force | Out-Null
+      New-Item -ItemType Directory -Path (Join-Path $tmp "scripts") -Force | Out-Null
+      New-Item -ItemType Directory -Path $repoA -Force | Out-Null
+      New-Item -ItemType Directory -Path (Join-Path $repoA "scripts") -Force | Out-Null
+
+      Copy-Item -Path (Join-Path $repoRoot "scripts\run-real-repo-regression.ps1") -Destination (Join-Path $tmp "scripts\run-real-repo-regression.ps1") -Force
+      Copy-Item -Path (Join-Path $repoRoot "scripts\lib\common.ps1") -Destination (Join-Path $tmp "scripts\lib\common.ps1") -Force
+
+      Set-Content -Path (Join-Path $repoA "AGENTS.md") -Value "x" -Encoding UTF8
+      Set-Content -Path (Join-Path $repoA "scripts\smoke.ps1") -Value "param(); Write-Host 'ok'; exit 0" -Encoding UTF8
+
+      @{
+        schema_version = "1.0"
+        repos = @(
+          @{
+            repo_name = "RepoA"
+            repo = ($repoA -replace '\\','/')
+            required_paths = @("AGENTS.md", "scripts/smoke.ps1")
+            smoke_command = "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/smoke.ps1"
+            full_command = ""
+          },
+          @{
+            repo_name = "RepoMissing"
+            repo = ((Join-Path $tmp "MissingRepo") -replace '\\','/')
+            required_paths = @("AGENTS.md")
+            smoke_command = ""
+            full_command = ""
+          }
+        )
+      } | ConvertTo-Json -Depth 8 | Set-Content -Path (Join-Path $tmp "matrix.json") -Encoding UTF8
+
+      $plan = & powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $tmp "scripts\run-real-repo-regression.ps1") -Mode plan -MatrixPath (Join-Path $tmp "matrix.json") -AsJson
+      if ($LASTEXITCODE -ne 0) { throw "run-real-repo-regression plan failed with exit code $LASTEXITCODE" }
+      $planObj = $plan | ConvertFrom-Json
+      $planObj.status | should be "PASS"
+      $planObj.total | should be 2
+
+      $smoke = & powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $tmp "scripts\run-real-repo-regression.ps1") -Mode smoke -MatrixPath (Join-Path $tmp "matrix.json") -AsJson
+      if ($LASTEXITCODE -ne 0) { throw "run-real-repo-regression smoke failed with exit code $LASTEXITCODE" }
+      $smokeObj = $smoke | ConvertFrom-Json
+      $smokeObj.status | should be "PASS"
+      (@($smokeObj.results | Where-Object { $_.repo_name -eq "RepoA" -and $_.status -eq "PASS" }).Count -eq 1) | should be $true
+      (@($smokeObj.results | Where-Object { $_.repo_name -eq "RepoMissing" -and $_.status -eq "SKIP" }).Count -eq 1) | should be $true
     } finally {
       if (Test-Path $tmp) { Remove-Item -LiteralPath $tmp -Recurse -Force }
     }

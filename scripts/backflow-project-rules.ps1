@@ -5,8 +5,11 @@ param(
   [ValidateSet("plan", "safe")]
   [string]$Mode = "safe",
   [switch]$ShowScope,
-  [bool]$IncludeCustomFiles = $true,
-  [switch]$IncludeCiSnapshot
+  [object]$IncludeCustomFiles = $true,
+  [switch]$SkipCustomFiles,
+  [switch]$IncludeCiSnapshot,
+  [ValidateRange(1, 3600)]
+  [int]$LockTimeoutSeconds = 120
 )
 
 $ErrorActionPreference = "Stop"
@@ -14,6 +17,40 @@ $kitRoot = Split-Path -Parent $PSScriptRoot
 $commonPath = Join-Path $PSScriptRoot "lib\common.ps1"
 . $commonPath
 Write-ModeRisk -ScriptName "backflow-project-rules.ps1" -Mode $Mode
+$scriptLock = New-ScriptLock -KitRoot $kitRoot -LockName "backflow-project-rules" -TimeoutSeconds $LockTimeoutSeconds
+
+try {
+
+function Convert-ToBool([object]$Value, [string]$ParameterName) {
+  if ($Value -is [bool]) {
+    return [bool]$Value
+  }
+  if ($Value -is [int]) {
+    if ($Value -eq 1) { return $true }
+    if ($Value -eq 0) { return $false }
+  }
+  $raw = [string]$Value
+  if ([string]::IsNullOrWhiteSpace($raw)) {
+    throw "Invalid value for -${ParameterName}: empty"
+  }
+  switch ($raw.Trim().ToLowerInvariant()) {
+    "true" { return $true }
+    "false" { return $false }
+    "1" { return $true }
+    "0" { return $false }
+    '$true' { return $true }
+    '$false' { return $false }
+    default { throw "Invalid value for -${ParameterName}: '$raw' (expected true/false/1/0)" }
+  }
+}
+
+$includeCustom = Convert-ToBool -Value $IncludeCustomFiles -ParameterName "IncludeCustomFiles"
+
+if ($SkipCustomFiles -and $PSBoundParameters.ContainsKey('IncludeCustomFiles') -and $includeCustom) {
+  throw "Conflicting arguments: use either -SkipCustomFiles or -IncludeCustomFiles, not both."
+}
+
+$shouldIncludeCustomFiles = $includeCustom -and (-not $SkipCustomFiles)
 
 $repoResolved = Resolve-Path -LiteralPath $RepoPath -ErrorAction SilentlyContinue
 if ($null -eq $repoResolved -or -not (Test-Path -LiteralPath $repoResolved.Path -PathType Container)) {
@@ -29,7 +66,7 @@ if ([string]::IsNullOrWhiteSpace($RepoName)) {
 $sourceRepoRoot = Join-Path $kitRoot ("source\project\" + $RepoName)
 $projectFiles = @("AGENTS.md", "CLAUDE.md", "GEMINI.md")
 $customFiles = @()
-if ($IncludeCustomFiles) {
+if ($shouldIncludeCustomFiles) {
   $customFiles = @(Get-ProjectCustomFilesForRepo -KitRoot $kitRoot -RepoPath $repoNorm -RepoName $RepoName)
 }
 $modePlan = $Mode -eq "plan"
@@ -51,7 +88,7 @@ if ($ShowScope) {
   foreach ($f in $projectFiles) {
     Write-Host ("- RULE " + (Join-Path $repo $f))
   }
-  if ($IncludeCustomFiles) {
+  if ($shouldIncludeCustomFiles) {
     if ($customFiles.Count -eq 0) {
       Write-Host "- CUSTOM (none configured)"
     } else {
@@ -60,7 +97,7 @@ if ($ShowScope) {
       }
     }
   } else {
-    Write-Host "- CUSTOM (disabled by -IncludeCustomFiles:`$false)"
+    Write-Host "- CUSTOM (disabled by -SkipCustomFiles or -IncludeCustomFiles:`$false)"
   }
 }
 
@@ -127,7 +164,7 @@ foreach ($f in $projectFiles) {
 $customCopied = 0
 $customSkipped = 0
 $targetsAdded = 0
-if ($IncludeCustomFiles) {
+if ($shouldIncludeCustomFiles) {
   if ($customFiles.Count -eq 0) {
     Write-Host "[SKIP] no custom project files configured for repo: $RepoName"
     $suggestCmd = "powershell -NoProfile -ExecutionPolicy Bypass -File `"$kitRoot\scripts\suggest-project-custom-files.ps1`" -RepoPath `"$repo`" -RepoName `"$RepoName`""
@@ -222,8 +259,11 @@ if ($IncludeCiSnapshot) {
 
 if ($modePlan) {
   Write-Host "Plan done. copied_rules=$copied custom_copied=$customCopied custom_skipped=$customSkipped targets_added=$targetsAdded"
-  exit 0
+  return
 }
 
 Write-Host "Done. copied_rules=$copied custom_copied=$customCopied custom_skipped=$customSkipped targets_added=$targetsAdded backup_root=$backupRoot"
 Write-Host "[NOTE] global user-level files are intentionally excluded."
+} finally {
+  Release-ScriptLock -LockHandle $scriptLock
+}

@@ -17,6 +17,10 @@ jobs:
         shell: powershell
         run: powershell -NoProfile -ExecutionPolicy Bypass -File scripts/doctor.ps1
 
+      - name: Verify JSON Contract
+        shell: powershell
+        run: powershell -NoProfile -ExecutionPolicy Bypass -File scripts/verify-json-contract.ps1
+
       - name: Pester
         shell: powershell
         run: powershell -NoProfile -ExecutionPolicy Bypass -Command "Invoke-Pester -Path tests/governance-kit.optimization.tests.ps1"

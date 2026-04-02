@@ -1,11 +1,11 @@
-# GEMINI.md — governance-kit（Gemini 项目级）
+# CLAUDE.md — governance-kit（Claude 项目级）
 **项目**: governance-kit  
 **适用范围**: 项目级（仓库根）  
-**版本**: 3.79  
-**最后更新**: 2026-03-31
+**版本**: 3.78  
+**最后更新**: 2026-03-30
 
 ## 1. 阅读指引（必读）
-- 本文件承接 `GlobalUser/GEMINI.md`，仅定义 governance-kit 的仓库落地动作（WHERE/HOW）。
+- 本文件承接 `GlobalUser/CLAUDE.md`，仅定义 governance-kit 的仓库落地动作（WHERE/HOW）。
 - 固定结构：`1 / A / B / C / D`。
 - 裁决链：`运行事实/代码 > 项目级文件 > 全局文件 > 临时上下文`。
 
@@ -26,16 +26,16 @@
 - 最低字段：`reason`、`alternative_verification`、`evidence_link`、`expires_at`。
 - 不得改变门禁顺序：`build -> test -> contract/invariant -> hotspot`。
 
-## B. Gemini 平台差异（项目内）
+## B. Claude 平台差异（项目内）
 ### B.1 平台取证命令
-- 必做：`gemini --version`、`gemini --help`。
-- 状态能力探测：`gemini --help | Select-String status`（有命令再执行，无则记 `platform_na`）。
+- 必做：`claude --version`、`claude --help`。
+- 状态能力探测：`claude --help | Select-String status`（有命令再执行，无则记 `platform_na`）。
 - 加载链不可见时，补记 `active_rule_path`（仓库根同名文件）与来源说明。
 
 ### B.2 覆盖链与短期 override
-- 推荐目录：`~/.gemini`；以 CLI 实际加载结果为准。
-- 优先级：`GEMINI.override.md > GEMINI.md > fallback`（平台支持时）。
-- `GEMINI.override.md` 仅用于短期排障；结论后删除并复测。
+- 推荐目录：`~/.claude`；以 CLI 实际加载结果为准。
+- 优先级：`CLAUDE.override.md > CLAUDE.md > fallback`（平台支持时）。
+- `CLAUDE.override.md` 仅用于短期排障；结论后删除并复测。
 
 ### B.3 平台异常回退
 - 命令缺失或行为不一致：记录 `platform_na + reason + alternative_verification + evidence_link + expires_at`。
@@ -111,4 +111,3 @@
 - 协同链完整：`规则 -> 落点 -> 命令 -> 证据 -> 回滚`。
 - 三文件同构约束：`A/C/D` 语义一致，仅 `B` 允许平台差异。
 - 规则升级后同步校验版本、日期、承接映射与门禁命令一致性。
-

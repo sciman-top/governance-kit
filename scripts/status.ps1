@@ -1,28 +1,32 @@
+param(
+  [switch]$AsJson
+)
+
 $ErrorActionPreference = "Stop"
 $kitRoot = Split-Path -Parent $PSScriptRoot
 $rolloutPath = Join-Path $kitRoot "config\rule-rollout.json"
 $commonPath = Join-Path $PSScriptRoot "lib\common.ps1"
 . $commonPath
 
-$repos = Read-JsonArray (Join-Path $kitRoot "config\repositories.json")
-$targets = Read-JsonArray (Join-Path $kitRoot "config\targets.json")
+$repos = @(Read-JsonArray (Join-Path $kitRoot "config\repositories.json"))
+$targets = @(Read-JsonArray (Join-Path $kitRoot "config\targets.json"))
 $userHome = [System.IO.Path]::GetFullPath($HOME) -replace '\\','/'
 
-Write-Host "governance-kit status"
-Write-Host "repositories=$($repos.Count)"
-Write-Host "targets=$($targets.Count)"
-
+$repoSummaries = [System.Collections.Generic.List[object]]::new()
 $missingRepos = 0
 foreach ($r in $repos) {
   $repoNorm = Normalize-Repo ([string]$r)
-  if (!(Test-Path ($repoNorm -replace '/', '\'))) {
-    $missingRepos++
-  }
+  $repoMissing = -not (Test-Path ($repoNorm -replace '/', '\'))
+  if ($repoMissing) { $missingRepos++ }
   $prefix = "$repoNorm/"
   $count = @($targets | Where-Object {
     ([string]$_.target).StartsWith($prefix, [System.StringComparison]::OrdinalIgnoreCase)
   }).Count
-  Write-Host "- $r : targets=$count"
+  [void]$repoSummaries.Add([pscustomobject]@{
+    repo = [string]$r
+    targets = $count
+    missing = [bool]$repoMissing
+  })
 }
 
 $globalTargets = @($targets | Where-Object {
@@ -30,8 +34,6 @@ $globalTargets = @($targets | Where-Object {
   $_.target -like "$userHome/.claude/*" -or
   $_.target -like "$userHome/.gemini/*"
 }).Count
-Write-Host "global-home-targets=$globalTargets"
-Write-Host "missing-repositories=$missingRepos"
 
 $orphanTargets = 0
 foreach ($t in $targets) {
@@ -50,8 +52,9 @@ foreach ($t in $targets) {
 
   if (-not $matchedRepo) { $orphanTargets++ }
 }
-Write-Host "orphan-targets=$orphanTargets"
 
+$warnings = [System.Collections.Generic.List[string]]::new()
+$rolloutSummary = $null
 if (Test-Path $rolloutPath) {
   $rollout = Get-Content -Path $rolloutPath -Raw | ConvertFrom-Json
   $defaultPhase = [string]$rollout.default.phase
@@ -61,26 +64,76 @@ if (Test-Path $rolloutPath) {
   $enforce = 0
   $overdueObserve = 0
   $today = (Get-Date).Date
+  $repoRollouts = [System.Collections.Generic.List[object]]::new()
+
   foreach ($r in $repos) {
     $repoNorm = Normalize-Repo ([string]$r)
     $rule = $rules | Where-Object { (Normalize-Repo ([string]$_.repo)).Equals($repoNorm, [System.StringComparison]::OrdinalIgnoreCase) } | Select-Object -First 1
     $phase = if ($null -ne $rule -and -not [string]::IsNullOrWhiteSpace([string]$rule.phase)) { [string]$rule.phase } else { $defaultPhase }
     $planned = if ($null -ne $rule -and -not [string]::IsNullOrWhiteSpace([string]$rule.planned_enforce_date)) { [string]$rule.planned_enforce_date } else { "" }
+    $overdue = $false
     if ($phase -eq "observe" -and -not [string]::IsNullOrWhiteSpace($planned)) {
-      try {
-        $plannedDt = (Get-Date -Date $planned).Date
-        if ($plannedDt -lt $today) {
-          $overdueObserve++
-        }
-      } catch {
-        Write-Host "[WARN] invalid planned_enforce_date: $repoNorm => $planned"
+      $plannedDt = Parse-IsoDate $planned
+      if ($null -eq $plannedDt) {
+        [void]$warnings.Add("invalid planned_enforce_date: $repoNorm => $planned (expected yyyy-MM-dd)")
+      } elseif ($plannedDt.Date -lt $today) {
+        $overdueObserve++
+        $overdue = $true
       }
     }
     if ($phase -eq "enforce") { $enforce++ } else { $observe++ }
+    [void]$repoRollouts.Add([pscustomobject]@{
+      repo = $repoNorm
+      phase = $phase
+      planned_enforce_date = if ([string]::IsNullOrWhiteSpace($planned)) { $null } else { $planned }
+      overdue = [bool]$overdue
+    })
   }
-  Write-Host "rollout.default.phase=$defaultPhase"
-  Write-Host "rollout.default.blockExpiredWaiver=$defaultBlock"
-  Write-Host "rollout.observe=$observe"
-  Write-Host "rollout.enforce=$enforce"
-  Write-Host "rollout.observe_overdue=$overdueObserve"
+
+  $rolloutSummary = [pscustomobject]@{
+    default_phase = $defaultPhase
+    default_block_expired_waiver = $defaultBlock
+    observe = $observe
+    enforce = $enforce
+    observe_overdue = $overdueObserve
+    repos = @($repoRollouts)
+  }
+}
+
+$result = [pscustomobject]@{
+  schema_version = "1.0"
+  repositories = $repos.Count
+  targets = $targets.Count
+  repos = @($repoSummaries)
+  global_home_targets = $globalTargets
+  missing_repositories = $missingRepos
+  orphan_targets = $orphanTargets
+  rollout = $rolloutSummary
+  warnings = @($warnings)
+}
+
+if ($AsJson) {
+  $result | ConvertTo-Json -Depth 8 | Write-Output
+  return
+}
+
+Write-Host "governance-kit status"
+Write-Host "repositories=$($repos.Count)"
+Write-Host "targets=$($targets.Count)"
+foreach ($repoItem in $repoSummaries) {
+  Write-Host "- $($repoItem.repo) : targets=$($repoItem.targets)"
+}
+Write-Host "global-home-targets=$globalTargets"
+Write-Host "missing-repositories=$missingRepos"
+Write-Host "orphan-targets=$orphanTargets"
+
+if ($null -ne $rolloutSummary) {
+  foreach ($w in $warnings) {
+    Write-Host "[WARN] $w"
+  }
+  Write-Host "rollout.default.phase=$($rolloutSummary.default_phase)"
+  Write-Host "rollout.default.blockExpiredWaiver=$($rolloutSummary.default_block_expired_waiver)"
+  Write-Host "rollout.observe=$($rolloutSummary.observe)"
+  Write-Host "rollout.enforce=$($rolloutSummary.enforce)"
+  Write-Host "rollout.observe_overdue=$($rolloutSummary.observe_overdue)"
 }

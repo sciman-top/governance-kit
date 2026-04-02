@@ -209,6 +209,60 @@ function Get-RuleDocMetadata([string]$Path) {
   }
 }
 
+function New-ScriptLock([string]$KitRoot, [string]$LockName, [int]$TimeoutSeconds = 120) {
+  if ([string]::IsNullOrWhiteSpace($KitRoot)) {
+    throw "KitRoot is required for New-ScriptLock."
+  }
+  if ([string]::IsNullOrWhiteSpace($LockName)) {
+    throw "LockName is required for New-ScriptLock."
+  }
+  if ($TimeoutSeconds -lt 1) {
+    throw "TimeoutSeconds must be >= 1."
+  }
+
+  $lockDir = Join-Path $KitRoot ".locks"
+  if (!(Test-Path -LiteralPath $lockDir)) {
+    New-Item -ItemType Directory -Path $lockDir -Force | Out-Null
+  }
+
+  $lockPath = Join-Path $lockDir ($LockName + ".lock")
+  $deadline = (Get-Date).AddSeconds($TimeoutSeconds)
+  do {
+    try {
+      $stream = [System.IO.File]::Open(
+        $lockPath,
+        [System.IO.FileMode]::OpenOrCreate,
+        [System.IO.FileAccess]::ReadWrite,
+        [System.IO.FileShare]::None
+      )
+      $meta = "pid=$PID`nacquired_at=$((Get-Date).ToString('o'))`n"
+      $bytes = [System.Text.Encoding]::UTF8.GetBytes($meta)
+      $stream.SetLength(0)
+      $stream.Write($bytes, 0, $bytes.Length)
+      $stream.Flush()
+      return [pscustomobject]@{
+        name = $LockName
+        path = $lockPath
+        stream = $stream
+      }
+    } catch [System.IO.IOException] {
+      Start-Sleep -Milliseconds 200
+    }
+  } while ((Get-Date) -lt $deadline)
+
+  throw "Failed to acquire script lock '$LockName' within ${TimeoutSeconds}s: $lockPath"
+}
+
+function Release-ScriptLock([object]$LockHandle) {
+  if ($null -eq $LockHandle) { return }
+  if ($LockHandle.PSObject.Properties['stream'] -and $null -ne $LockHandle.stream) {
+    try {
+      $LockHandle.stream.Dispose()
+    } catch {
+    }
+  }
+}
+
 function Get-ModeRisk([string]$Mode) {
   switch ($Mode) {
     "plan"  { return "LOW(read-only)" }

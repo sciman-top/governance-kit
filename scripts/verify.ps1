@@ -14,11 +14,7 @@ $commonPath = Join-Path $PSScriptRoot "lib\common.ps1"
 . $commonPath
 
 if (-not $SkipConfigValidation) {
-  $psExe = (Get-Process -Id $PID).Path
-  & $psExe -NoProfile -ExecutionPolicy Bypass -File "$PSScriptRoot\validate-config.ps1"
-  if ($LASTEXITCODE -ne 0) {
-    throw "validate-config failed with exit code ${LASTEXITCODE}"
-  }
+  Invoke-ChildScript (Join-Path $PSScriptRoot "validate-config.ps1")
 }
 
 try {

@@ -6,7 +6,9 @@ param(
   [switch]$NoOverwriteRules,
   [string]$NoOverwriteUnderRepo,
   [switch]$SkipPostVerify,
-  [switch]$AsJson
+  [switch]$AsJson,
+  [ValidateRange(1, 3600)]
+  [int]$LockTimeoutSeconds = 120
 )
 
 $ErrorActionPreference = "Stop"
@@ -18,6 +20,9 @@ if (!(Test-Path $targetsPath)) {
   throw "targets.json not found: $targetsPath"
 }
 Write-ModeRisk -ScriptName "install.ps1" -Mode $Mode
+$scriptLock = New-ScriptLock -KitRoot $kitRoot -LockName "install" -TimeoutSeconds $LockTimeoutSeconds
+
+try {
 
 try {
   $raw = Get-Content -Path $targetsPath -Raw | ConvertFrom-Json
@@ -168,6 +173,7 @@ foreach ($item in $targets) {
     }
   } else {
     Write-Host "[SKIP] unchanged: $srcRel -> $dst"
+    $skipped++
     $records += [pscustomobject]@{
       source = $srcRel
       target = $dst
@@ -188,7 +194,7 @@ if ($modePlan) {
     } | ConvertTo-Json -Depth 6 | Write-Output
   }
   Write-Host "Plan done."
-  exit 0
+  return
 }
 
 Write-Host "Done. copied=$copied backup=$backedUp skipped=$skipped mode=$Mode"
@@ -212,4 +218,7 @@ if ($AsJson) {
     skipped = $skipped
     items = @($records)
   } | ConvertTo-Json -Depth 6 | Write-Output
+}
+} finally {
+  Release-ScriptLock -LockHandle $scriptLock
 }

@@ -1,0 +1,38 @@
+{
+  "schema_version": "1.0",
+  "repos": [
+    {
+      "repo_name": "ClassroomToolkit",
+      "repo": "E:/CODE/ClassroomToolkit",
+      "required_paths": [
+        "AGENTS.md",
+        "scripts/quality/check-hotspot-line-budgets.ps1",
+        "scripts/validation/run-stable-tests.ps1",
+        "tests/ClassroomToolkit.Tests/ClassroomToolkit.Tests.csproj"
+      ],
+      "smoke_command": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/validation/run-stable-tests.ps1 -Configuration Debug -SkipBuild -Profile quick",
+      "full_command": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/quality/run-local-quality-gates.ps1 -Profile quick"
+    },
+    {
+      "repo_name": "skills-manager",
+      "repo": "E:/CODE/skills-manager",
+      "required_paths": [
+        "AGENTS.md",
+        "scripts/prebuild-check.ps1"
+      ],
+      "smoke_command": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/prebuild-check.ps1",
+      "full_command": ""
+    },
+    {
+      "repo_name": "governance-kit",
+      "repo": "E:/CODE/governance-kit",
+      "required_paths": [
+        "AGENTS.md",
+        "scripts/doctor.ps1",
+        "tests/governance-kit.optimization.tests.ps1"
+      ],
+      "smoke_command": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/doctor.ps1 -SkipVerifyTargets",
+      "full_command": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/doctor.ps1"
+    }
+  ]
+}

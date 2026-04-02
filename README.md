@@ -39,7 +39,10 @@
 - `scripts/audit-governance-readiness.ps1`：生成一键治理就绪审计报告（Markdown/JSON）
 - `scripts/check-orphan-custom-sources.ps1`：检查 `source/project/*/custom` 未映射且不在清单中的孤儿文件
 - `scripts/prune-orphan-custom-sources.ps1`：归档并清理孤儿 custom 源文件
+- `scripts/prune-backups.ps1`：按保留天数/保留数量清理 `backups/` 历史快照（支持 `plan` 预演）
 - `scripts/suggest-project-custom-files.ps1`：扫描目标仓并给出 `project-custom-files.json` 候选条目（支持 `-AsJson`）
+- `scripts/verify-json-contract.ps1`：校验 `status/rollout-status/doctor` 的 JSON 合同字段与 schema 版本
+- `scripts/run-real-repo-regression.ps1`：按真实仓库矩阵执行计划/烟测/全量回归
 - `backups/`：install 生成的目标文件备份
 - `ci/`：GitHub Actions / Azure Pipelines / GitLab CI 通用模板
 - `config/editorconfig.base`：跨语言最小格式基线
@@ -327,7 +330,7 @@ powershell -File E:\CODE\governance-kit\scripts\backflow-project-rules.ps1 -Repo
 - 回拷定制文件时会自动补齐 `config/targets.json` 映射：`source/project/<RepoName>/custom/<relative> -> <Repo>/<relative>`。
 - 全局用户级文件（如 `.codex/.claude/.gemini`）默认不参与回拷。
 - 如需额外记录 CI 入口差异快照，可加 `-IncludeCiSnapshot`。
-- 如需禁用定制文件回拷，可加 `-IncludeCustomFiles:$false`。
+- 如需禁用定制文件回拷，优先使用 `-SkipCustomFiles`（保留兼容：`-IncludeCustomFiles:$false`）。
 - 执行前打印本次回拷文件清单，可加 `-ShowScope`。
 
 17. 自动勘察目标仓治理事实（第2步前置）
@@ -338,6 +341,41 @@ powershell -File E:\CODE\governance-kit\scripts\analyze-repo-governance.ps1 -Rep
 ```powershell
 powershell -File E:\CODE\governance-kit\scripts\analyze-repo-governance.ps1 -RepoPath E:\CODE\ClassroomToolkit -AsJson
 ```
+
+18. JSON 状态输出（便于 CI 或监控消费）
+```powershell
+powershell -File E:\CODE\governance-kit\scripts\status.ps1 -AsJson
+powershell -File E:\CODE\governance-kit\scripts\rollout-status.ps1 -AsJson
+powershell -File E:\CODE\governance-kit\scripts\doctor.ps1 -AsJson
+```
+说明：JSON 输出包含 `schema_version` 字段，便于做稳定合同校验。
+
+19. 备份快照保留策略（先预演再执行）
+```powershell
+powershell -File E:\CODE\governance-kit\scripts\prune-backups.ps1 -Mode plan -RetainDays 30 -RetainCount 50
+powershell -File E:\CODE\governance-kit\scripts\prune-backups.ps1 -Mode safe -RetainDays 30 -RetainCount 50
+```
+如需保护特定前缀快照不被清理：
+```powershell
+powershell -File E:\CODE\governance-kit\scripts\prune-backups.ps1 -Mode safe -RetainDays 30 -RetainCount 50 -ProtectPrefixes backflow-,orphan-custom-prune-
+```
+
+20. JSON 合同校验（建议在发布前执行）
+```powershell
+powershell -File E:\CODE\governance-kit\scripts\verify-json-contract.ps1
+```
+
+21. 真实仓库回归矩阵（plan/smoke/full）
+```powershell
+powershell -File E:\CODE\governance-kit\scripts\run-real-repo-regression.ps1 -Mode plan
+powershell -File E:\CODE\governance-kit\scripts\run-real-repo-regression.ps1 -Mode smoke
+```
+矩阵配置文件：
+- `config/real-repo-regression-matrix.json`
+
+发布流程与模板：
+- `docs/governance/rule-release-process.md`
+- `docs/governance/rule-release-template.md`
 
 18. 自动优化目标仓项目级规则文档（第2步自动化）
 ```powershell
