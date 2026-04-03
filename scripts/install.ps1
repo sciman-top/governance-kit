@@ -5,6 +5,11 @@ param(
   [switch]$ShowScope,
   [switch]$NoOverwriteRules,
   [string]$NoOverwriteUnderRepo,
+  [switch]$FullCycle,
+  [switch]$AutoRemediate,
+  [switch]$NoAutoRemediate,
+  [ValidateRange(1, 10)]
+  [int]$MaxAutoFixAttempts = 1,
   [switch]$SkipPostVerify,
   [switch]$AsJson,
   [ValidateRange(1, 3600)]
@@ -21,6 +26,56 @@ if (!(Test-Path $targetsPath)) {
 }
 Write-ModeRisk -ScriptName "install.ps1" -Mode $Mode
 $scriptLock = New-ScriptLock -KitRoot $kitRoot -LockName "install" -TimeoutSeconds $LockTimeoutSeconds
+$fullCycleTargets = @()
+$modePlan = $Mode -eq "plan"
+$fullCycleMode = if ($modePlan) { "plan" } else { "safe" }
+
+if ($AutoRemediate.IsPresent -and $NoAutoRemediate.IsPresent) {
+  throw "Conflicting arguments: use either -AutoRemediate or -NoAutoRemediate, not both."
+}
+
+function Get-FullCycleRepos {
+  param(
+    [Parameter(Mandatory = $true)][string]$KitRoot,
+    [Parameter(Mandatory = $true)][array]$Targets
+  )
+
+  $repos = [System.Collections.Generic.List[string]]::new()
+  $seen = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::OrdinalIgnoreCase)
+  $repositoriesPath = Join-Path $KitRoot "config\repositories.json"
+
+  if (Test-Path -LiteralPath $repositoriesPath) {
+    try {
+      $repoRaw = Get-Content -Path $repositoriesPath -Raw | ConvertFrom-Json
+      $repoItems = if ($repoRaw -is [System.Array]) { @($repoRaw) } elseif ($null -eq $repoRaw) { @() } else { @($repoRaw) }
+      foreach ($repoItem in $repoItems) {
+        if ([string]::IsNullOrWhiteSpace([string]$repoItem)) { continue }
+        $full = [System.IO.Path]::GetFullPath(([string]$repoItem -replace '/', '\'))
+        if ((Test-Path -LiteralPath $full -PathType Container) -and $seen.Add($full)) {
+          $repos.Add($full)
+        }
+      }
+    } catch {
+      throw "repositories.json is not valid JSON: $repositoriesPath"
+    }
+  }
+
+  if ($repos.Count -eq 0) {
+    foreach ($item in $Targets) {
+      if ($null -eq $item -or [string]::IsNullOrWhiteSpace([string]$item.target)) { continue }
+      $dst = [System.IO.Path]::GetFullPath(([string]$item.target -replace '/', '\'))
+      $repoRoot = Split-Path -Parent (Split-Path -Parent $dst)
+      if ([string]::IsNullOrWhiteSpace($repoRoot)) { continue }
+      if ((Test-Path -LiteralPath $repoRoot -PathType Container) -and (Test-Path -LiteralPath (Join-Path $repoRoot ".git"))) {
+        if ($seen.Add($repoRoot)) {
+          $repos.Add($repoRoot)
+        }
+      }
+    }
+  }
+
+  return @($repos)
+}
 
 try {
 
@@ -81,7 +136,6 @@ if ($cfgFail -gt 0) {
 $timestamp = Get-Date -Format "yyyyMMdd-HHmmss"
 $backupRoot = Join-Path $kitRoot ("backups\\" + $timestamp)
 
-$modePlan = $Mode -eq "plan"
 if ($Mode -eq "force") {
   if ($NoOverwriteRules -or -not [string]::IsNullOrWhiteSpace($NoOverwriteUnderRepo)) {
     Write-Host "[INFO] force mode ignores no-overwrite protections"
@@ -184,6 +238,12 @@ foreach ($item in $targets) {
 }
 
 if ($modePlan) {
+  if ($FullCycle) {
+    $fullCycleTargets = @(Get-FullCycleRepos -KitRoot $kitRoot -Targets $targets)
+    foreach ($repoPath in $fullCycleTargets) {
+      Write-Host ("[PLAN] FULL_CYCLE repo=" + ($repoPath -replace '\\', '/'))
+    }
+  }
   if ($AsJson) {
     @{
       mode = $Mode
@@ -194,31 +254,67 @@ if ($modePlan) {
     } | ConvertTo-Json -Depth 6 | Write-Output
   }
   Write-Host "Plan done."
-  return
-}
-
-Write-Host "Done. copied=$copied backup=$backedUp skipped=$skipped mode=$Mode"
-if (-not $NoBackup -and $backedUp -gt 0) {
-  Write-Host "Backup root: $backupRoot"
-}
-
-if (-not $SkipPostVerify) {
-  & "$PSScriptRoot\verify.ps1"
-  if ($LASTEXITCODE -ne 0) {
-    throw "Post-verify failed with exit code ${LASTEXITCODE}"
+} else {
+  Write-Host "Done. copied=$copied backup=$backedUp skipped=$skipped mode=$Mode"
+  if (-not $NoBackup -and $backedUp -gt 0) {
+    Write-Host "Backup root: $backupRoot"
   }
-  Write-Host "[ASSERT] post-verify passed"
-}
 
-if ($AsJson) {
-  @{
-    mode = $Mode
-    copied = $copied
-    backup = $backedUp
-    skipped = $skipped
-    items = @($records)
-  } | ConvertTo-Json -Depth 6 | Write-Output
+  if (-not $SkipPostVerify) {
+    & "$PSScriptRoot\verify.ps1"
+    if ($LASTEXITCODE -ne 0) {
+      throw "Post-verify failed with exit code ${LASTEXITCODE}"
+    }
+    Write-Host "[ASSERT] post-verify passed"
+  }
+
+  if ($AsJson) {
+    @{
+      mode = $Mode
+      copied = $copied
+      backup = $backedUp
+      skipped = $skipped
+      items = @($records)
+    } | ConvertTo-Json -Depth 6 | Write-Output
+  }
+
+  if ($FullCycle) {
+    $fullCycleTargets = @(Get-FullCycleRepos -KitRoot $kitRoot -Targets $targets)
+  }
 }
 } finally {
   Release-ScriptLock -LockHandle $scriptLock
+}
+
+if ($FullCycle) {
+  $cycleScript = Join-Path $PSScriptRoot "run-project-governance-cycle.ps1"
+  if (-not (Test-Path -LiteralPath $cycleScript)) {
+    throw "Missing script: $cycleScript"
+  }
+  if ($fullCycleTargets.Count -eq 0) {
+    Write-Host "[INFO] FULL_CYCLE requested but no repository targets discovered."
+    return
+  }
+  foreach ($repoPath in $fullCycleTargets) {
+    Write-Host ("=== FULL_CYCLE " + ($repoPath -replace '\\', '/') + " ===")
+    $args = @(
+      "-NoProfile",
+      "-ExecutionPolicy", "Bypass",
+      "-File", $cycleScript,
+      "-RepoPath", $repoPath,
+      "-RepoName", (Split-Path -Leaf $repoPath),
+      "-Mode", $fullCycleMode
+    )
+    if ($ShowScope) { $args += "-ShowScope" }
+    if ($AutoRemediate) {
+      $args += @("-AutoRemediate", "-MaxAutoFixAttempts", ([string]$MaxAutoFixAttempts))
+    } elseif ($NoAutoRemediate.IsPresent) {
+      $args += "-NoAutoRemediate"
+    }
+
+    & powershell @args
+    if ($LASTEXITCODE -ne 0) {
+      throw "run-project-governance-cycle failed for $repoPath with exit code $LASTEXITCODE"
+    }
+  }
 }

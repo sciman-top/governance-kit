@@ -3,5 +3,11 @@
     "E:/CODE/ClassroomToolkit",
     "E:/CODE/skills-manager",
     "E:/CODE/governance-kit"
-  ]
+  ],
+  "defaults": {
+    "allow_auto_fix": true,
+    "allow_rule_optimization": true,
+    "forbid_breaking_contract": true
+  },
+  "repos": []
 }

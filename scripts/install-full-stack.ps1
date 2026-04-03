@@ -5,7 +5,11 @@ param(
   [string]$Mode = "safe",
   [switch]$SkipInstallGlobalGit,
   [switch]$NoOverwriteRules,
-  [switch]$SkipAutopilotSmoke
+  [switch]$SkipAutopilotSmoke,
+  [switch]$AutoRemediate,
+  [switch]$NoAutoRemediate,
+  [ValidateRange(1, 10)]
+  [int]$MaxAutoFixAttempts = 1
 )
 
 Set-StrictMode -Version Latest
@@ -17,6 +21,27 @@ if ($null -eq $repoResolved -or -not (Test-Path -LiteralPath $repoResolved.Path 
   throw "Repo path not found: $RepoPath"
 }
 $repo = [System.IO.Path]::GetFullPath($repoResolved.Path)
+$commonPath = Join-Path $PSScriptRoot "lib\common.ps1"
+if (-not (Test-Path -LiteralPath $commonPath)) {
+  throw "Missing common helper: $commonPath"
+}
+. $commonPath
+$repoPolicy = Get-RepoAutomationPolicy -KitRoot $kitRoot -Repo $repo
+if ($AutoRemediate.IsPresent -and $NoAutoRemediate.IsPresent) {
+  throw "Conflicting arguments: use either -AutoRemediate or -NoAutoRemediate, not both."
+}
+
+$requestedAutoRemediate = $false
+if ($AutoRemediate.IsPresent) {
+  $requestedAutoRemediate = $true
+} elseif ($NoAutoRemediate.IsPresent) {
+  $requestedAutoRemediate = $false
+} else {
+  # Default to autonomous remediation in safe/force modes.
+  $requestedAutoRemediate = $Mode -ne "plan"
+}
+
+$effectiveAutoRemediate = $requestedAutoRemediate -and [bool]$repoPolicy.allow_auto_fix
 
 function Run-Step {
   param(
@@ -36,6 +61,13 @@ $doctorScript = Join-Path $PSScriptRoot "doctor.ps1"
 if (-not (Test-Path -LiteralPath $bootstrapScript)) { throw "Missing script: $bootstrapScript" }
 if (-not (Test-Path -LiteralPath $cycleScript)) { throw "Missing script: $cycleScript" }
 if (-not (Test-Path -LiteralPath $doctorScript)) { throw "Missing script: $doctorScript" }
+
+Write-Host ("[POLICY] allow_project_rules={0} allow_rule_optimization={1} allow_auto_fix={2} forbid_breaking_contract={3}" -f `
+  $repoPolicy.allow_project_rules, $repoPolicy.allow_rule_optimization, $repoPolicy.allow_auto_fix, $repoPolicy.forbid_breaking_contract)
+Write-Host ("[AUTO_REMEDIATE] requested={0} effective={1}" -f $requestedAutoRemediate, $effectiveAutoRemediate)
+if ($requestedAutoRemediate -and -not [bool]$repoPolicy.allow_auto_fix) {
+  Write-Host "[INFO] auto remediation requested but blocked by policy; continue without auto remediation."
+}
 
 Run-Step -Name "bootstrap-repo" -Action {
   $args = @(
@@ -71,6 +103,11 @@ if ($Mode -ne "plan") {
       "-Mode", "safe",
       "-ShowScope"
     )
+    if ($effectiveAutoRemediate) {
+      $cycleArgs += @("-AutoRemediate", "-MaxAutoFixAttempts", ([string]$MaxAutoFixAttempts))
+    } elseif ($NoAutoRemediate.IsPresent) {
+      $cycleArgs += "-NoAutoRemediate"
+    }
 
     if (-not $isRuleSeedReady) {
       Write-Host "[INFO] target repo does not contain AGENTS/CLAUDE/GEMINI yet; running cycle with -SkipOptimize -SkipBackflow for first-time bootstrap."

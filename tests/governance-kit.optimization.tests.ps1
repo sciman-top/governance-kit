@@ -197,6 +197,45 @@ exit 0
     }
   }
 
+  it "install full-cycle runs after install lock is released" {
+    $tmp = Join-Path $env:TEMP ("govkit-test-" + [guid]::NewGuid().ToString("N"))
+    try {
+      New-Item -ItemType Directory -Path (Join-Path $tmp "scripts\lib") -Force | Out-Null
+      New-Item -ItemType Directory -Path (Join-Path $tmp "config") -Force | Out-Null
+      New-Item -ItemType Directory -Path (Join-Path $tmp "source") -Force | Out-Null
+      New-Item -ItemType Directory -Path (Join-Path $tmp "target") -Force | Out-Null
+      New-Item -ItemType Directory -Path (Join-Path $tmp "RepoA") -Force | Out-Null
+
+      Copy-Item -Path (Join-Path $repoRoot "scripts\install.ps1") -Destination (Join-Path $tmp "scripts\install.ps1") -Force
+      Copy-Item -Path (Join-Path $repoRoot "scripts\lib\common.ps1") -Destination (Join-Path $tmp "scripts\lib\common.ps1") -Force
+
+      @"
+param([string]`$RepoPath,[string]`$RepoName,[ValidateSet('plan','safe')]`$Mode='safe')
+Set-Content -Path "$tmp\cycle.marker" -Value ("repo=" + `$RepoName + ";mode=" + `$Mode) -Encoding UTF8
+exit 0
+"@ | Set-Content -Path (Join-Path $tmp "scripts\run-project-governance-cycle.ps1") -Encoding UTF8
+
+      Set-StubScript -Path (Join-Path $tmp "scripts\verify.ps1") -Message "ok" -ExitCode 0
+
+      $src = Join-Path $tmp "source\AGENTS.md"
+      $dst = Join-Path $tmp "target\AGENTS.md"
+      Set-Content -Path $src -Value "new-content" -Encoding UTF8
+      Set-Content -Path $dst -Value "old-content" -Encoding UTF8
+
+      @(@{ source = "source/AGENTS.md"; target = $dst }) | ConvertTo-Json -Depth 4 | Set-Content -Path (Join-Path $tmp "config\targets.json") -Encoding UTF8
+      @((Join-Path $tmp "RepoA")) | ConvertTo-Json -Depth 3 | Set-Content -Path (Join-Path $tmp "config\repositories.json") -Encoding UTF8
+
+      $output = & powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $tmp "scripts\install.ps1") -Mode safe -NoBackup -FullCycle 2>&1 | Out-String
+      if ($LASTEXITCODE -ne 0) { throw "install.ps1 full-cycle failed with exit code $LASTEXITCODE" }
+
+      (Test-Path (Join-Path $tmp "cycle.marker")) | should be $true
+      (Get-Content -Path (Join-Path $tmp "cycle.marker") -Raw) | should match "mode=safe"
+      $output | should match "=== FULL_CYCLE"
+    } finally {
+      if (Test-Path $tmp) { Remove-Item -LiteralPath $tmp -Recurse -Force }
+    }
+  }
+
   it "validate-config fails on non-ISO planned_enforce_date" {
     $tmp = Join-Path $env:TEMP ("govkit-test-" + [guid]::NewGuid().ToString("N"))
     try {

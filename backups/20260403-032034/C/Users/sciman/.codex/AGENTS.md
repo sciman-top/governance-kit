@@ -2,7 +2,7 @@
 # OpenAI Codex / Codex CLI — Global User Rules
 **版本**: 9.37  
 **适用范围**: 全局用户级（GlobalUser/）  
-**最后更新**: 2026-04-03
+**最后更新**: 2026-03-30
 
 ## 1. 阅读指引（必读）
 - 本文件定义跨仓通用规则语义（WHAT）；项目级同名文件定义仓库落地动作（WHERE/HOW）。
@@ -56,10 +56,10 @@
 - 状态检查优先 `codex status`；若非交互失败（如 `stdin is not a terminal`），按 `platform_na` 记录。
 - 留痕最低字段：`cmd`、`exit_code`、`key_output`、`timestamp`。
 
-### B.3 能力边界（Codex）
-- `codex status` 是首选状态入口，且优先于脚本化替代探测。
-- 若 `status` 不展示加载链，必须补记 `active_rule_path` 与来源。
-- override 能力若当前版本不支持，按 `platform_na` 记录并补替代证据。
+### B.3 平台能力剖面（Codex）
+- 状态命令能力：`codex status` 为首选状态入口。
+- 加载链可观测性：若 `status` 不提供加载链，补记 `active_rule_path` 与来源。
+- override 能力：若当前 CLI 版本不支持，按 `platform_na` 记录。
 
 ### B.4 不支持项回退
 - 命令缺失或行为不一致时，记录：`platform_na`、原因、替代命令、证据位置。
@@ -82,10 +82,6 @@
 - 全局输出：规则语义、判定标准、N/A 口径。
 - 项目输入：仓库路径、门禁命令、证据路径、回滚入口。
 - 协同判定：不重叠、不缺失、可执行。
-
-### C.4 边界防重叠（强制）
-- 全局不得下沉仓库私有路径、私有命令、私有回滚脚本。
-- 项目级不得改写全局 R/E 语义；仅能承接为本仓动作。
 
 ## D. 维护校验清单（全局）
 - 结构保持 `1 / A / B / C / D`。

@@ -79,6 +79,7 @@ powershell -File E:\CODE\governance-kit\scripts\install-full-stack.ps1 -RepoPath
 ```
 说明：
 - 自动执行：`bootstrap-repo -> run-project-governance-cycle -> target-autopilot dry-run -> doctor`。
+- `safe/force` 默认启用自动修复（受 `project-rule-policy.allow_auto_fix` 约束），可用 `-NoAutoRemediate` 显式关闭。
 - 目标仓会安装通用脚本：`scripts/governance/run-project-governance-cycle.ps1`、`scripts/governance/run-target-autopilot.ps1`。
 - 对不在 `project-rule-policy` 白名单的仓库，`run-project-governance-cycle` 会自动跳过 `optimize/backflow`，避免将临时仓规则回灌到 `source/project/*`。
 
@@ -420,6 +421,7 @@ powershell -File E:\CODE\governance-kit\scripts\run-project-governance-cycle.ps1
 ```
 说明：
 - 默认包含：安装、分析、优化、回拷、再分发、doctor 验证。
+- `safe` 默认启用自动修复（受策略约束），可用 `-NoAutoRemediate` 关闭；也可显式传 `-AutoRemediate`。
 - 可用 `-SkipInstall/-SkipOptimize/-SkipBackflow` 按需跳过阶段。
 - 可用 `-ShowScope` 在 install/optimize/backflow/re-distribute 前打印“本次将处理文件清单”。
 

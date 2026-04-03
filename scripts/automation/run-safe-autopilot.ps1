@@ -24,6 +24,8 @@ $runId = [guid]::NewGuid().ToString("n")
 $timestamp = Get-Date -Format "yyyyMMdd-HHmmss"
 $logRoot = Join-Path $repoPath (".locks/logs/safe-autopilot/" + $timestamp + "-" + $runId)
 $scriptLock = $null
+$kitPolicy = $null
+$kitAllowAutoFix = $true
 
 function Assert-Command {
   param([string]$Name)
@@ -86,6 +88,7 @@ Context:
 - issue: $Issue
 - failure_log: $FailureLogPath
 - target_root: $TargetRoot
+- authorization: auto remediation and legacy project-rule optimization are explicitly allowed during one-click install
 
 Required:
 1) Identify root cause from log.
@@ -97,6 +100,7 @@ Required:
 Safety:
 - Do not run destructive git commands.
 - Preserve backwards compatibility for configuration contracts.
+- Preserve existing governance semantics and compatibility for project-level rule documents.
 - Avoid speculative architecture changes or evidence-free optimization.
 "@
 
@@ -158,15 +162,38 @@ function Invoke-GovernanceGateChain {
 }
 
 function Invoke-TargetCycle {
-  param([string]$TargetRoot)
+  param(
+    [string]$TargetRoot,
+    [object]$TargetPolicy
+  )
+
+  $cycleArgs = @(
+    "-NoProfile",
+    "-ExecutionPolicy", "Bypass",
+    "-File", (Join-Path $repoPath "scripts/run-project-governance-cycle.ps1"),
+    "-RepoPath", $TargetRoot,
+    "-RepoName", (Split-Path -Leaf $TargetRoot),
+    "-Mode", "safe",
+    "-ShowScope"
+  )
+  if ($null -ne $TargetPolicy -and -not [bool]$TargetPolicy.allow_rule_optimization) {
+    $cycleArgs += "-SkipOptimize"
+  }
+  if ($null -ne $TargetPolicy -and [bool]$TargetPolicy.allow_auto_fix) {
+    $cycleArgs += @("-AutoRemediate", "-MaxAutoFixAttempts", "1")
+  }
 
   return Invoke-LoggedCommand -Name "target.run-project-governance-cycle" -WorkDir $repoPath -Action {
-    & powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $repoPath "scripts/run-project-governance-cycle.ps1") -RepoPath $TargetRoot -RepoName (Split-Path -Leaf $TargetRoot) -Mode safe -ShowScope
+    & powershell @cycleArgs
   }
 }
 
 Assert-Command -Name powershell
-Assert-Command -Name $CodexCommand
+$kitPolicy = Get-RepoAutomationPolicy -KitRoot $repoPath -Repo $repoPath
+$kitAllowAutoFix = [bool]$kitPolicy.allow_auto_fix
+if (($MaxKitFixAttempts -gt 0 -or $MaxTargetFixAttempts -gt 0) -and ($kitAllowAutoFix -or $RunTargetCycle.IsPresent)) {
+  Assert-Command -Name $CodexCommand
+}
 
 if (-not (Test-Path -LiteralPath (Join-Path $repoPath "scripts/verify-kit.ps1"))) { throw "Missing scripts/verify-kit.ps1" }
 if (-not (Test-Path -LiteralPath (Join-Path $repoPath "tests/governance-kit.optimization.tests.ps1"))) { throw "Missing tests/governance-kit.optimization.tests.ps1" }
@@ -183,6 +210,8 @@ try {
   Write-Host "repo_root=$repoPath"
   Write-Host "logs=$logRoot"
   Write-Host "target_cycle_enabled=$($RunTargetCycle.IsPresent)"
+  Write-Host "policy.kit.allow_auto_fix=$kitAllowAutoFix"
+  Write-Host "policy.kit.allow_rule_optimization=$($kitPolicy.allow_rule_optimization)"
 
   if ($DryRun) {
     Write-Host "dry_run=true"
@@ -199,6 +228,9 @@ try {
 
     $chain = Invoke-GovernanceGateChain
     if (-not $chain.ok) {
+      if (-not $kitAllowAutoFix) {
+        throw "governance gate chain failed and auto-fix is disabled by policy. step=$($chain.failed_step) log=$($chain.log_path)"
+      }
       $fixed = $false
       for ($attempt = 1; $attempt -le $MaxKitFixAttempts; $attempt++) {
         Write-Host "AUTO_FIX governance-kit attempt $attempt/$MaxKitFixAttempts"
@@ -225,9 +257,16 @@ try {
       if ($null -eq $targetResolved) {
         throw "Target repo path not found: $TargetRepoPath"
       }
+      $targetPolicy = Get-RepoAutomationPolicy -KitRoot $repoPath -Repo $targetResolved.Path
+      $targetAllowAutoFix = [bool]$targetPolicy.allow_auto_fix
+      Write-Host "policy.target.allow_auto_fix=$targetAllowAutoFix"
+      Write-Host "policy.target.allow_rule_optimization=$($targetPolicy.allow_rule_optimization)"
 
-      $targetResult = Invoke-TargetCycle -TargetRoot $targetResolved.Path
+      $targetResult = Invoke-TargetCycle -TargetRoot $targetResolved.Path -TargetPolicy $targetPolicy
       if ($targetResult.exit_code -ne 0) {
+        if (-not $targetAllowAutoFix) {
+          throw "target cycle failed and auto-fix is disabled by policy. log=$($targetResult.log_path)"
+        }
         $targetFixed = $false
         for ($attempt = 1; $attempt -le $MaxTargetFixAttempts; $attempt++) {
           Write-Host "AUTO_FIX target-repo attempt $attempt/$MaxTargetFixAttempts"
@@ -237,7 +276,7 @@ try {
             continue
           }
 
-          $targetResult = Invoke-TargetCycle -TargetRoot $targetResolved.Path
+          $targetResult = Invoke-TargetCycle -TargetRoot $targetResolved.Path -TargetPolicy $targetPolicy
           if ($targetResult.exit_code -eq 0) {
             $targetFixed = $true
             break

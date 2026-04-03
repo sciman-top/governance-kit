@@ -1,8 +1,8 @@
-# AGENTS.md — Universal Agent Protocol v9.37
-# OpenAI Codex / Codex CLI — Global User Rules
+# CLAUDE.md — Universal Agent Protocol v9.37
+# Claude Code / Claude CLI — Global User Rules
 **版本**: 9.37  
 **适用范围**: 全局用户级（GlobalUser/）  
-**最后更新**: 2026-04-03
+**最后更新**: 2026-03-30
 
 ## 1. 阅读指引（必读）
 - 本文件定义跨仓通用规则语义（WHAT）；项目级同名文件定义仓库落地动作（WHERE/HOW）。
@@ -12,7 +12,7 @@
 ## A. 共性基线（全局）
 ### A.1 三层职责（强制）
 - 共性基线：统一执行与治理标准（WHAT）。
-- 平台差异：仅写 Codex 特有加载/诊断/回退（PLATFORM）。
+- 平台差异：仅写 Claude 特有加载/诊断/回退（PLATFORM）。
 - 项目差异：仅在项目级文件落地仓库事实（WHERE/HOW）。
 
 ### A.2 执行与输出
@@ -44,22 +44,22 @@
 - `E5` 供应链门禁（存在即执行）。
 - `E6` 数据结构变更需迁移与回滚方案。
 
-## B. Codex 平台差异（全局）
+## B. Claude 平台差异（全局）
 ### B.1 加载链与覆盖
-- 目录：`~/.codex`（可由 `CODEX_HOME` 覆盖）。
-- 优先级：`AGENTS.override.md > AGENTS.md > fallback`。
+- 推荐用户目录：`~/.claude`；实际以 CLI 加载结果为准。
+- 优先级：`CLAUDE.override.md > CLAUDE.md > fallback`（平台支持时）。
 - `fallback` 定义：CLI 默认行为（无项目规则或规则不可读时）。
-- `AGENTS.override.md` 仅用于短期排障；任务结束后删除并复测。
+- `CLAUDE.override.md` 仅用于短期排障；任务结束后删除并复测。
 
-### B.2 最小诊断矩阵（Codex）
-- 必做：`codex --version`、`codex --help`。
-- 状态检查优先 `codex status`；若非交互失败（如 `stdin is not a terminal`），按 `platform_na` 记录。
+### B.2 最小诊断矩阵（Claude）
+- 必做：`claude --version`、`claude --help`。
+- 状态/加载链类命令按“若支持则执行”。
 - 留痕最低字段：`cmd`、`exit_code`、`key_output`、`timestamp`。
 
-### B.3 能力边界（Codex）
-- `codex status` 是首选状态入口，且优先于脚本化替代探测。
-- 若 `status` 不展示加载链，必须补记 `active_rule_path` 与来源。
-- override 能力若当前版本不支持，按 `platform_na` 记录并补替代证据。
+### B.3 平台能力剖面（Claude）
+- 状态命令能力：不可强制假定存在。
+- 加载链可观测性：若 CLI 无显式输出，补记 `active_rule_path` 与来源。
+- override 能力：若当前版本不支持，按 `platform_na` 记录。
 
 ### B.4 不支持项回退
 - 命令缺失或行为不一致时，记录：`platform_na`、原因、替代命令、证据位置。
@@ -67,7 +67,7 @@
 
 ## C. 项目级承接契约（全局模板）
 ### C.1 自包含与边界
-- 项目级同名文件必须完整自包含，并显式承接 `GlobalUser/AGENTS.md`。
+- 项目级同名文件必须完整自包含，并显式承接 `GlobalUser/CLAUDE.md`。
 - 项目级仅写本仓事实，不复述全局 R/E 正文。
 
 ### C.2 项目级必填项
@@ -82,10 +82,6 @@
 - 全局输出：规则语义、判定标准、N/A 口径。
 - 项目输入：仓库路径、门禁命令、证据路径、回滚入口。
 - 协同判定：不重叠、不缺失、可执行。
-
-### C.4 边界防重叠（强制）
-- 全局不得下沉仓库私有路径、私有命令、私有回滚脚本。
-- 项目级不得改写全局 R/E 语义；仅能承接为本仓动作。
 
 ## D. 维护校验清单（全局）
 - 结构保持 `1 / A / B / C / D`。

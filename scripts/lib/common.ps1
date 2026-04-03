@@ -99,9 +99,21 @@ function Get-ProjectRulePolicyPath([string]$KitRoot) {
   return Join-Path $KitRoot "config\project-rule-policy.json"
 }
 
-function Read-ProjectRuleAllowRepos([string]$KitRoot) {
+function Read-ProjectRulePolicy([string]$KitRoot) {
   $path = Get-ProjectRulePolicyPath $KitRoot
-  if (!(Test-Path $path)) { return @() }
+  $defaultPolicy = [pscustomobject]@{
+    allowProjectRulesForRepos = @()
+    defaults = [pscustomobject]@{
+      allow_auto_fix = $true
+      allow_rule_optimization = $true
+      forbid_breaking_contract = $true
+    }
+    repos = @()
+  }
+
+  if (!(Test-Path $path)) {
+    return $defaultPolicy
+  }
 
   try {
     $policy = Get-Content -Path $path -Raw | ConvertFrom-Json
@@ -109,6 +121,34 @@ function Read-ProjectRuleAllowRepos([string]$KitRoot) {
     throw "project-rule-policy.json invalid JSON: $path"
   }
 
+  if ($null -eq $policy) {
+    return $defaultPolicy
+  }
+
+  if ($null -eq $policy.PSObject.Properties['allowProjectRulesForRepos']) {
+    $policy | Add-Member -NotePropertyName allowProjectRulesForRepos -NotePropertyValue @()
+  }
+  if ($null -eq $policy.PSObject.Properties['defaults']) {
+    $policy | Add-Member -NotePropertyName defaults -NotePropertyValue $defaultPolicy.defaults
+  }
+  if ($null -eq $policy.defaults.PSObject.Properties['allow_auto_fix']) {
+    $policy.defaults | Add-Member -NotePropertyName allow_auto_fix -NotePropertyValue $true
+  }
+  if ($null -eq $policy.defaults.PSObject.Properties['allow_rule_optimization']) {
+    $policy.defaults | Add-Member -NotePropertyName allow_rule_optimization -NotePropertyValue $true
+  }
+  if ($null -eq $policy.defaults.PSObject.Properties['forbid_breaking_contract']) {
+    $policy.defaults | Add-Member -NotePropertyName forbid_breaking_contract -NotePropertyValue $true
+  }
+  if ($null -eq $policy.PSObject.Properties['repos']) {
+    $policy | Add-Member -NotePropertyName repos -NotePropertyValue @()
+  }
+
+  return $policy
+}
+
+function Read-ProjectRuleAllowRepos([string]$KitRoot) {
+  $policy = Read-ProjectRulePolicy $KitRoot
   if ($null -eq $policy.allowProjectRulesForRepos) { return @() }
   $repos = @($policy.allowProjectRulesForRepos)
   $normalized = @()
@@ -128,6 +168,54 @@ function Is-RepoAllowedForProjectRules([string]$Repo, [string[]]$AllowRepos) {
     }
   }
   return $false
+}
+
+function Get-RepoAutomationPolicy([string]$KitRoot, [string]$Repo) {
+  $repoNorm = Normalize-Repo $Repo
+  $policy = Read-ProjectRulePolicy $KitRoot
+  $allowRepos = Read-ProjectRuleAllowRepos $KitRoot
+  $allowProjectRules = Is-RepoAllowedForProjectRules -Repo $repoNorm -AllowRepos $allowRepos
+
+  $effectiveAllowAutoFix = [bool]$policy.defaults.allow_auto_fix
+  $effectiveAllowRuleOptimization = [bool]$policy.defaults.allow_rule_optimization
+  $effectiveForbidBreakingContract = [bool]$policy.defaults.forbid_breaking_contract
+
+  foreach ($entry in @($policy.repos)) {
+    if ($null -eq $entry) { continue }
+
+    $entryMatch = $false
+    if ($entry.PSObject.Properties['repo'] -and -not [string]::IsNullOrWhiteSpace([string]$entry.repo)) {
+      $entryRepoNorm = Normalize-Repo ([string]$entry.repo)
+      if ($entryRepoNorm.Equals($repoNorm, [System.StringComparison]::OrdinalIgnoreCase)) {
+        $entryMatch = $true
+      }
+    }
+    if (-not $entryMatch -and $entry.PSObject.Properties['repoName'] -and -not [string]::IsNullOrWhiteSpace([string]$entry.repoName)) {
+      $repoName = Get-RepoName $repoNorm
+      if (([string]$entry.repoName).Equals($repoName, [System.StringComparison]::OrdinalIgnoreCase)) {
+        $entryMatch = $true
+      }
+    }
+    if (-not $entryMatch) { continue }
+
+    if ($entry.PSObject.Properties['allow_auto_fix']) {
+      $effectiveAllowAutoFix = [bool]$entry.allow_auto_fix
+    }
+    if ($entry.PSObject.Properties['allow_rule_optimization']) {
+      $effectiveAllowRuleOptimization = [bool]$entry.allow_rule_optimization
+    }
+    if ($entry.PSObject.Properties['forbid_breaking_contract']) {
+      $effectiveForbidBreakingContract = [bool]$entry.forbid_breaking_contract
+    }
+  }
+
+  return [pscustomobject]@{
+    repo = $repoNorm
+    allow_project_rules = [bool]$allowProjectRules
+    allow_auto_fix = [bool]$effectiveAllowAutoFix
+    allow_rule_optimization = [bool]$effectiveAllowRuleOptimization
+    forbid_breaking_contract = [bool]$effectiveForbidBreakingContract
+  }
 }
 
 function Get-ProjectCustomFilesForRepo([string]$KitRoot, [string]$RepoPath, [string]$RepoName) {

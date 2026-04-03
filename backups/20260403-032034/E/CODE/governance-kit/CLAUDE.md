@@ -1,11 +1,11 @@
-# AGENTS.md — governance-kit（Codex 项目级）
+# CLAUDE.md — governance-kit（Claude 项目级）
 **项目**: governance-kit  
 **适用范围**: 项目级（仓库根）  
 **版本**: 3.79  
 **最后更新**: 2026-03-31
 
 ## 1. 阅读指引（必读）
-- 本文件承接 `GlobalUser/AGENTS.md`，仅定义 governance-kit 的仓库落地动作（WHERE/HOW）。
+- 本文件承接 `GlobalUser/CLAUDE.md`，仅定义 governance-kit 的仓库落地动作（WHERE/HOW）。
 - 固定结构：`1 / A / B / C / D`。
 - 裁决链：`运行事实/代码 > 项目级文件 > 全局文件 > 临时上下文`。
 
@@ -26,16 +26,16 @@
 - 最低字段：`reason`、`alternative_verification`、`evidence_link`、`expires_at`。
 - 不得改变门禁顺序：`build -> test -> contract/invariant -> hotspot`。
 
-## B. Codex 平台差异（项目内）
+## B. Claude 平台差异（项目内）
 ### B.1 平台取证命令
-- 必做：`codex --version`、`codex --help`。
-- 状态优先：`codex status`；非交互失败（如 `stdin is not a terminal`）记 `platform_na`。
+- 必做：`claude --version`、`claude --help`。
+- 状态能力探测：`claude --help | Select-String status`（有命令再执行，无则记 `platform_na`）。
 - 加载链不可见时，补记 `active_rule_path`（仓库根同名文件）与来源说明。
 
 ### B.2 覆盖链与短期 override
-- 目录：`~/.codex`（可由 `CODEX_HOME` 覆盖）。
-- 优先级：`AGENTS.override.md > AGENTS.md > fallback`。
-- `AGENTS.override.md` 仅用于短期排障；结论后删除并复测。
+- 推荐目录：`~/.claude`；以 CLI 实际加载结果为准。
+- 优先级：`CLAUDE.override.md > CLAUDE.md > fallback`（平台支持时）。
+- `CLAUDE.override.md` 仅用于短期排障；结论后删除并复测。
 
 ### B.3 平台异常回退
 - 命令缺失或行为不一致：记录 `platform_na + reason + alternative_verification + evidence_link + expires_at`。
@@ -99,7 +99,6 @@
 - R7：A.1 + C.6（边界与兼容保护）。
 - R8/E3：A.2 + C.5（证据与回滚可追溯）。
 - E4/E5/E6：C.4 + C.6 + C.8（指标、供应链与结构变更配套校验）。
-- Global 输出字段 -> Repo 证据字段：`N/A 分类/判定标准 -> A.3`，`门禁语义 -> C.2/C.4`，`证据要求 -> C.5`。
 
 ### C.10 协同接口（1+1>2）
 - Global 负责：规则语义、判定标准、N/A 口径。

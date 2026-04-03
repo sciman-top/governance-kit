@@ -1,11 +1,11 @@
-# CLAUDE.md — Skills Manager（Claude 项目级）
+# GEMINI.md — Skills Manager（Gemini 项目级）
 **项目**: skills-manager  
 **适用范围**: 项目级（仓库根）  
 **版本**: 3.79  
 **最后更新**: 2026-03-31
 
 ## 1. 阅读指引（必读）
-- 本文件承接 `GlobalUser/CLAUDE.md`，仅定义 Skills Manager 的仓库落地动作（WHERE/HOW）。
+- 本文件承接 `GlobalUser/GEMINI.md`，仅定义 Skills Manager 的仓库落地动作（WHERE/HOW）。
 - 固定结构：`1 / A / B / C / D`。
 - 裁决链：`运行事实/代码 > 项目级文件 > 全局文件 > 临时上下文`。
 
@@ -26,14 +26,14 @@
 - 最低字段：`reason`、`alternative_verification`、`evidence_link`、`expires_at`。
 - N/A 不得改变门禁顺序：`build -> test -> contract/invariant -> hotspot`。
 
-## B. Claude 平台差异（项目内）
+## B. Gemini 平台差异（项目内）
 ### B.1 加载与覆盖
-- 推荐目录：`~/.claude`；实际以 CLI 加载结果为准。
-- 优先级：`CLAUDE.override.md > CLAUDE.md > fallback`（平台支持时）。
+- 推荐目录：`~/.gemini`；实际以 CLI 加载结果为准。
+- 优先级：`GEMINI.override.md > GEMINI.md > fallback`（平台支持时）。
 - override 仅用于短期排障，结论后必须清理并复测。
 
 ### B.2 最小诊断矩阵
-- 必做：`claude --version -> claude --help`。
+- 必做：`gemini --version -> gemini --help`。
 - 状态/加载链类命令按“若支持则执行”。
 - 留痕最低字段：`cmd`、`exit_code`、`key_output`、`timestamp`。
 
@@ -79,7 +79,7 @@
 
 ### C.6 同步与目录策略
 - `sync_mode=link` 优先；`sync_mode=sync` 作为受限环境回退。
-- 若 `skills.json.targets` 含 `.claude/skills`，必须验证其与 `agent/` 同步状态。
+- 若 `skills.json.targets` 含 `.gemini/skills`，必须验证其与 `agent/` 同步状态。
 
 ### C.7 目标仓直改回灌策略
 - source of truth：`E:/CODE/governance-kit/source/project/skills-manager/*`。
@@ -102,7 +102,6 @@
 - R7：A.1 + C.1（边界与兼容保护）。
 - R8/E3：A.2 + C.5（证据与回滚可追溯）。
 - E4/E5/E6：C.4 + C.6 + C.8（指标、供应链与结构变更配套校验）。
-- Global 输出字段 -> Repo 证据字段：`N/A 分类/判定标准 -> A.3`，`门禁语义 -> C.2/C.4`，`证据要求 -> C.5`。
 
 ## D. 维护校验清单（项目级）
 - 仅落地本仓事实，不复述全局规则正文。
