@@ -1,6 +1,6 @@
-# GEMINI.md — Universal Agent Protocol v9.37
+# GEMINI.md — Universal Agent Protocol v9.38
 # Gemini CLI — Global User Rules
-**版本**: 9.37  
+**版本**: 9.38  
 **适用范围**: 全局用户级（GlobalUser/）  
 **最后更新**: 2026-04-03
 
@@ -53,13 +53,13 @@
 
 ### B.2 最小诊断矩阵（Gemini）
 - 必做：`gemini --version`、`gemini --help`。
-- 对状态/扩展能力执行“先探测后调用”：先看 help 再调用子命令。
+- 扩展能力采用“先探测后调用”：`status/mcp/extensions/skills` 仅在 `help` 可见时执行。
 - 留痕最低字段：`cmd`、`exit_code`、`key_output`、`timestamp`。
 
 ### B.3 能力边界（Gemini）
 - 不强制假定 `status/mcp/extensions/skills` 子命令全部存在。
 - CLI 无显式加载链时，补记 `active_rule_path` 与来源。
-- override 能力若当前版本不支持，按 `platform_na` 记录并补替代证据。
+- override 能力当前版本不支持时，按 `platform_na` 记录并补替代证据。
 
 ### B.4 不支持项回退
 - 命令缺失或行为不一致时，记录：`platform_na`、原因、替代命令、证据位置。
@@ -94,3 +94,4 @@
 - 协同链完整：`规则 -> 落点 -> 命令 -> 证据 -> 回滚`。
 - 文档精简优先：不改变语义前提下删除重复表述。
 - 升级后同步校验项目级版本联动与承接映射。
+

@@ -1,4 +1,4 @@
-$here = Split-Path -Parent $MyInvocation.MyCommand.Path
+﻿$here = Split-Path -Parent $MyInvocation.MyCommand.Path
 $repoRoot = (Resolve-Path (Join-Path $here "..")).Path
 
 function Set-MinProjectRulePolicy {
@@ -368,6 +368,51 @@ exit 0
       $LASTEXITCODE | should be 1
       $output | should match "max_autonomous_iterations out of range"
       $output | should match "max_repeated_failure_per_step must be integer"
+    } finally {
+      if (Test-Path $tmp) { Remove-Item -LiteralPath $tmp -Recurse -Force }
+    }
+  }
+
+  it "validate-config fails on invalid auto commit policy fields" {
+    $tmp = Join-Path $env:TEMP ("govkit-test-" + [guid]::NewGuid().ToString("N"))
+    try {
+      New-Item -ItemType Directory -Path (Join-Path $tmp "scripts\lib") -Force | Out-Null
+      New-Item -ItemType Directory -Path (Join-Path $tmp "scripts") -Force | Out-Null
+      New-Item -ItemType Directory -Path (Join-Path $tmp "config") -Force | Out-Null
+
+      Copy-Item -Path (Join-Path $repoRoot "scripts\lib\common.ps1") -Destination (Join-Path $tmp "scripts\lib\common.ps1") -Force
+      Copy-Item -Path (Join-Path $repoRoot "scripts\validate-config.ps1") -Destination (Join-Path $tmp "scripts\validate-config.ps1") -Force
+
+      @("E:/CODE/FakeRepo") | ConvertTo-Json -Depth 3 | Set-Content -Path (Join-Path $tmp "config\repositories.json") -Encoding UTF8
+      @(@{ source = "source/global/AGENTS.md"; target = "C:/Users/sciman/.codex/AGENTS.md" }) | ConvertTo-Json -Depth 4 | Set-Content -Path (Join-Path $tmp "config\targets.json") -Encoding UTF8
+      @{
+        default = @{ phase = "observe"; blockExpiredWaiver = $false }
+        repos = @()
+      } | ConvertTo-Json -Depth 6 | Set-Content -Path (Join-Path $tmp "config\rule-rollout.json") -Encoding UTF8
+      @{
+        allowProjectRulesForRepos = @("E:/CODE/FakeRepo")
+        defaults = @{
+          allow_auto_fix = $true
+          allow_rule_optimization = $true
+          max_autonomous_iterations = 3
+          max_repeated_failure_per_step = 2
+          stop_on_irreversible_risk = $true
+          forbid_breaking_contract = $true
+          auto_commit_enabled = "yes"
+          auto_commit_on_checkpoints = "after_backflow"
+          auto_commit_message_prefix = ""
+        }
+      } | ConvertTo-Json -Depth 8 | Set-Content -Path (Join-Path $tmp "config\project-rule-policy.json") -Encoding UTF8
+      @{
+        default = @()
+        repos = @(@{ repoName = "FakeRepo"; files = @() })
+      } | ConvertTo-Json -Depth 6 | Set-Content -Path (Join-Path $tmp "config\project-custom-files.json") -Encoding UTF8
+
+      $output = & powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $tmp "scripts\validate-config.ps1") 2>&1 | Out-String
+      $LASTEXITCODE | should be 1
+      $output | should match "auto_commit_enabled must be boolean"
+      $output | should match "auto_commit_on_checkpoints must be array"
+      $output | should match "auto_commit_message_prefix must be non-empty string"
     } finally {
       if (Test-Path $tmp) { Remove-Item -LiteralPath $tmp -Recurse -Force }
     }
@@ -998,6 +1043,86 @@ exit 0
 
       (Test-Path (Join-Path $tmp "optimize.marker")) | should be $true
       (Test-Path (Join-Path $tmp "backflow.marker")) | should be $false
+    } finally {
+      if (Test-Path $tmp) { Remove-Item -LiteralPath $tmp -Recurse -Force }
+    }
+  }
+
+  it "run-project-governance-cycle auto commits milestone changes with Chinese message and clean tree" {
+    $tmp = Join-Path $env:TEMP ("govkit-test-" + [guid]::NewGuid().ToString("N"))
+    $repo = Join-Path $tmp "TargetRepo"
+    try {
+      New-Item -ItemType Directory -Path (Join-Path $tmp "scripts\lib") -Force | Out-Null
+      New-Item -ItemType Directory -Path (Join-Path $tmp "scripts") -Force | Out-Null
+      New-Item -ItemType Directory -Path (Join-Path $tmp "config") -Force | Out-Null
+      New-Item -ItemType Directory -Path $repo -Force | Out-Null
+
+      Copy-Item -Path (Join-Path $repoRoot "scripts\run-project-governance-cycle.ps1") -Destination (Join-Path $tmp "scripts\run-project-governance-cycle.ps1") -Force
+      Copy-Item -Path (Join-Path $repoRoot "scripts\lib\common.ps1") -Destination (Join-Path $tmp "scripts\lib\common.ps1") -Force
+
+      & git -C $repo init | Out-Null
+      if ($LASTEXITCODE -ne 0) { throw "git init failed" }
+      & git -C $repo config user.name "governance-bot" | Out-Null
+      if ($LASTEXITCODE -ne 0) { throw "git config user.name failed" }
+      & git -C $repo config user.email "governance-bot@example.com" | Out-Null
+      if ($LASTEXITCODE -ne 0) { throw "git config user.email failed" }
+
+      Set-Content -Path (Join-Path $repo "README.md") -Value "seed" -Encoding UTF8
+      & git -C $repo add -A | Out-Null
+      & git -C $repo commit -m "初始化提交" | Out-Null
+      if ($LASTEXITCODE -ne 0) { throw "initial git commit failed" }
+
+      @{
+        allowProjectRulesForRepos = @($repo)
+        defaults = @{
+          allow_auto_fix = $true
+          allow_rule_optimization = $true
+          allow_local_optimize_without_backflow = $false
+          max_autonomous_iterations = 3
+          max_repeated_failure_per_step = 2
+          stop_on_irreversible_risk = $true
+          forbid_breaking_contract = $true
+        }
+        repos = @(
+          @{
+            repoName = "TargetRepo"
+            auto_commit_enabled = $true
+            auto_commit_on_checkpoints = @("after_backflow")
+            auto_commit_message_prefix = "治理里程碑自动提交"
+          }
+        )
+      } | ConvertTo-Json -Depth 8 | Set-Content -Path (Join-Path $tmp "config\project-rule-policy.json") -Encoding UTF8
+      @{
+        default = @()
+        repos = @(
+          @{
+            repoName = "TargetRepo"
+            files = @()
+          }
+        )
+      } | ConvertTo-Json -Depth 8 | Set-Content -Path (Join-Path $tmp "config\project-custom-files.json") -Encoding UTF8
+
+      Set-StubScript -Path (Join-Path $tmp "scripts\install.ps1")
+      Set-StubScript -Path (Join-Path $tmp "scripts\install-extras.ps1")
+      Set-StubScript -Path (Join-Path $tmp "scripts\doctor.ps1")
+      Set-StubScript -Path (Join-Path $tmp "scripts\analyze-repo-governance.ps1")
+      Set-StubScript -Path (Join-Path $tmp "scripts\optimize-project-rules.ps1")
+      @"
+param()
+Set-Content -Path "$repo\milestone.txt" -Value "changed" -Encoding UTF8
+exit 0
+"@ | Set-Content -Path (Join-Path $tmp "scripts\backflow-project-rules.ps1") -Encoding UTF8
+      Set-StubScript -Path (Join-Path $tmp "scripts\suggest-project-custom-files.ps1")
+
+      & powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $tmp "scripts\run-project-governance-cycle.ps1") -RepoPath $repo -RepoName TargetRepo -Mode safe -SkipOptimize | Out-Null
+      if ($LASTEXITCODE -ne 0) { throw "run-project-governance-cycle.ps1 failed with exit code $LASTEXITCODE" }
+
+      $lastMsg = (& git -C $repo log -1 --pretty=%B | Out-String).Trim()
+      $lastMsg | should match "治理里程碑自动提交"
+      $lastMsg | should match "after_backflow"
+
+      $status = (& git -C $repo status --porcelain | Out-String).Trim()
+      $status | should be ""
     } finally {
       if (Test-Path $tmp) { Remove-Item -LiteralPath $tmp -Recurse -Force }
     }

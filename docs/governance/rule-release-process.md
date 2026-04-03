@@ -17,8 +17,8 @@
    - `powershell -File scripts/run-real-repo-regression.ps1 -Mode smoke`
 5. Fill release record using:
    - `docs/governance/rule-release-template.md`
-6. Run distribution:
-   - `powershell -File scripts/install.ps1 -Mode safe`
+6. Run one-click distribution (single external entry):
+   - `powershell -File scripts/install-full-stack.ps1 -RepoPath <target-repo> -Mode safe`
 7. Re-run doctor after distribution:
    - `powershell -File scripts/doctor.ps1`
 8. Attach evidence in `docs/change-evidence/YYYYMMDD-*.md`.

@@ -1,4 +1,4 @@
-param(
+﻿param(
   [Parameter(Mandatory = $true)]
   [string]$RepoPath,
   [string]$RepoName,
@@ -42,6 +42,9 @@ $maxRepeatedFailurePerStep = [int]$repoPolicy.max_repeated_failure_per_step
 $stopOnIrreversibleRisk = [bool]$repoPolicy.stop_on_irreversible_risk
 $allowAutoFixByPolicy = [bool]$repoPolicy.allow_auto_fix
 $forbidBreakingContract = [bool]$repoPolicy.forbid_breaking_contract
+$autoCommitEnabled = [bool]$repoPolicy.auto_commit_enabled
+$autoCommitOnCheckpoints = @($repoPolicy.auto_commit_on_checkpoints)
+$autoCommitMessagePrefix = [string]$repoPolicy.auto_commit_message_prefix
 $effectiveSkipOptimize = $SkipOptimize.IsPresent
 $effectiveSkipBackflow = $SkipBackflow.IsPresent
 
@@ -77,6 +80,7 @@ if (-not $allowRuleOptimization -and -not $effectiveSkipOptimize) {
 
 Write-Host ("[POLICY] allow_project_rules={0} allow_rule_optimization={1} allow_local_optimize_without_backflow={2} max_autonomous_iterations={3} max_repeated_failure_per_step={4} stop_on_irreversible_risk={5} allow_auto_fix={6} forbid_breaking_contract={7}" -f `
   $allowProjectRules, $allowRuleOptimization, $allowLocalOptimizeWithoutBackflow, $maxAutonomousIterations, $maxRepeatedFailurePerStep, $stopOnIrreversibleRisk, $allowAutoFixByPolicy, $forbidBreakingContract)
+Write-Host ("[POLICY] auto_commit_enabled={0} auto_commit_checkpoints={1}" -f $autoCommitEnabled, (@($autoCommitOnCheckpoints) -join ","))
 
 function Step([string]$Name, [scriptblock]$Action) {
   Write-Host "=== $Name ==="
@@ -103,6 +107,9 @@ function Write-FailureContext([string]$StepName, [string]$FailureMessage, [strin
       stop_on_irreversible_risk = $stopOnIrreversibleRisk
       allow_auto_fix = $allowAutoFixByPolicy
       forbid_breaking_contract = $forbidBreakingContract
+      auto_commit_enabled = $autoCommitEnabled
+      auto_commit_on_checkpoints = @($autoCommitOnCheckpoints)
+      auto_commit_message_prefix = $autoCommitMessagePrefix
     }
     remediation_owner = "outer-ai-session"
     timestamp = (Get-Date).ToString("o")
@@ -123,6 +130,65 @@ function Step-OrFail([string]$Name, [string]$RetryCommand, [scriptblock]$Action)
   }
 }
 
+function Invoke-MilestoneAutoCommit([string]$Checkpoint) {
+  if ($Mode -ne "safe") { return }
+  if (-not $autoCommitEnabled) { return }
+  if (@($autoCommitOnCheckpoints).Count -eq 0) { return }
+  if (-not (@($autoCommitOnCheckpoints) -contains $Checkpoint)) { return }
+
+  if (-not (Test-Path -LiteralPath (Join-Path $repo ".git"))) {
+    Write-Host "[AUTO_COMMIT] skip (not a git repo): checkpoint=$Checkpoint repo=$repo"
+    return
+  }
+
+  $gitCmd = Get-Command git -ErrorAction SilentlyContinue
+  if ($null -eq $gitCmd) {
+    throw "auto commit requires git command, but git was not found."
+  }
+
+  $statusBefore = (& git -C $repo status --porcelain)
+  if ($LASTEXITCODE -ne 0) {
+    throw "auto commit failed to read git status at checkpoint '$Checkpoint'."
+  }
+  if (@($statusBefore).Count -eq 0) {
+    Write-Host "[AUTO_COMMIT] no changes: checkpoint=$Checkpoint"
+    return
+  }
+
+  & git -C $repo add -A
+  if ($LASTEXITCODE -ne 0) {
+    throw "auto commit failed at 'git add -A' for checkpoint '$Checkpoint'."
+  }
+
+  $statusStaged = (& git -C $repo status --porcelain)
+  if ($LASTEXITCODE -ne 0) {
+    throw "auto commit failed to read staged status at checkpoint '$Checkpoint'."
+  }
+  if (@($statusStaged).Count -eq 0) {
+    Write-Host "[AUTO_COMMIT] no staged changes after add: checkpoint=$Checkpoint"
+    return
+  }
+
+  $ts = (Get-Date).ToString("yyyy-MM-dd HH:mm:ss")
+  $prefix = if ([string]::IsNullOrWhiteSpace($autoCommitMessagePrefix)) { "治理里程碑自动提交" } else { $autoCommitMessagePrefix }
+  $commitMsg = "$prefix：$RepoName [$Checkpoint] $ts"
+
+  & git -C $repo commit -m $commitMsg | Out-Host
+  if ($LASTEXITCODE -ne 0) {
+    throw "auto commit failed at checkpoint '$Checkpoint'."
+  }
+
+  $statusAfter = (& git -C $repo status --porcelain)
+  if ($LASTEXITCODE -ne 0) {
+    throw "auto commit failed to verify clean working tree at checkpoint '$Checkpoint'."
+  }
+  if (@($statusAfter).Count -gt 0) {
+    throw "auto commit completed but working tree is not clean at checkpoint '$Checkpoint'."
+  }
+
+  Write-Host "[AUTO_COMMIT] committed and clean: checkpoint=$Checkpoint"
+}
+
 if (-not $SkipInstall) {
   $installRetry = "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/run-project-governance-cycle.ps1 -RepoPath `"$($repo -replace '\\','/')`" -RepoName `"$RepoName`" -Mode $Mode"
   Step-OrFail "install" $installRetry {
@@ -131,6 +197,7 @@ if (-not $SkipInstall) {
     Invoke-ChildScript (Join-Path $PSScriptRoot "install.ps1") $argsInstall
     Invoke-ChildScript (Join-Path $PSScriptRoot "install-extras.ps1") @("-Mode", $Mode)
   }
+  Invoke-MilestoneAutoCommit -Checkpoint "after_install"
 }
 
 Step-OrFail "analyze" ("powershell -NoProfile -ExecutionPolicy Bypass -File scripts/analyze-repo-governance.ps1 -RepoPath `"$($repo -replace '\\','/')`"") {
@@ -155,6 +222,7 @@ if (-not $effectiveSkipOptimize) {
     if ($ShowScope) { $argsOptimize += "-ShowScope" }
     Invoke-ChildScript (Join-Path $PSScriptRoot "optimize-project-rules.ps1") $argsOptimize
   }
+  Invoke-MilestoneAutoCommit -Checkpoint "after_optimize"
 }
 
 if (-not $effectiveSkipBackflow) {
@@ -163,6 +231,7 @@ if (-not $effectiveSkipBackflow) {
     if ($ShowScope) { $argsBackflow += "-ShowScope" }
     Invoke-ChildScript (Join-Path $PSScriptRoot "backflow-project-rules.ps1") $argsBackflow
   }
+  Invoke-MilestoneAutoCommit -Checkpoint "after_backflow"
 }
 
 if ($Mode -eq "safe") {
@@ -172,6 +241,9 @@ if ($Mode -eq "safe") {
     Invoke-ChildScript (Join-Path $PSScriptRoot "install.ps1") $argsRedistribute
     Invoke-ChildScript (Join-Path $PSScriptRoot "doctor.ps1")
   }
+  Invoke-MilestoneAutoCommit -Checkpoint "after_redistribute_verify"
 }
+
+Invoke-MilestoneAutoCommit -Checkpoint "cycle_complete"
 
 Write-Host "run-project-governance-cycle completed: repo=$($repo -replace '\\','/') mode=$Mode"

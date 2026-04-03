@@ -1,6 +1,6 @@
-# AGENTS.md — Universal Agent Protocol v9.37
+# AGENTS.md — Universal Agent Protocol v9.38
 # OpenAI Codex / Codex CLI — Global User Rules
-**版本**: 9.37  
+**版本**: 9.38  
 **适用范围**: 全局用户级（GlobalUser/）  
 **最后更新**: 2026-04-03
 
@@ -53,13 +53,13 @@
 
 ### B.2 最小诊断矩阵（Codex）
 - 必做：`codex --version`、`codex --help`。
-- 状态检查优先 `codex status`；若非交互失败（如 `stdin is not a terminal`），按 `platform_na` 记录。
+- 状态入口优先 `codex status`；若非交互失败（如 `stdin is not a terminal`）按 `platform_na` 记录。
 - 留痕最低字段：`cmd`、`exit_code`、`key_output`、`timestamp`。
 
 ### B.3 能力边界（Codex）
-- `codex status` 是首选状态入口，且优先于脚本化替代探测。
-- 若 `status` 不展示加载链，必须补记 `active_rule_path` 与来源。
-- override 能力若当前版本不支持，按 `platform_na` 记录并补替代证据。
+- `codex status` 优先于脚本化替代探测。
+- `status` 未展示加载链时，补记 `active_rule_path` 与来源。
+- override 能力当前版本不支持时，按 `platform_na` 记录并补替代证据。
 
 ### B.4 不支持项回退
 - 命令缺失或行为不一致时，记录：`platform_na`、原因、替代命令、证据位置。
@@ -94,3 +94,4 @@
 - 协同链完整：`规则 -> 落点 -> 命令 -> 证据 -> 回滚`。
 - 文档精简优先：不改变语义前提下删除重复表述。
 - 升级后同步校验项目级版本联动与承接映射。
+

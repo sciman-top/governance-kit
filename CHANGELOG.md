@@ -1,5 +1,20 @@
 # Changelog
 
+## 2026-04-03
+- Unified external install entry to `scripts/install-full-stack.ps1`; documented `scripts/install.ps1` as internal foundational distributor.
+- Added milestone auto-commit policy support (`auto_commit_enabled/auto_commit_on_checkpoints/auto_commit_message_prefix`) with Chinese commit message prefix support.
+- Extended `run-project-governance-cycle.ps1` to auto-commit and enforce clean working tree at configured checkpoints in `safe` mode.
+- Extended config validation and regression tests for auto-commit policy and checkpoint commit behavior.
+- Enforced agent-first remediation model: governance scripts no longer invoke nested model CLI auto-fix (`codex/claude/gemini exec`).
+- Refactored `scripts/run-project-governance-cycle.ps1` to fail-fast with structured `[FAILURE_CONTEXT_JSON]` handoff for outer AI session remediation.
+- Refactored `scripts/automation/run-safe-autopilot.ps1` to output structured failure context and stop for outer AI session takeover.
+- Kept `-AutoRemediate/-NoAutoRemediate/-MaxAutoFixAttempts/-CodexCommand` compatibility parameters as deprecated no-op flags with warning logs.
+- Updated `scripts/install.ps1` and `scripts/install-full-stack.ps1` to stop forwarding in-script auto-remediation flags.
+- Added remediation handoff contract document: `docs/governance/agent-remediation-contract.md`.
+- Updated governance-kit project-level rules (`AGENTS.md`/`CLAUDE.md`/`GEMINI.md`) to explicitly forbid script-level model CLI remediation and require outer AI session execution.
+- Updated generic project templates under `source/template/project/*` with the same remediation boundary.
+- Updated README guidance to align with outer AI session remediation workflow.
+
 ## 2026-03-30
 - Added orphan cleanup script `scripts/prune-orphan-custom-sources.ps1` with backup-first pruning (`plan/safe`).
 - Added `scripts/check-orphan-custom-sources.ps1` to detect unmapped/unmanaged files under `source/project/*/custom`.

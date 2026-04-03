@@ -1,4 +1,4 @@
-$ErrorActionPreference = "Stop"
+﻿$ErrorActionPreference = "Stop"
 
 function Read-JsonArray([string]$Path) {
   if (!(Test-Path $Path)) { return @() }
@@ -111,6 +111,9 @@ function Read-ProjectRulePolicy([string]$KitRoot) {
       max_repeated_failure_per_step = 2
       stop_on_irreversible_risk = $true
       forbid_breaking_contract = $true
+      auto_commit_enabled = $false
+      auto_commit_on_checkpoints = @()
+      auto_commit_message_prefix = "Governance milestone auto commit"
     }
     repos = @()
   }
@@ -156,6 +159,15 @@ function Read-ProjectRulePolicy([string]$KitRoot) {
   if ($null -eq $policy.defaults.PSObject.Properties['forbid_breaking_contract']) {
     $policy.defaults | Add-Member -NotePropertyName forbid_breaking_contract -NotePropertyValue $true
   }
+  if ($null -eq $policy.defaults.PSObject.Properties['auto_commit_enabled']) {
+    $policy.defaults | Add-Member -NotePropertyName auto_commit_enabled -NotePropertyValue $false
+  }
+  if ($null -eq $policy.defaults.PSObject.Properties['auto_commit_on_checkpoints']) {
+    $policy.defaults | Add-Member -NotePropertyName auto_commit_on_checkpoints -NotePropertyValue @()
+  }
+  if ($null -eq $policy.defaults.PSObject.Properties['auto_commit_message_prefix']) {
+    $policy.defaults | Add-Member -NotePropertyName auto_commit_message_prefix -NotePropertyValue "Governance milestone auto commit"
+  }
   if ($null -eq $policy.PSObject.Properties['repos']) {
     $policy | Add-Member -NotePropertyName repos -NotePropertyValue @()
   }
@@ -199,6 +211,9 @@ function Get-RepoAutomationPolicy([string]$KitRoot, [string]$Repo) {
   $effectiveMaxRepeatedFailurePerStep = [int]$policy.defaults.max_repeated_failure_per_step
   $effectiveStopOnIrreversibleRisk = [bool]$policy.defaults.stop_on_irreversible_risk
   $effectiveForbidBreakingContract = [bool]$policy.defaults.forbid_breaking_contract
+  $effectiveAutoCommitEnabled = [bool]$policy.defaults.auto_commit_enabled
+  $effectiveAutoCommitOnCheckpoints = @($policy.defaults.auto_commit_on_checkpoints)
+  $effectiveAutoCommitMessagePrefix = [string]$policy.defaults.auto_commit_message_prefix
 
   foreach ($entry in @($policy.repos)) {
     if ($null -eq $entry) { continue }
@@ -239,6 +254,15 @@ function Get-RepoAutomationPolicy([string]$KitRoot, [string]$Repo) {
     if ($entry.PSObject.Properties['forbid_breaking_contract']) {
       $effectiveForbidBreakingContract = [bool]$entry.forbid_breaking_contract
     }
+    if ($entry.PSObject.Properties['auto_commit_enabled']) {
+      $effectiveAutoCommitEnabled = [bool]$entry.auto_commit_enabled
+    }
+    if ($entry.PSObject.Properties['auto_commit_on_checkpoints']) {
+      $effectiveAutoCommitOnCheckpoints = @($entry.auto_commit_on_checkpoints)
+    }
+    if ($entry.PSObject.Properties['auto_commit_message_prefix']) {
+      $effectiveAutoCommitMessagePrefix = [string]$entry.auto_commit_message_prefix
+    }
   }
 
   return [pscustomobject]@{
@@ -251,6 +275,9 @@ function Get-RepoAutomationPolicy([string]$KitRoot, [string]$Repo) {
     max_repeated_failure_per_step = [int]$effectiveMaxRepeatedFailurePerStep
     stop_on_irreversible_risk = [bool]$effectiveStopOnIrreversibleRisk
     forbid_breaking_contract = [bool]$effectiveForbidBreakingContract
+    auto_commit_enabled = [bool]$effectiveAutoCommitEnabled
+    auto_commit_on_checkpoints = @($effectiveAutoCommitOnCheckpoints)
+    auto_commit_message_prefix = [string]$effectiveAutoCommitMessagePrefix
   }
 }
 

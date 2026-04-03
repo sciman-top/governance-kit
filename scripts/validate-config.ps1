@@ -1,4 +1,4 @@
-$ErrorActionPreference = "Stop"
+﻿$ErrorActionPreference = "Stop"
 $kitRoot = Split-Path -Parent $PSScriptRoot
 $commonPath = Join-Path $PSScriptRoot "lib\common.ps1"
 . $commonPath
@@ -101,6 +101,35 @@ if ($null -ne $projectRulePolicy.defaults) {
   } elseif ($projectRulePolicy.defaults.forbid_breaking_contract -isnot [bool]) {
     Write-Host "[CFG] project-rule-policy.defaults.forbid_breaking_contract must be boolean"
     $fail++
+  }
+
+  if ($null -ne $projectRulePolicy.defaults.PSObject.Properties['auto_commit_enabled']) {
+    if ($projectRulePolicy.defaults.auto_commit_enabled -isnot [bool]) {
+      Write-Host "[CFG] project-rule-policy.defaults.auto_commit_enabled must be boolean"
+      $fail++
+    }
+  }
+
+  if ($null -ne $projectRulePolicy.defaults.PSObject.Properties['auto_commit_on_checkpoints']) {
+    if ($projectRulePolicy.defaults.auto_commit_on_checkpoints -isnot [System.Array]) {
+      Write-Host "[CFG] project-rule-policy.defaults.auto_commit_on_checkpoints must be array"
+      $fail++
+    } else {
+      foreach ($cp in @($projectRulePolicy.defaults.auto_commit_on_checkpoints)) {
+        if ([string]::IsNullOrWhiteSpace([string]$cp)) {
+          Write-Host "[CFG] project-rule-policy.defaults.auto_commit_on_checkpoints contains empty value"
+          $fail++
+          break
+        }
+      }
+    }
+  }
+
+  if ($null -ne $projectRulePolicy.defaults.PSObject.Properties['auto_commit_message_prefix']) {
+    if ([string]::IsNullOrWhiteSpace([string]$projectRulePolicy.defaults.auto_commit_message_prefix)) {
+      Write-Host "[CFG] project-rule-policy.defaults.auto_commit_message_prefix must be non-empty string"
+      $fail++
+    }
   }
 }
 
@@ -236,6 +265,30 @@ foreach ($pr in $policyRepos) {
   if ($pr.PSObject.Properties['forbid_breaking_contract'] -and $pr.forbid_breaking_contract -isnot [bool]) {
     Write-Host "[CFG] project-rule-policy.repos.forbid_breaking_contract must be boolean"
     $fail++
+  }
+  if ($pr.PSObject.Properties['auto_commit_enabled'] -and $pr.auto_commit_enabled -isnot [bool]) {
+    Write-Host "[CFG] project-rule-policy.repos.auto_commit_enabled must be boolean"
+    $fail++
+  }
+  if ($pr.PSObject.Properties['auto_commit_on_checkpoints']) {
+    if ($pr.auto_commit_on_checkpoints -isnot [System.Array]) {
+      Write-Host "[CFG] project-rule-policy.repos.auto_commit_on_checkpoints must be array"
+      $fail++
+    } else {
+      foreach ($cp in @($pr.auto_commit_on_checkpoints)) {
+        if ([string]::IsNullOrWhiteSpace([string]$cp)) {
+          Write-Host "[CFG] project-rule-policy.repos.auto_commit_on_checkpoints contains empty value"
+          $fail++
+          break
+        }
+      }
+    }
+  }
+  if ($pr.PSObject.Properties['auto_commit_message_prefix']) {
+    if ([string]::IsNullOrWhiteSpace([string]$pr.auto_commit_message_prefix)) {
+      Write-Host "[CFG] project-rule-policy.repos.auto_commit_message_prefix must be non-empty string"
+      $fail++
+    }
   }
 }
 

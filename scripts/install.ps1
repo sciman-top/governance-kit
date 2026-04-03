@@ -31,7 +31,12 @@ $modePlan = $Mode -eq "plan"
 $fullCycleMode = if ($modePlan) { "plan" } else { "safe" }
 
 if ($AutoRemediate.IsPresent -and $NoAutoRemediate.IsPresent) {
-  throw "Conflicting arguments: use either -AutoRemediate or -NoAutoRemediate, not both."
+  Write-Host "[DEPRECATED] -AutoRemediate/-NoAutoRemediate are ignored. Remediation is handled by the outer AI session."
+} elseif ($AutoRemediate.IsPresent -or $NoAutoRemediate.IsPresent) {
+  Write-Host "[DEPRECATED] -AutoRemediate/-NoAutoRemediate are ignored. Remediation is handled by the outer AI session."
+}
+if ($PSBoundParameters.ContainsKey("MaxAutoFixAttempts")) {
+  Write-Host "[DEPRECATED] -MaxAutoFixAttempts is ignored because in-script auto remediation is disabled."
 }
 
 function Get-FullCycleRepos {
@@ -306,11 +311,6 @@ if ($FullCycle) {
       "-Mode", $fullCycleMode
     )
     if ($ShowScope) { $args += "-ShowScope" }
-    if ($AutoRemediate) {
-      $args += @("-AutoRemediate", "-MaxAutoFixAttempts", ([string]$MaxAutoFixAttempts))
-    } elseif ($NoAutoRemediate.IsPresent) {
-      $args += "-NoAutoRemediate"
-    }
 
     & powershell @args
     if ($LASTEXITCODE -ne 0) {

@@ -12,7 +12,7 @@
 - `config/project-rule-policy.json`：项目级规则分发白名单与自动化策略（含 `allow_local_optimize_without_backflow`、`max_autonomous_iterations`、`max_repeated_failure_per_step`、`stop_on_irreversible_risk`）
 - `config/project-custom-files.json`：项目级“定制文件回拷/分发”清单（除 AGENTS/CLAUDE/GEMINI 外，建议仅放仓库特有文件）
 - `config/governance-baseline.json`：治理基线版本与冻结日期
-- `scripts/install.ps1`：首次部署（默认带备份）
+- `scripts/install.ps1`：内部基础分发脚本（由一键入口调用，不建议直接使用）
 - `scripts/sync.ps1`：快速同步（不备份）
 - `scripts/verify.ps1`：先校验配置结构，再校验 source 与 target 一致性
 - `scripts/restore.ps1`：从 backup 快照回滚到目标位置
@@ -73,8 +73,8 @@
 - 备份目录结构按目标绝对路径镜像生成。
 
 ## 使用
-### 推荐流程（系统安装 + 项目级定制回路）
-适用于新仓与旧仓，差别仅在“是否需要先接入仓库映射”。
+### 推荐流程（唯一对外入口）
+适用于新仓与旧仓，统一使用一键安装入口。
 
 一键全量安装（推荐）：
 ```powershell
@@ -86,18 +86,11 @@ powershell -File E:\CODE\governance-kit\scripts\install-full-stack.ps1 -RepoPath
 - 目标仓会安装通用脚本：`scripts/governance/run-project-governance-cycle.ps1`、`scripts/governance/run-target-autopilot.ps1`。
 - 对不在 `project-rule-policy` 白名单的仓库，默认会自动跳过 `optimize/backflow`；若策略开启 `allow_local_optimize_without_backflow=true`，允许仅本仓优化并继续禁止回灌。
 - 自动连续执行边界由 `project-rule-policy` 控制：`max_autonomous_iterations`（最大自治轮次）、`max_repeated_failure_per_step`（单步骤重复失败上限）、`stop_on_irreversible_risk`（不可逆风险边界停机，默认对 `contract.*` 失败立即停机）。
+- 里程碑自动提交（中文备注）在 `run-project-governance-cycle` 中按策略触发，提交后强校验工作区干净。
 
-主流程（系统安装流）：
-1. 新仓先接入（旧仓可跳过）：
-```powershell
-powershell -File E:\CODE\governance-kit\scripts\bootstrap-repo.ps1 -RepoPath E:\CODE\NewRepo -Mode safe
-```
-2. 已接入仓执行标准安装：
-```powershell
-powershell -File E:\CODE\governance-kit\scripts\install.ps1 -Mode safe
-powershell -File E:\CODE\governance-kit\scripts\install-extras.ps1 -Mode safe
-powershell -File E:\CODE\governance-kit\scripts\doctor.ps1
-```
+说明：
+- 对外统一入口仅 `install-full-stack.ps1`。
+- `install.ps1/install-extras.ps1` 属于内部基础步骤，默认由 `install-full-stack.ps1` 编排调用。
 
 项目级定制回路（需要目标仓试改时）：
 1. 先把仓库专属项目规则覆盖到目标仓三文件：
@@ -114,10 +107,9 @@ Copy-Item E:\CODE\ClassroomToolkit\AGENTS.md E:\CODE\governance-kit\source\proje
 Copy-Item E:\CODE\ClassroomToolkit\CLAUDE.md E:\CODE\governance-kit\source\project\ClassroomToolkit\CLAUDE.md -Force
 Copy-Item E:\CODE\ClassroomToolkit\GEMINI.md E:\CODE\governance-kit\source\project\ClassroomToolkit\GEMINI.md -Force
 ```
-4. 回灌后立即再分发与校验，确保 source/target 一致：
+4. 回灌后建议重新执行一键入口，确保 source/target 一致：
 ```powershell
-powershell -File E:\CODE\governance-kit\scripts\install.ps1 -Mode safe
-powershell -File E:\CODE\governance-kit\scripts\doctor.ps1
+powershell -File E:\CODE\governance-kit\scripts\install-full-stack.ps1 -RepoPath E:\CODE\ClassroomToolkit -Mode safe
 ```
 
 约束：
@@ -150,28 +142,14 @@ powershell -File E:\CODE\governance-kit\scripts\doctor.ps1
 对 governance-kit 与 <目标仓路径> 执行 install + doctor + verify 全量复验，输出失败项并由当前 AI 会话代理修复。
 ```
 
-1. 首次部署（带备份，默认 `safe`）
+1. 一键安装（唯一对外入口，推荐）
 ```powershell
-powershell -File E:\CODE\governance-kit\scripts\install.ps1
+powershell -File E:\CODE\governance-kit\scripts\install-full-stack.ps1 -RepoPath E:\CODE\NewRepo -Mode safe
 ```
 
-仅查看将要变更的规则文件（不落地）：
+仅预演（不落地）：
 ```powershell
-powershell -File E:\CODE\governance-kit\scripts\install.ps1 -Mode plan
-```
-执行前打印本次将处理的文件清单：
-```powershell
-powershell -File E:\CODE\governance-kit\scripts\install.ps1 -Mode safe -ShowScope
-```
-
-禁止覆盖目标仓已存在且有差异的规则文件：
-```powershell
-powershell -File E:\CODE\governance-kit\scripts\install.ps1 -Mode safe -NoOverwriteRules
-```
-
-如需跳过安装后的目标一致性断言（默认会自动执行 `verify.ps1`）：
-```powershell
-powershell -File E:\CODE\governance-kit\scripts\install.ps1 -SkipPostVerify
+powershell -File E:\CODE\governance-kit\scripts\install-full-stack.ps1 -RepoPath E:\CODE\NewRepo -Mode plan
 ```
 
 2. 日常同步（不备份，默认 `safe`）
