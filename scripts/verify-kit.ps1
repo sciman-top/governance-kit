@@ -41,6 +41,7 @@ $mustExist = @(
   "scripts\run-endstate-onboarding.ps1",
   "scripts\run-real-repo-regression.ps1",
   "scripts\verify-json-contract.ps1",
+  "scripts\validate-failure-context.ps1",
   "scripts\audit-governance-readiness.ps1",
   "scripts\merge-rules.ps1",
   "scripts\validate-config.ps1",

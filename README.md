@@ -9,7 +9,7 @@
 - `source/project/`：项目级规则（按仓分层，示例：`source/project/<RepoName>/{AGENTS,CLAUDE,GEMINI}.md`）
 - `config/targets.json`：复制映射表（source -> target）
 - `config/rule-rollout.json`：规则灰度配置（observe/enforce + waiver 阻断开关）
-- `config/project-rule-policy.json`：项目级规则分发白名单（仅允许指定仓接收 `source/project/*`）
+- `config/project-rule-policy.json`：项目级规则分发白名单与自动化策略（含 `allow_local_optimize_without_backflow`、`max_autonomous_iterations`、`max_repeated_failure_per_step`、`stop_on_irreversible_risk`）
 - `config/project-custom-files.json`：项目级“定制文件回拷/分发”清单（除 AGENTS/CLAUDE/GEMINI 外，建议仅放仓库特有文件）
 - `config/governance-baseline.json`：治理基线版本与冻结日期
 - `scripts/install.ps1`：首次部署（默认带备份）
@@ -37,6 +37,9 @@
 - `scripts/analyze-repo-governance.ps1`：自动勘察目标仓结构/门禁/CI/证据目录并输出推荐配置
 - `scripts/optimize-project-rules.ps1`：按勘察结果自动优化目标仓项目级规则文档
 - `scripts/run-project-governance-cycle.ps1`：一键执行“安装 -> 分析 -> 优化 -> 回拷 -> 再分发校验”闭环
+- `docs/governance/agent-remediation-contract.md`：脚本与外层 AI 会话代理的修复接管合同（失败 JSON 字段约定）
+- `scripts/validate-failure-context.ps1`：校验 `[FAILURE_CONTEXT_JSON]` 合同字段，确保外层 AI 接管上下文完整
+- `docs/governance/oneclick-target-state-matrix.md`：一键安装目标终态分级验收矩阵（L1/L2/L3）
 - `scripts/run-endstate-onboarding.ps1`：一键执行“接入 -> 安装 -> 证据收敛 -> 终态门禁 -> doctor”终态接入闭环
 - `scripts/audit-governance-readiness.ps1`：生成一键治理就绪审计报告（Markdown/JSON）
 - `scripts/governance/run-target-autopilot.ps1`：纯门禁编排器（`build -> test -> contract/invariant -> hotspot`），不内嵌 `codex/claude/gemini exec`；智能修复与规则优化由外层 AI 会话负责。
@@ -79,9 +82,10 @@ powershell -File E:\CODE\governance-kit\scripts\install-full-stack.ps1 -RepoPath
 ```
 说明：
 - 自动执行：`bootstrap-repo -> run-project-governance-cycle -> target-autopilot dry-run -> doctor`。
-- `safe/force` 默认启用自动修复（受 `project-rule-policy.allow_auto_fix` 约束），可用 `-NoAutoRemediate` 显式关闭。
+- 脚本仅负责编排与失败上下文输出；修复由当前 AI 会话代理执行（不在脚本内调用 `codex/claude/gemini exec`）。
 - 目标仓会安装通用脚本：`scripts/governance/run-project-governance-cycle.ps1`、`scripts/governance/run-target-autopilot.ps1`。
-- 对不在 `project-rule-policy` 白名单的仓库，`run-project-governance-cycle` 会自动跳过 `optimize/backflow`，避免将临时仓规则回灌到 `source/project/*`。
+- 对不在 `project-rule-policy` 白名单的仓库，默认会自动跳过 `optimize/backflow`；若策略开启 `allow_local_optimize_without_backflow=true`，允许仅本仓优化并继续禁止回灌。
+- 自动连续执行边界由 `project-rule-policy` 控制：`max_autonomous_iterations`（最大自治轮次）、`max_repeated_failure_per_step`（单步骤重复失败上限）、`stop_on_irreversible_risk`（不可逆风险边界停机，默认对 `contract.*` 失败立即停机）。
 
 主流程（系统安装流）：
 1. 新仓先接入（旧仓可跳过）：
@@ -123,10 +127,10 @@ powershell -File E:\CODE\governance-kit\scripts\doctor.ps1
 ### 提示词模板（可直接复制）
 1. 完整闭环（推荐）
 ```text
-按上次“真正全面审查后优化”的同标准，对 <目标仓路径> 自动连续执行完整闭环（safe）：安装、深度审查（规则分发/hooks/模板/git配置/CI门禁）、优化项目级文档、回灌到 governance-kit、再分发并 doctor 验证；有错自动修复直到通过。
+按上次“真正全面审查后优化”的同标准，对 <目标仓路径> 自动连续执行完整闭环（safe）：安装、深度审查（规则分发/hooks/模板/git配置/CI门禁）、优化项目级文档、回灌到 governance-kit、再分发并 doctor 验证；有错由当前 AI 会话代理修复后继续执行。
 ```
 
-2. 仅深度审查 + 自动修复
+2. 仅深度审查 + 代理修复
 ```text
 全面审查 <目标仓路径> 的治理落地（分发映射、hooks、模板、git config、CI门禁、证据目录、风险阻断），直接修复问题并复验。
 ```
@@ -143,7 +147,7 @@ powershell -File E:\CODE\governance-kit\scripts\doctor.ps1
 
 5. 仅健康复验
 ```text
-对 governance-kit 与 <目标仓路径> 执行 install + doctor + verify 全量复验，输出失败项并自动修复。
+对 governance-kit 与 <目标仓路径> 执行 install + doctor + verify 全量复验，输出失败项并由当前 AI 会话代理修复。
 ```
 
 1. 首次部署（带备份，默认 `safe`）
@@ -421,9 +425,19 @@ powershell -File E:\CODE\governance-kit\scripts\run-project-governance-cycle.ps1
 ```
 说明：
 - 默认包含：安装、分析、优化、回拷、再分发、doctor 验证。
-- `safe` 默认启用自动修复（受策略约束），可用 `-NoAutoRemediate` 关闭；也可显式传 `-AutoRemediate`。
+- 脚本不再内嵌自动修复；失败会输出 `[FAILURE_CONTEXT_JSON]`，由当前 AI 会话代理接管修复并重跑。
 - 可用 `-SkipInstall/-SkipOptimize/-SkipBackflow` 按需跳过阶段。
 - 可用 `-ShowScope` 在 install/optimize/backflow/re-distribute 前打印“本次将处理文件清单”。
+- 自动连续执行遵循策略上限：超过 `max_autonomous_iterations` 或命中重复失败/不可逆风险边界后，脚本停止并输出失败上下文。
+
+19.1 校验失败上下文合同（外层 AI 接管前）
+```powershell
+powershell -File E:\CODE\governance-kit\scripts\validate-failure-context.ps1 -LogPath <log-file-path>
+```
+或直接传 JSON：
+```powershell
+powershell -File E:\CODE\governance-kit\scripts\validate-failure-context.ps1 -FailureContextJson '<json>'
+```
 
 20. 生成治理就绪审计报告（发布前建议执行）
 ```powershell

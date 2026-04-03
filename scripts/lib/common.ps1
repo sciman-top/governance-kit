@@ -106,6 +106,10 @@ function Read-ProjectRulePolicy([string]$KitRoot) {
     defaults = [pscustomobject]@{
       allow_auto_fix = $true
       allow_rule_optimization = $true
+      allow_local_optimize_without_backflow = $false
+      max_autonomous_iterations = 3
+      max_repeated_failure_per_step = 2
+      stop_on_irreversible_risk = $true
       forbid_breaking_contract = $true
     }
     repos = @()
@@ -136,6 +140,18 @@ function Read-ProjectRulePolicy([string]$KitRoot) {
   }
   if ($null -eq $policy.defaults.PSObject.Properties['allow_rule_optimization']) {
     $policy.defaults | Add-Member -NotePropertyName allow_rule_optimization -NotePropertyValue $true
+  }
+  if ($null -eq $policy.defaults.PSObject.Properties['allow_local_optimize_without_backflow']) {
+    $policy.defaults | Add-Member -NotePropertyName allow_local_optimize_without_backflow -NotePropertyValue $false
+  }
+  if ($null -eq $policy.defaults.PSObject.Properties['max_autonomous_iterations']) {
+    $policy.defaults | Add-Member -NotePropertyName max_autonomous_iterations -NotePropertyValue 3
+  }
+  if ($null -eq $policy.defaults.PSObject.Properties['max_repeated_failure_per_step']) {
+    $policy.defaults | Add-Member -NotePropertyName max_repeated_failure_per_step -NotePropertyValue 2
+  }
+  if ($null -eq $policy.defaults.PSObject.Properties['stop_on_irreversible_risk']) {
+    $policy.defaults | Add-Member -NotePropertyName stop_on_irreversible_risk -NotePropertyValue $true
   }
   if ($null -eq $policy.defaults.PSObject.Properties['forbid_breaking_contract']) {
     $policy.defaults | Add-Member -NotePropertyName forbid_breaking_contract -NotePropertyValue $true
@@ -178,6 +194,10 @@ function Get-RepoAutomationPolicy([string]$KitRoot, [string]$Repo) {
 
   $effectiveAllowAutoFix = [bool]$policy.defaults.allow_auto_fix
   $effectiveAllowRuleOptimization = [bool]$policy.defaults.allow_rule_optimization
+  $effectiveAllowLocalOptimizeWithoutBackflow = [bool]$policy.defaults.allow_local_optimize_without_backflow
+  $effectiveMaxAutonomousIterations = [int]$policy.defaults.max_autonomous_iterations
+  $effectiveMaxRepeatedFailurePerStep = [int]$policy.defaults.max_repeated_failure_per_step
+  $effectiveStopOnIrreversibleRisk = [bool]$policy.defaults.stop_on_irreversible_risk
   $effectiveForbidBreakingContract = [bool]$policy.defaults.forbid_breaking_contract
 
   foreach ($entry in @($policy.repos)) {
@@ -204,6 +224,18 @@ function Get-RepoAutomationPolicy([string]$KitRoot, [string]$Repo) {
     if ($entry.PSObject.Properties['allow_rule_optimization']) {
       $effectiveAllowRuleOptimization = [bool]$entry.allow_rule_optimization
     }
+    if ($entry.PSObject.Properties['allow_local_optimize_without_backflow']) {
+      $effectiveAllowLocalOptimizeWithoutBackflow = [bool]$entry.allow_local_optimize_without_backflow
+    }
+    if ($entry.PSObject.Properties['max_autonomous_iterations']) {
+      $effectiveMaxAutonomousIterations = [int]$entry.max_autonomous_iterations
+    }
+    if ($entry.PSObject.Properties['max_repeated_failure_per_step']) {
+      $effectiveMaxRepeatedFailurePerStep = [int]$entry.max_repeated_failure_per_step
+    }
+    if ($entry.PSObject.Properties['stop_on_irreversible_risk']) {
+      $effectiveStopOnIrreversibleRisk = [bool]$entry.stop_on_irreversible_risk
+    }
     if ($entry.PSObject.Properties['forbid_breaking_contract']) {
       $effectiveForbidBreakingContract = [bool]$entry.forbid_breaking_contract
     }
@@ -214,6 +246,10 @@ function Get-RepoAutomationPolicy([string]$KitRoot, [string]$Repo) {
     allow_project_rules = [bool]$allowProjectRules
     allow_auto_fix = [bool]$effectiveAllowAutoFix
     allow_rule_optimization = [bool]$effectiveAllowRuleOptimization
+    allow_local_optimize_without_backflow = [bool]$effectiveAllowLocalOptimizeWithoutBackflow
+    max_autonomous_iterations = [int]$effectiveMaxAutonomousIterations
+    max_repeated_failure_per_step = [int]$effectiveMaxRepeatedFailurePerStep
+    stop_on_irreversible_risk = [bool]$effectiveStopOnIrreversibleRisk
     forbid_breaking_contract = [bool]$effectiveForbidBreakingContract
   }
 }

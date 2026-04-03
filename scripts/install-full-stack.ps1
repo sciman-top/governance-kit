@@ -27,21 +27,9 @@ if (-not (Test-Path -LiteralPath $commonPath)) {
 }
 . $commonPath
 $repoPolicy = Get-RepoAutomationPolicy -KitRoot $kitRoot -Repo $repo
-if ($AutoRemediate.IsPresent -and $NoAutoRemediate.IsPresent) {
-  throw "Conflicting arguments: use either -AutoRemediate or -NoAutoRemediate, not both."
+if ($AutoRemediate.IsPresent -or $NoAutoRemediate.IsPresent) {
+  Write-Host "[DEPRECATED] -AutoRemediate/-NoAutoRemediate are ignored. Remediation is handled by the outer AI session."
 }
-
-$requestedAutoRemediate = $false
-if ($AutoRemediate.IsPresent) {
-  $requestedAutoRemediate = $true
-} elseif ($NoAutoRemediate.IsPresent) {
-  $requestedAutoRemediate = $false
-} else {
-  # Default to autonomous remediation in safe/force modes.
-  $requestedAutoRemediate = $Mode -ne "plan"
-}
-
-$effectiveAutoRemediate = $requestedAutoRemediate -and [bool]$repoPolicy.allow_auto_fix
 
 function Run-Step {
   param(
@@ -62,12 +50,9 @@ if (-not (Test-Path -LiteralPath $bootstrapScript)) { throw "Missing script: $bo
 if (-not (Test-Path -LiteralPath $cycleScript)) { throw "Missing script: $cycleScript" }
 if (-not (Test-Path -LiteralPath $doctorScript)) { throw "Missing script: $doctorScript" }
 
-Write-Host ("[POLICY] allow_project_rules={0} allow_rule_optimization={1} allow_auto_fix={2} forbid_breaking_contract={3}" -f `
-  $repoPolicy.allow_project_rules, $repoPolicy.allow_rule_optimization, $repoPolicy.allow_auto_fix, $repoPolicy.forbid_breaking_contract)
-Write-Host ("[AUTO_REMEDIATE] requested={0} effective={1}" -f $requestedAutoRemediate, $effectiveAutoRemediate)
-if ($requestedAutoRemediate -and -not [bool]$repoPolicy.allow_auto_fix) {
-  Write-Host "[INFO] auto remediation requested but blocked by policy; continue without auto remediation."
-}
+Write-Host ("[POLICY] allow_project_rules={0} allow_rule_optimization={1} allow_local_optimize_without_backflow={2} max_autonomous_iterations={3} max_repeated_failure_per_step={4} stop_on_irreversible_risk={5} allow_auto_fix={6} forbid_breaking_contract={7}" -f `
+  $repoPolicy.allow_project_rules, $repoPolicy.allow_rule_optimization, $repoPolicy.allow_local_optimize_without_backflow, $repoPolicy.max_autonomous_iterations, $repoPolicy.max_repeated_failure_per_step, $repoPolicy.stop_on_irreversible_risk, $repoPolicy.allow_auto_fix, $repoPolicy.forbid_breaking_contract)
+Write-Host "[POLICY] remediation owner=outer-ai-session (script does not invoke model CLI for auto-fix)."
 
 Run-Step -Name "bootstrap-repo" -Action {
   $args = @(
@@ -103,12 +88,6 @@ if ($Mode -ne "plan") {
       "-Mode", "safe",
       "-ShowScope"
     )
-    if ($effectiveAutoRemediate) {
-      $cycleArgs += @("-AutoRemediate", "-MaxAutoFixAttempts", ([string]$MaxAutoFixAttempts))
-    } elseif ($NoAutoRemediate.IsPresent) {
-      $cycleArgs += "-NoAutoRemediate"
-    }
-
     if (-not $isRuleSeedReady) {
       Write-Host "[INFO] target repo does not contain AGENTS/CLAUDE/GEMINI yet; running cycle with -SkipOptimize -SkipBackflow for first-time bootstrap."
       $cycleArgs += @("-SkipOptimize", "-SkipBackflow")

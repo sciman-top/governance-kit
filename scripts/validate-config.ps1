@@ -47,6 +47,63 @@ try {
   throw "project-custom-files.json invalid JSON: $projectCustomPath"
 }
 
+if ($null -ne $projectRulePolicy.defaults) {
+  if ($null -eq $projectRulePolicy.defaults.PSObject.Properties['allow_auto_fix']) {
+    # backward-compatible: missing field uses runtime default
+  } elseif ($projectRulePolicy.defaults.allow_auto_fix -isnot [bool]) {
+    Write-Host "[CFG] project-rule-policy.defaults.allow_auto_fix must be boolean"
+    $fail++
+  }
+
+  if ($null -eq $projectRulePolicy.defaults.PSObject.Properties['allow_rule_optimization']) {
+    # backward-compatible: missing field uses runtime default
+  } elseif ($projectRulePolicy.defaults.allow_rule_optimization -isnot [bool]) {
+    Write-Host "[CFG] project-rule-policy.defaults.allow_rule_optimization must be boolean"
+    $fail++
+  }
+
+  if ($null -eq $projectRulePolicy.defaults.PSObject.Properties['allow_local_optimize_without_backflow']) {
+    # backward-compatible: missing field uses runtime default
+  } elseif ($projectRulePolicy.defaults.allow_local_optimize_without_backflow -isnot [bool]) {
+    Write-Host "[CFG] project-rule-policy.defaults.allow_local_optimize_without_backflow must be boolean"
+    $fail++
+  }
+
+  if ($null -ne $projectRulePolicy.defaults.PSObject.Properties['max_autonomous_iterations']) {
+    if ($projectRulePolicy.defaults.max_autonomous_iterations -isnot [int] -and $projectRulePolicy.defaults.max_autonomous_iterations -isnot [long]) {
+      Write-Host "[CFG] project-rule-policy.defaults.max_autonomous_iterations must be integer"
+      $fail++
+    } elseif ([int]$projectRulePolicy.defaults.max_autonomous_iterations -lt 1 -or [int]$projectRulePolicy.defaults.max_autonomous_iterations -gt 100) {
+      Write-Host "[CFG] project-rule-policy.defaults.max_autonomous_iterations out of range: expected 1..100"
+      $fail++
+    }
+  }
+
+  if ($null -ne $projectRulePolicy.defaults.PSObject.Properties['max_repeated_failure_per_step']) {
+    if ($projectRulePolicy.defaults.max_repeated_failure_per_step -isnot [int] -and $projectRulePolicy.defaults.max_repeated_failure_per_step -isnot [long]) {
+      Write-Host "[CFG] project-rule-policy.defaults.max_repeated_failure_per_step must be integer"
+      $fail++
+    } elseif ([int]$projectRulePolicy.defaults.max_repeated_failure_per_step -lt 1 -or [int]$projectRulePolicy.defaults.max_repeated_failure_per_step -gt 20) {
+      Write-Host "[CFG] project-rule-policy.defaults.max_repeated_failure_per_step out of range: expected 1..20"
+      $fail++
+    }
+  }
+
+  if ($null -ne $projectRulePolicy.defaults.PSObject.Properties['stop_on_irreversible_risk']) {
+    if ($projectRulePolicy.defaults.stop_on_irreversible_risk -isnot [bool]) {
+      Write-Host "[CFG] project-rule-policy.defaults.stop_on_irreversible_risk must be boolean"
+      $fail++
+    }
+  }
+
+  if ($null -eq $projectRulePolicy.defaults.PSObject.Properties['forbid_breaking_contract']) {
+    # backward-compatible: missing field uses runtime default
+  } elseif ($projectRulePolicy.defaults.forbid_breaking_contract -isnot [bool]) {
+    Write-Host "[CFG] project-rule-policy.defaults.forbid_breaking_contract must be boolean"
+    $fail++
+  }
+}
+
 $seenRepo = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::OrdinalIgnoreCase)
 foreach ($r in $repos) {
   $repo = Normalize-Repo ([string]$r)
@@ -123,6 +180,61 @@ foreach ($ar in $allowProjectRuleRepos) {
 
   if (-not $seenRepo.Contains($arNorm)) {
     Write-Host "[CFG] project-rule allow repo not in repositories.json: $arNorm"
+    $fail++
+  }
+}
+
+$policyRepos = if ($null -eq $projectRulePolicy.repos) { @() } else { @($projectRulePolicy.repos) }
+foreach ($pr in $policyRepos) {
+  if ($null -eq $pr) {
+    Write-Host "[CFG] project-rule-policy.repos entry is null"
+    $fail++
+    continue
+  }
+
+  $hasRepoKey = $pr.PSObject.Properties['repo'] -and -not [string]::IsNullOrWhiteSpace([string]$pr.repo)
+  $hasRepoNameKey = $pr.PSObject.Properties['repoName'] -and -not [string]::IsNullOrWhiteSpace([string]$pr.repoName)
+  if (-not $hasRepoKey -and -not $hasRepoNameKey) {
+    Write-Host "[CFG] project-rule-policy.repos entry must contain repo or repoName"
+    $fail++
+  }
+
+  if ($pr.PSObject.Properties['allow_auto_fix'] -and $pr.allow_auto_fix -isnot [bool]) {
+    Write-Host "[CFG] project-rule-policy.repos.allow_auto_fix must be boolean"
+    $fail++
+  }
+  if ($pr.PSObject.Properties['allow_rule_optimization'] -and $pr.allow_rule_optimization -isnot [bool]) {
+    Write-Host "[CFG] project-rule-policy.repos.allow_rule_optimization must be boolean"
+    $fail++
+  }
+  if ($pr.PSObject.Properties['allow_local_optimize_without_backflow'] -and $pr.allow_local_optimize_without_backflow -isnot [bool]) {
+    Write-Host "[CFG] project-rule-policy.repos.allow_local_optimize_without_backflow must be boolean"
+    $fail++
+  }
+  if ($pr.PSObject.Properties['max_autonomous_iterations']) {
+    if ($pr.max_autonomous_iterations -isnot [int] -and $pr.max_autonomous_iterations -isnot [long]) {
+      Write-Host "[CFG] project-rule-policy.repos.max_autonomous_iterations must be integer"
+      $fail++
+    } elseif ([int]$pr.max_autonomous_iterations -lt 1 -or [int]$pr.max_autonomous_iterations -gt 100) {
+      Write-Host "[CFG] project-rule-policy.repos.max_autonomous_iterations out of range: expected 1..100"
+      $fail++
+    }
+  }
+  if ($pr.PSObject.Properties['max_repeated_failure_per_step']) {
+    if ($pr.max_repeated_failure_per_step -isnot [int] -and $pr.max_repeated_failure_per_step -isnot [long]) {
+      Write-Host "[CFG] project-rule-policy.repos.max_repeated_failure_per_step must be integer"
+      $fail++
+    } elseif ([int]$pr.max_repeated_failure_per_step -lt 1 -or [int]$pr.max_repeated_failure_per_step -gt 20) {
+      Write-Host "[CFG] project-rule-policy.repos.max_repeated_failure_per_step out of range: expected 1..20"
+      $fail++
+    }
+  }
+  if ($pr.PSObject.Properties['stop_on_irreversible_risk'] -and $pr.stop_on_irreversible_risk -isnot [bool]) {
+    Write-Host "[CFG] project-rule-policy.repos.stop_on_irreversible_risk must be boolean"
+    $fail++
+  }
+  if ($pr.PSObject.Properties['forbid_breaking_contract'] -and $pr.forbid_breaking_contract -isnot [bool]) {
+    Write-Host "[CFG] project-rule-policy.repos.forbid_breaking_contract must be boolean"
     $fail++
   }
 }

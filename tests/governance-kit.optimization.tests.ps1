@@ -11,6 +11,16 @@ function Set-MinProjectRulePolicy {
 
   @{
     allowProjectRulesForRepos = @($RepoPath)
+    defaults = @{
+      allow_auto_fix = $true
+      allow_rule_optimization = $true
+      allow_local_optimize_without_backflow = $false
+      max_autonomous_iterations = 3
+      max_repeated_failure_per_step = 2
+      stop_on_irreversible_risk = $true
+      forbid_breaking_contract = $true
+    }
+    repos = @()
   } | ConvertTo-Json -Depth 4 | Set-Content -Path (Join-Path $ConfigDir "project-rule-policy.json") -Encoding UTF8
 }
 
@@ -317,6 +327,47 @@ exit 0
       $output = & powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $tmp "scripts\validate-config.ps1") 2>&1 | Out-String
       $LASTEXITCODE | should be 0
       $output | should match "Config validation passed"
+    } finally {
+      if (Test-Path $tmp) { Remove-Item -LiteralPath $tmp -Recurse -Force }
+    }
+  }
+
+  it "validate-config fails on invalid autonomous limit fields" {
+    $tmp = Join-Path $env:TEMP ("govkit-test-" + [guid]::NewGuid().ToString("N"))
+    try {
+      New-Item -ItemType Directory -Path (Join-Path $tmp "scripts\lib") -Force | Out-Null
+      New-Item -ItemType Directory -Path (Join-Path $tmp "scripts") -Force | Out-Null
+      New-Item -ItemType Directory -Path (Join-Path $tmp "config") -Force | Out-Null
+
+      Copy-Item -Path (Join-Path $repoRoot "scripts\lib\common.ps1") -Destination (Join-Path $tmp "scripts\lib\common.ps1") -Force
+      Copy-Item -Path (Join-Path $repoRoot "scripts\validate-config.ps1") -Destination (Join-Path $tmp "scripts\validate-config.ps1") -Force
+
+      @("E:/CODE/FakeRepo") | ConvertTo-Json -Depth 3 | Set-Content -Path (Join-Path $tmp "config\repositories.json") -Encoding UTF8
+      @(@{ source = "source/global/AGENTS.md"; target = "C:/Users/sciman/.codex/AGENTS.md" }) | ConvertTo-Json -Depth 4 | Set-Content -Path (Join-Path $tmp "config\targets.json") -Encoding UTF8
+      @{
+        default = @{ phase = "observe"; blockExpiredWaiver = $false }
+        repos = @()
+      } | ConvertTo-Json -Depth 6 | Set-Content -Path (Join-Path $tmp "config\rule-rollout.json") -Encoding UTF8
+      @{
+        allowProjectRulesForRepos = @("E:/CODE/FakeRepo")
+        defaults = @{
+          allow_auto_fix = $true
+          allow_rule_optimization = $true
+          max_autonomous_iterations = 0
+          max_repeated_failure_per_step = "two"
+          stop_on_irreversible_risk = $true
+          forbid_breaking_contract = $true
+        }
+      } | ConvertTo-Json -Depth 8 | Set-Content -Path (Join-Path $tmp "config\project-rule-policy.json") -Encoding UTF8
+      @{
+        default = @()
+        repos = @(@{ repoName = "FakeRepo"; files = @() })
+      } | ConvertTo-Json -Depth 6 | Set-Content -Path (Join-Path $tmp "config\project-custom-files.json") -Encoding UTF8
+
+      $output = & powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $tmp "scripts\validate-config.ps1") 2>&1 | Out-String
+      $LASTEXITCODE | should be 1
+      $output | should match "max_autonomous_iterations out of range"
+      $output | should match "max_repeated_failure_per_step must be integer"
     } finally {
       if (Test-Path $tmp) { Remove-Item -LiteralPath $tmp -Recurse -Force }
     }
@@ -890,6 +941,231 @@ exit 0
 
       (Test-Path (Join-Path $tmp "optimize.marker")) | should be $false
       (Test-Path (Join-Path $tmp "backflow.marker")) | should be $false
+    } finally {
+      if (Test-Path $tmp) { Remove-Item -LiteralPath $tmp -Recurse -Force }
+    }
+  }
+
+  it "run-project-governance-cycle allows local optimize without backflow when policy enabled" {
+    $tmp = Join-Path $env:TEMP ("govkit-test-" + [guid]::NewGuid().ToString("N"))
+    $repo = Join-Path $tmp "OutsideAllowListRepo"
+    try {
+      New-Item -ItemType Directory -Path (Join-Path $tmp "scripts\lib") -Force | Out-Null
+      New-Item -ItemType Directory -Path (Join-Path $tmp "scripts") -Force | Out-Null
+      New-Item -ItemType Directory -Path (Join-Path $tmp "config") -Force | Out-Null
+      New-Item -ItemType Directory -Path $repo -Force | Out-Null
+
+      Copy-Item -Path (Join-Path $repoRoot "scripts\run-project-governance-cycle.ps1") -Destination (Join-Path $tmp "scripts\run-project-governance-cycle.ps1") -Force
+      Copy-Item -Path (Join-Path $repoRoot "scripts\lib\common.ps1") -Destination (Join-Path $tmp "scripts\lib\common.ps1") -Force
+
+      @{
+        allowProjectRulesForRepos = @()
+        defaults = @{
+          allow_auto_fix = $true
+          allow_rule_optimization = $true
+          allow_local_optimize_without_backflow = $true
+          forbid_breaking_contract = $true
+        }
+      } | ConvertTo-Json -Depth 8 | Set-Content -Path (Join-Path $tmp "config\project-rule-policy.json") -Encoding UTF8
+      @{
+        default = @()
+        repos = @(
+          @{
+            repoName = "OutsideAllowListRepo"
+            files = @()
+          }
+        )
+      } | ConvertTo-Json -Depth 8 | Set-Content -Path (Join-Path $tmp "config\project-custom-files.json") -Encoding UTF8
+
+      Set-StubScript -Path (Join-Path $tmp "scripts\install.ps1")
+      Set-StubScript -Path (Join-Path $tmp "scripts\install-extras.ps1")
+      Set-StubScript -Path (Join-Path $tmp "scripts\doctor.ps1")
+      Set-StubScript -Path (Join-Path $tmp "scripts\analyze-repo-governance.ps1")
+      @"
+param()
+Set-Content -Path "$tmp\optimize.marker" -Value "called" -Encoding UTF8
+exit 0
+"@ | Set-Content -Path (Join-Path $tmp "scripts\optimize-project-rules.ps1") -Encoding UTF8
+      @"
+param()
+Set-Content -Path "$tmp\backflow.marker" -Value "called" -Encoding UTF8
+exit 0
+"@ | Set-Content -Path (Join-Path $tmp "scripts\backflow-project-rules.ps1") -Encoding UTF8
+      Set-StubScript -Path (Join-Path $tmp "scripts\suggest-project-custom-files.ps1")
+
+      & powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $tmp "scripts\run-project-governance-cycle.ps1") -RepoPath $repo -RepoName OutsideAllowListRepo -Mode safe | Out-Null
+      if ($LASTEXITCODE -ne 0) { throw "run-project-governance-cycle.ps1 failed with exit code $LASTEXITCODE" }
+
+      (Test-Path (Join-Path $tmp "optimize.marker")) | should be $true
+      (Test-Path (Join-Path $tmp "backflow.marker")) | should be $false
+    } finally {
+      if (Test-Path $tmp) { Remove-Item -LiteralPath $tmp -Recurse -Force }
+    }
+  }
+
+  it "validate-failure-context accepts complete failure context JSON" {
+    $tmp = Join-Path $env:TEMP ("govkit-test-" + [guid]::NewGuid().ToString("N"))
+    try {
+      New-Item -ItemType Directory -Path (Join-Path $tmp "scripts") -Force | Out-Null
+      Copy-Item -Path (Join-Path $repoRoot "scripts\validate-failure-context.ps1") -Destination (Join-Path $tmp "scripts\validate-failure-context.ps1") -Force
+
+      $json = @{
+        failed_step = "contract.verify"
+        command = "powershell -File scripts/run-project-governance-cycle.ps1"
+        exit_code = 1
+        log_path = "E:/CODE/repo/.codex/logs/failure.log"
+        repo_path = "E:/CODE/repo"
+        gate_order = "build -> test -> contract/invariant -> hotspot"
+        retry_command = "powershell -File scripts/run-project-governance-cycle.ps1"
+        policy_snapshot = @{
+          allow_project_rules = $false
+        }
+        remediation_owner = "outer-ai-session"
+        timestamp = "2026-04-03T12:00:00+08:00"
+      } | ConvertTo-Json -Depth 6 -Compress
+      "[FAILURE_CONTEXT_JSON] $json" | Set-Content -Path (Join-Path $tmp "failure.log") -Encoding UTF8
+      $output = & powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $tmp "scripts\validate-failure-context.ps1") -LogPath (Join-Path $tmp "failure.log") 2>&1 | Out-String
+      $LASTEXITCODE | should be 0
+      $output | should match "validation passed"
+    } finally {
+      if (Test-Path $tmp) { Remove-Item -LiteralPath $tmp -Recurse -Force }
+    }
+  }
+
+  it "validate-failure-context rejects missing required fields" {
+    $tmp = Join-Path $env:TEMP ("govkit-test-" + [guid]::NewGuid().ToString("N"))
+    try {
+      New-Item -ItemType Directory -Path (Join-Path $tmp "scripts") -Force | Out-Null
+      Copy-Item -Path (Join-Path $repoRoot "scripts\validate-failure-context.ps1") -Destination (Join-Path $tmp "scripts\validate-failure-context.ps1") -Force
+
+      $json = @{
+        failed_step = "contract.verify"
+        exit_code = 1
+        remediation_owner = "outer-ai-session"
+      } | ConvertTo-Json -Depth 4 -Compress
+      "[FAILURE_CONTEXT_JSON] $json" | Set-Content -Path (Join-Path $tmp "failure.log") -Encoding UTF8
+      $output = & powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $tmp "scripts\validate-failure-context.ps1") -LogPath (Join-Path $tmp "failure.log") 2>&1 | Out-String
+      $LASTEXITCODE | should be 1
+      $output | should match "missing_required_fields"
+    } finally {
+      if (Test-Path $tmp) { Remove-Item -LiteralPath $tmp -Recurse -Force }
+    }
+  }
+
+  it "run-safe-autopilot caps cycles by policy max_autonomous_iterations" {
+    $tmp = Join-Path $env:TEMP ("govkit-test-" + [guid]::NewGuid().ToString("N"))
+    try {
+      New-Item -ItemType Directory -Path (Join-Path $tmp "scripts\lib") -Force | Out-Null
+      New-Item -ItemType Directory -Path (Join-Path $tmp "scripts\automation") -Force | Out-Null
+      New-Item -ItemType Directory -Path (Join-Path $tmp "tests") -Force | Out-Null
+      New-Item -ItemType Directory -Path (Join-Path $tmp "config") -Force | Out-Null
+
+      Copy-Item -Path (Join-Path $repoRoot "scripts\automation\run-safe-autopilot.ps1") -Destination (Join-Path $tmp "scripts\automation\run-safe-autopilot.ps1") -Force
+      Copy-Item -Path (Join-Path $repoRoot "scripts\lib\common.ps1") -Destination (Join-Path $tmp "scripts\lib\common.ps1") -Force
+
+      @{
+        allowProjectRulesForRepos = @()
+        defaults = @{
+          allow_auto_fix = $true
+          allow_rule_optimization = $true
+          allow_local_optimize_without_backflow = $false
+          max_autonomous_iterations = 2
+          max_repeated_failure_per_step = 2
+          stop_on_irreversible_risk = $true
+          forbid_breaking_contract = $true
+        }
+      } | ConvertTo-Json -Depth 8 | Set-Content -Path (Join-Path $tmp "config\project-rule-policy.json") -Encoding UTF8
+
+      Set-StubScript -Path (Join-Path $tmp "scripts\verify-kit.ps1")
+      Set-StubScript -Path (Join-Path $tmp "tests\governance-kit.optimization.tests.ps1")
+      Set-StubScript -Path (Join-Path $tmp "scripts\validate-config.ps1")
+      Set-StubScript -Path (Join-Path $tmp "scripts\verify.ps1")
+      Set-StubScript -Path (Join-Path $tmp "scripts\doctor.ps1")
+
+      $output = & powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $tmp "scripts\automation\run-safe-autopilot.ps1") -RepoRoot $tmp -MaxCycles 5 2>&1 | Out-String
+      $LASTEXITCODE | should be 0
+      $output | should match "capped to policy"
+      $output | should match "=== cycle 2 / 2 ==="
+      $output | should not match "=== cycle 3 /"
+    } finally {
+      if (Test-Path $tmp) { Remove-Item -LiteralPath $tmp -Recurse -Force }
+    }
+  }
+
+  it "run-safe-autopilot stops at repeated failure boundary with failure context" {
+    $tmp = Join-Path $env:TEMP ("govkit-test-" + [guid]::NewGuid().ToString("N"))
+    try {
+      New-Item -ItemType Directory -Path (Join-Path $tmp "scripts\lib") -Force | Out-Null
+      New-Item -ItemType Directory -Path (Join-Path $tmp "scripts\automation") -Force | Out-Null
+      New-Item -ItemType Directory -Path (Join-Path $tmp "tests") -Force | Out-Null
+      New-Item -ItemType Directory -Path (Join-Path $tmp "config") -Force | Out-Null
+
+      Copy-Item -Path (Join-Path $repoRoot "scripts\automation\run-safe-autopilot.ps1") -Destination (Join-Path $tmp "scripts\automation\run-safe-autopilot.ps1") -Force
+      Copy-Item -Path (Join-Path $repoRoot "scripts\lib\common.ps1") -Destination (Join-Path $tmp "scripts\lib\common.ps1") -Force
+
+      @{
+        allowProjectRulesForRepos = @()
+        defaults = @{
+          allow_auto_fix = $true
+          allow_rule_optimization = $true
+          allow_local_optimize_without_backflow = $false
+          max_autonomous_iterations = 5
+          max_repeated_failure_per_step = 2
+          stop_on_irreversible_risk = $false
+          forbid_breaking_contract = $true
+        }
+      } | ConvertTo-Json -Depth 8 | Set-Content -Path (Join-Path $tmp "config\project-rule-policy.json") -Encoding UTF8
+
+      Set-StubScript -Path (Join-Path $tmp "scripts\verify-kit.ps1") -Message "fail" -ExitCode 1
+      Set-StubScript -Path (Join-Path $tmp "tests\governance-kit.optimization.tests.ps1")
+      Set-StubScript -Path (Join-Path $tmp "scripts\validate-config.ps1")
+      Set-StubScript -Path (Join-Path $tmp "scripts\verify.ps1")
+      Set-StubScript -Path (Join-Path $tmp "scripts\doctor.ps1")
+
+      $output = & powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $tmp "scripts\automation\run-safe-autopilot.ps1") -RepoRoot $tmp -MaxCycles 5 2>&1 | Out-String
+      $LASTEXITCODE | should be 1
+      $output | should match "AUTO-RETRY"
+      $output | should match "REPEATED_FAILURE_LIMIT"
+      $output | should match "\[FAILURE_CONTEXT_JSON\]"
+    } finally {
+      if (Test-Path $tmp) { Remove-Item -LiteralPath $tmp -Recurse -Force }
+    }
+  }
+
+  it "run-safe-autopilot stops immediately on irreversible risk boundary" {
+    $tmp = Join-Path $env:TEMP ("govkit-test-" + [guid]::NewGuid().ToString("N"))
+    try {
+      New-Item -ItemType Directory -Path (Join-Path $tmp "scripts\lib") -Force | Out-Null
+      New-Item -ItemType Directory -Path (Join-Path $tmp "scripts\automation") -Force | Out-Null
+      New-Item -ItemType Directory -Path (Join-Path $tmp "tests") -Force | Out-Null
+      New-Item -ItemType Directory -Path (Join-Path $tmp "config") -Force | Out-Null
+
+      Copy-Item -Path (Join-Path $repoRoot "scripts\automation\run-safe-autopilot.ps1") -Destination (Join-Path $tmp "scripts\automation\run-safe-autopilot.ps1") -Force
+      Copy-Item -Path (Join-Path $repoRoot "scripts\lib\common.ps1") -Destination (Join-Path $tmp "scripts\lib\common.ps1") -Force
+
+      @{
+        allowProjectRulesForRepos = @()
+        defaults = @{
+          allow_auto_fix = $true
+          allow_rule_optimization = $true
+          allow_local_optimize_without_backflow = $false
+          max_autonomous_iterations = 5
+          max_repeated_failure_per_step = 5
+          stop_on_irreversible_risk = $true
+          forbid_breaking_contract = $true
+        }
+      } | ConvertTo-Json -Depth 8 | Set-Content -Path (Join-Path $tmp "config\project-rule-policy.json") -Encoding UTF8
+
+      Set-StubScript -Path (Join-Path $tmp "scripts\verify-kit.ps1")
+      Set-StubScript -Path (Join-Path $tmp "tests\governance-kit.optimization.tests.ps1")
+      Set-StubScript -Path (Join-Path $tmp "scripts\validate-config.ps1") -Message "fail" -ExitCode 1
+      Set-StubScript -Path (Join-Path $tmp "scripts\verify.ps1")
+      Set-StubScript -Path (Join-Path $tmp "scripts\doctor.ps1")
+
+      $output = & powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $tmp "scripts\automation\run-safe-autopilot.ps1") -RepoRoot $tmp -MaxCycles 5 2>&1 | Out-String
+      $LASTEXITCODE | should be 1
+      $output | should match "IRREVERSIBLE_RISK_BOUNDARY"
+      $output | should match "\[FAILURE_CONTEXT_JSON\]"
     } finally {
       if (Test-Path $tmp) { Remove-Item -LiteralPath $tmp -Recurse -Force }
     }

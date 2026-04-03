@@ -7,6 +7,10 @@
   "defaults": {
     "allow_auto_fix": true,
     "allow_rule_optimization": true,
+    "allow_local_optimize_without_backflow": false,
+    "max_autonomous_iterations": 3,
+    "max_repeated_failure_per_step": 2,
+    "stop_on_irreversible_risk": true,
     "forbid_breaking_contract": true
   },
   "repos": []
