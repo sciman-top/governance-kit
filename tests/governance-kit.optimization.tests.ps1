@@ -1128,6 +1128,88 @@ exit 0
     }
   }
 
+  it "run-project-governance-cycle blocks when cycle_complete clean-checkpoint is dirty" {
+    $tmp = Join-Path $env:TEMP ("govkit-test-" + [guid]::NewGuid().ToString("N"))
+    $repo = Join-Path $tmp "DirtyRepo"
+    try {
+      New-Item -ItemType Directory -Path (Join-Path $tmp "scripts\lib") -Force | Out-Null
+      New-Item -ItemType Directory -Path (Join-Path $tmp "scripts") -Force | Out-Null
+      New-Item -ItemType Directory -Path (Join-Path $tmp "config") -Force | Out-Null
+      New-Item -ItemType Directory -Path $repo -Force | Out-Null
+
+      Copy-Item -Path (Join-Path $repoRoot "scripts\run-project-governance-cycle.ps1") -Destination (Join-Path $tmp "scripts\run-project-governance-cycle.ps1") -Force
+      Copy-Item -Path (Join-Path $repoRoot "scripts\lib\common.ps1") -Destination (Join-Path $tmp "scripts\lib\common.ps1") -Force
+
+      & git -C $repo init | Out-Null
+      if ($LASTEXITCODE -ne 0) { throw "git init failed" }
+      & git -C $repo config user.name "governance-bot" | Out-Null
+      if ($LASTEXITCODE -ne 0) { throw "git config user.name failed" }
+      & git -C $repo config user.email "governance-bot@example.com" | Out-Null
+      if ($LASTEXITCODE -ne 0) { throw "git config user.email failed" }
+
+      Set-Content -Path (Join-Path $repo "README.md") -Value "seed" -Encoding UTF8
+      & git -C $repo add -A | Out-Null
+      & git -C $repo commit -m "初始化提交" | Out-Null
+      if ($LASTEXITCODE -ne 0) { throw "initial git commit failed" }
+
+      @(
+        @{
+          allowProjectRulesForRepos = @($repo)
+          defaults = @{
+            allow_auto_fix = $true
+            allow_rule_optimization = $true
+            allow_local_optimize_without_backflow = $false
+            max_autonomous_iterations = 3
+            max_repeated_failure_per_step = 2
+            stop_on_irreversible_risk = $true
+            forbid_breaking_contract = $true
+            auto_commit_enabled = $false
+            auto_commit_on_checkpoints = @()
+            auto_commit_message_prefix = "治理里程碑自动提交"
+          }
+          repos = @(
+            @{
+              repoName = "DirtyRepo"
+              auto_commit_enabled = $false
+              auto_commit_on_checkpoints = @()
+              auto_commit_message_prefix = "治理里程碑自动提交"
+            }
+          )
+        }
+      )[0] | ConvertTo-Json -Depth 8 | Set-Content -Path (Join-Path $tmp "config\project-rule-policy.json") -Encoding UTF8
+
+      @(
+        @{
+          default = @()
+          repos = @(
+            @{
+              repoName = "DirtyRepo"
+              files = @()
+            }
+          )
+        }
+      )[0] | ConvertTo-Json -Depth 8 | Set-Content -Path (Join-Path $tmp "config\project-custom-files.json") -Encoding UTF8
+
+      Set-StubScript -Path (Join-Path $tmp "scripts\install.ps1")
+      Set-StubScript -Path (Join-Path $tmp "scripts\install-extras.ps1")
+      Set-StubScript -Path (Join-Path $tmp "scripts\doctor.ps1")
+      Set-StubScript -Path (Join-Path $tmp "scripts\analyze-repo-governance.ps1")
+      Set-StubScript -Path (Join-Path $tmp "scripts\optimize-project-rules.ps1")
+      @"
+param()
+Set-Content -Path "$repo\dirty.txt" -Value "changed" -Encoding UTF8
+exit 0
+"@ | Set-Content -Path (Join-Path $tmp "scripts\backflow-project-rules.ps1") -Encoding UTF8
+      Set-StubScript -Path (Join-Path $tmp "scripts\suggest-project-custom-files.ps1")
+
+      $output = & powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $tmp "scripts\run-project-governance-cycle.ps1") -RepoPath $repo -RepoName DirtyRepo -Mode safe -SkipOptimize 2>&1 | Out-String
+      $LASTEXITCODE | should be 1
+      $output | should match "clean checkpoint failed at 'cycle_complete'"
+    } finally {
+      if (Test-Path $tmp) { Remove-Item -LiteralPath $tmp -Recurse -Force }
+    }
+  }
+
   it "validate-failure-context accepts complete failure context JSON" {
     $tmp = Join-Path $env:TEMP ("govkit-test-" + [guid]::NewGuid().ToString("N"))
     try {

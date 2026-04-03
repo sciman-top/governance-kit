@@ -189,6 +189,24 @@ function Invoke-MilestoneAutoCommit([string]$Checkpoint) {
   Write-Host "[AUTO_COMMIT] committed and clean: checkpoint=$Checkpoint"
 }
 
+function Assert-CleanCheckpoint([string]$Checkpoint) {
+  if ($Mode -ne "safe") { return }
+  if (-not (Test-Path -LiteralPath (Join-Path $repo ".git"))) { return }
+
+  $status = (& git -C $repo status --porcelain)
+  if ($LASTEXITCODE -ne 0) {
+    throw "clean checkpoint failed to read git status at checkpoint '$Checkpoint'."
+  }
+
+  $statusLines = @($status)
+  if ($statusLines.Count -gt 0) {
+    $preview = (@($statusLines | Select-Object -First 20) -join "; ")
+    throw ("clean checkpoint failed at '{0}': working tree is not clean. dirty_entries={1}. preview={2}" -f $Checkpoint, $statusLines.Count, $preview)
+  }
+
+  Write-Host "[ASSERT] clean checkpoint passed: checkpoint=$Checkpoint"
+}
+
 if (-not $SkipInstall) {
   $installRetry = "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/run-project-governance-cycle.ps1 -RepoPath `"$($repo -replace '\\','/')`" -RepoName `"$RepoName`" -Mode $Mode"
   Step-OrFail "install" $installRetry {
@@ -245,5 +263,6 @@ if ($Mode -eq "safe") {
 }
 
 Invoke-MilestoneAutoCommit -Checkpoint "cycle_complete"
+Assert-CleanCheckpoint -Checkpoint "cycle_complete"
 
 Write-Host "run-project-governance-cycle completed: repo=$($repo -replace '\\','/') mode=$Mode"
