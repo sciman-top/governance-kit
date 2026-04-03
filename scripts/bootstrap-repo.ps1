@@ -12,6 +12,13 @@ $commonPath = Join-Path $PSScriptRoot "lib\common.ps1"
 . $commonPath
 Write-ModeRisk -ScriptName "bootstrap-repo.ps1" -Mode $Mode
 $scriptRoot = Split-Path -Parent $MyInvocation.MyCommand.Path
+$kitRoot = Split-Path -Parent $scriptRoot
+$repoResolved = Resolve-Path -LiteralPath $RepoPath -ErrorAction SilentlyContinue
+if ($null -eq $repoResolved -or -not (Test-Path -LiteralPath $repoResolved.Path -PathType Container)) {
+  throw "Repo path not found: $RepoPath"
+}
+$repoFullPath = [System.IO.Path]::GetFullPath($repoResolved.Path)
+$skipRepoOverwriteProtection = $repoFullPath.Equals($kitRoot, [System.StringComparison]::OrdinalIgnoreCase)
 
 function Run-Step([string]$Name, [scriptblock]$Action) {
   Write-Host "=== $Name ==="
@@ -33,8 +40,10 @@ Run-Step "install-extras" { Invoke-ChildScript -ScriptPath (Join-Path $scriptRoo
 
 $installArgs = @('-Mode', $Mode)
 if ($NoOverwriteRules) { $installArgs += '-NoOverwriteRules' }
-if ($Mode -ne "force") {
+if ($Mode -ne "force" -and -not $skipRepoOverwriteProtection) {
   $installArgs += @('-NoOverwriteUnderRepo', $RepoPath)
+} elseif ($skipRepoOverwriteProtection) {
+  Write-Host "[INFO] bootstrap target is governance-kit itself; skip -NoOverwriteUnderRepo self-protection."
 }
 Run-Step "install" { Invoke-ChildScript -ScriptPath (Join-Path $scriptRoot 'install.ps1') -ScriptArgs $installArgs }
 if ($Mode -eq "plan") {

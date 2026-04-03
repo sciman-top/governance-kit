@@ -940,6 +940,47 @@ exit 0
     }
   }
 
+  it "bootstrap-repo skips no-overwrite self-protection for governance-kit itself" {
+    $tmp = Join-Path $env:TEMP ("govkit-test-" + [guid]::NewGuid().ToString("N"))
+    try {
+      New-Item -ItemType Directory -Path (Join-Path $tmp "scripts\lib") -Force | Out-Null
+      New-Item -ItemType Directory -Path (Join-Path $tmp "scripts") -Force | Out-Null
+
+      Copy-Item -Path (Join-Path $repoRoot "scripts\bootstrap-repo.ps1") -Destination (Join-Path $tmp "scripts\bootstrap-repo.ps1") -Force
+      Copy-Item -Path (Join-Path $repoRoot "scripts\lib\common.ps1") -Destination (Join-Path $tmp "scripts\lib\common.ps1") -Force
+
+      @'
+param()
+exit 0
+'@ | Set-Content -Path (Join-Path $tmp "scripts\add-repo.ps1") -Encoding UTF8
+      @'
+param()
+exit 0
+'@ | Set-Content -Path (Join-Path $tmp "scripts\merge-rules.ps1") -Encoding UTF8
+      @'
+param()
+exit 0
+'@ | Set-Content -Path (Join-Path $tmp "scripts\install-extras.ps1") -Encoding UTF8
+      @'
+param()
+exit 0
+'@ | Set-Content -Path (Join-Path $tmp "scripts\doctor.ps1") -Encoding UTF8
+      @"
+param([string[]]`$Args)
+Set-Content -Path "$tmp\install-args.txt" -Value ([string]::Join(' ', `$Args)) -Encoding UTF8
+exit 0
+"@ | Set-Content -Path (Join-Path $tmp "scripts\install.ps1") -Encoding UTF8
+
+      & powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $tmp "scripts\bootstrap-repo.ps1") -RepoPath $tmp -Mode safe -SkipInstallGlobalGit | Out-Null
+      if ($LASTEXITCODE -ne 0) { throw "bootstrap-repo.ps1 failed with exit code $LASTEXITCODE" }
+
+      $installArgs = Get-Content -Path (Join-Path $tmp "install-args.txt") -Raw
+      $installArgs | should not match "NoOverwriteUnderRepo"
+    } finally {
+      if (Test-Path $tmp) { Remove-Item -LiteralPath $tmp -Recurse -Force }
+    }
+  }
+
   it "run-project-governance-cycle auto-skips optimize and backflow for repos outside allow-list" {
     $tmp = Join-Path $env:TEMP ("govkit-test-" + [guid]::NewGuid().ToString("N"))
     $repo = Join-Path $tmp "OutsideAllowListRepo"
@@ -1210,6 +1251,85 @@ exit 0
     }
   }
 
+  it "run-project-governance-cycle blocks early when repo is dirty before safe cycle starts" {
+    $tmp = Join-Path $env:TEMP ("govkit-test-" + [guid]::NewGuid().ToString("N"))
+    $repo = Join-Path $tmp "PreflightDirtyRepo"
+    try {
+      New-Item -ItemType Directory -Path (Join-Path $tmp "scripts\lib") -Force | Out-Null
+      New-Item -ItemType Directory -Path (Join-Path $tmp "scripts") -Force | Out-Null
+      New-Item -ItemType Directory -Path (Join-Path $tmp "config") -Force | Out-Null
+      New-Item -ItemType Directory -Path $repo -Force | Out-Null
+
+      Copy-Item -Path (Join-Path $repoRoot "scripts\run-project-governance-cycle.ps1") -Destination (Join-Path $tmp "scripts\run-project-governance-cycle.ps1") -Force
+      Copy-Item -Path (Join-Path $repoRoot "scripts\lib\common.ps1") -Destination (Join-Path $tmp "scripts\lib\common.ps1") -Force
+
+      & git -C $repo init | Out-Null
+      if ($LASTEXITCODE -ne 0) { throw "git init failed" }
+      & git -C $repo config user.name "governance-bot" | Out-Null
+      if ($LASTEXITCODE -ne 0) { throw "git config user.name failed" }
+      & git -C $repo config user.email "governance-bot@example.com" | Out-Null
+      if ($LASTEXITCODE -ne 0) { throw "git config user.email failed" }
+
+      Set-Content -Path (Join-Path $repo "README.md") -Value "seed" -Encoding UTF8
+      & git -C $repo add -A | Out-Null
+      & git -C $repo commit -m "初始化提交" | Out-Null
+      if ($LASTEXITCODE -ne 0) { throw "initial git commit failed" }
+      Set-Content -Path (Join-Path $repo "README.md") -Value "dirty-before-cycle" -Encoding UTF8
+
+      @(
+        @{
+          allowProjectRulesForRepos = @($repo)
+          defaults = @{
+            allow_auto_fix = $true
+            allow_rule_optimization = $true
+            allow_local_optimize_without_backflow = $false
+            max_autonomous_iterations = 3
+            max_repeated_failure_per_step = 2
+            stop_on_irreversible_risk = $true
+            forbid_breaking_contract = $true
+            auto_commit_enabled = $true
+            auto_commit_on_checkpoints = @("after_backflow")
+            auto_commit_message_prefix = "治理里程碑自动提交"
+          }
+          repos = @(
+            @{
+              repoName = "PreflightDirtyRepo"
+              auto_commit_enabled = $true
+              auto_commit_on_checkpoints = @("after_backflow")
+              auto_commit_message_prefix = "治理里程碑自动提交"
+            }
+          )
+        }
+      )[0] | ConvertTo-Json -Depth 8 | Set-Content -Path (Join-Path $tmp "config\project-rule-policy.json") -Encoding UTF8
+
+      @(
+        @{
+          default = @()
+          repos = @(
+            @{
+              repoName = "PreflightDirtyRepo"
+              files = @()
+            }
+          )
+        }
+      )[0] | ConvertTo-Json -Depth 8 | Set-Content -Path (Join-Path $tmp "config\project-custom-files.json") -Encoding UTF8
+
+      Set-StubScript -Path (Join-Path $tmp "scripts\install.ps1")
+      Set-StubScript -Path (Join-Path $tmp "scripts\install-extras.ps1")
+      Set-StubScript -Path (Join-Path $tmp "scripts\doctor.ps1")
+      Set-StubScript -Path (Join-Path $tmp "scripts\analyze-repo-governance.ps1")
+      Set-StubScript -Path (Join-Path $tmp "scripts\optimize-project-rules.ps1")
+      Set-StubScript -Path (Join-Path $tmp "scripts\backflow-project-rules.ps1")
+      Set-StubScript -Path (Join-Path $tmp "scripts\suggest-project-custom-files.ps1")
+
+      $output = & powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $tmp "scripts\run-project-governance-cycle.ps1") -RepoPath $repo -RepoName PreflightDirtyRepo -Mode safe -SkipOptimize 2>&1 | Out-String
+      $LASTEXITCODE | should be 1
+      $output | should match "preflight failed: repo has pre-existing dirty entries"
+    } finally {
+      if (Test-Path $tmp) { Remove-Item -LiteralPath $tmp -Recurse -Force }
+    }
+  }
+
   it "validate-failure-context accepts complete failure context JSON" {
     $tmp = Join-Path $env:TEMP ("govkit-test-" + [guid]::NewGuid().ToString("N"))
     try {
@@ -1228,6 +1348,8 @@ exit 0
           allow_project_rules = $false
         }
         remediation_owner = "outer-ai-session"
+        remediation_scope = "governance-kit-first"
+        rerun_owner = "outer-ai-session"
         timestamp = "2026-04-03T12:00:00+08:00"
       } | ConvertTo-Json -Depth 6 -Compress
       "[FAILURE_CONTEXT_JSON] $json" | Set-Content -Path (Join-Path $tmp "failure.log") -Encoding UTF8
@@ -1334,6 +1456,7 @@ exit 0
       $output | should match "AUTO-RETRY"
       $output | should match "REPEATED_FAILURE_LIMIT"
       $output | should match "\[FAILURE_CONTEXT_JSON\]"
+      $output | should match "governance-kit-first"
     } finally {
       if (Test-Path $tmp) { Remove-Item -LiteralPath $tmp -Recurse -Force }
     }
@@ -1373,6 +1496,7 @@ exit 0
       $LASTEXITCODE | should be 1
       $output | should match "IRREVERSIBLE_RISK_BOUNDARY"
       $output | should match "\[FAILURE_CONTEXT_JSON\]"
+      $output | should match "governance-kit-first"
     } finally {
       if (Test-Path $tmp) { Remove-Item -LiteralPath $tmp -Recurse -Force }
     }

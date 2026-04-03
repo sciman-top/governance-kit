@@ -122,5 +122,21 @@
     {
         "source":  "source/project/ClassroomToolkit/custom/scripts/governance/run-target-autopilot.ps1",
         "target":  "E:/CODE/ClassroomToolkit/scripts/governance/run-target-autopilot.ps1"
+    },
+    {
+        "source":  "source/project/_common/custom/scripts/governance/run-project-governance-cycle.ps1",
+        "target":  "E:/CODE/skills-manager/scripts/governance/run-project-governance-cycle.ps1"
+    },
+    {
+        "source":  "source/project/_common/custom/scripts/governance/run-target-autopilot.ps1",
+        "target":  "E:/CODE/skills-manager/scripts/governance/run-target-autopilot.ps1"
+    },
+    {
+        "source":  "source/project/_common/custom/scripts/governance/run-project-governance-cycle.ps1",
+        "target":  "E:/CODE/governance-kit/scripts/governance/run-project-governance-cycle.ps1"
+    },
+    {
+        "source":  "source/project/_common/custom/scripts/governance/run-target-autopilot.ps1",
+        "target":  "E:/CODE/governance-kit/scripts/governance/run-target-autopilot.ps1"
     }
 ]

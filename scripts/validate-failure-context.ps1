@@ -48,6 +48,8 @@ $required = @(
   "retry_command",
   "policy_snapshot",
   "remediation_owner",
+  "remediation_scope",
+  "rerun_owner",
   "timestamp"
 )
 
@@ -73,6 +75,12 @@ if ($missing.Count -gt 0) {
 }
 if ($obj.remediation_owner -ne "outer-ai-session") {
   $issues += "remediation_owner must be outer-ai-session"
+}
+if ($obj.remediation_scope -ne "governance-kit-first") {
+  $issues += "remediation_scope must be governance-kit-first"
+}
+if ($obj.rerun_owner -ne "outer-ai-session") {
+  $issues += "rerun_owner must be outer-ai-session"
 }
 if ($obj.gate_order -ne "build -> test -> contract/invariant -> hotspot") {
   $issues += "gate_order must match fixed order"

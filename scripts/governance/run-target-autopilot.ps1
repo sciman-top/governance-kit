@@ -1,0 +1,178 @@
+param(
+  [string]$RepoRoot = ".",
+  [string]$GovernanceKitRoot = "",
+  [string]$CodexCommand = "codex",
+  [int]$MaxCycles = 20,
+  [int]$MaxFixAttemptsPerGate = 2,
+  [int]$MaxWorkIterationsPerCycle = 1,
+  [switch]$SkipWorkIteration,
+  [switch]$DryRun
+)
+
+Set-StrictMode -Version Latest
+$ErrorActionPreference = "Stop"
+
+$repoPath = (Resolve-Path -LiteralPath $RepoRoot).Path
+
+function Resolve-KitRoot {
+  param([string]$ProvidedPath)
+
+  if (-not [string]::IsNullOrWhiteSpace($ProvidedPath)) {
+    $resolved = Resolve-Path -LiteralPath $ProvidedPath -ErrorAction SilentlyContinue
+    if ($null -ne $resolved) { return $resolved.Path }
+    throw "Governance kit path not found: $ProvidedPath"
+  }
+
+  $gitValue = ""
+  try {
+    $gitValue = (& git -C $repoPath config --local --get governance.kitRoot 2>$null)
+  }
+  catch {
+    $gitValue = ""
+  }
+
+  if (-not [string]::IsNullOrWhiteSpace($gitValue)) {
+    $resolved = Resolve-Path -LiteralPath ($gitValue -replace '/', '\\') -ErrorAction SilentlyContinue
+    if ($null -ne $resolved) { return $resolved.Path }
+  }
+
+  if (-not [string]::IsNullOrWhiteSpace($env:GOVERNANCE_KIT_ROOT)) {
+    $resolved = Resolve-Path -LiteralPath $env:GOVERNANCE_KIT_ROOT -ErrorAction SilentlyContinue
+    if ($null -ne $resolved) { return $resolved.Path }
+  }
+
+  throw "Cannot resolve governance-kit root. Set git config governance.kitRoot or pass -GovernanceKitRoot."
+}
+
+function Assert-Command {
+  param([string]$Name)
+
+  if (-not (Get-Command $Name -ErrorAction SilentlyContinue)) {
+    throw "Required command not found: $Name"
+  }
+}
+
+function Invoke-LoggedCommand {
+  param(
+    [Parameter(Mandatory = $true)][string]$Name,
+    [Parameter(Mandatory = $true)][scriptblock]$Action,
+    [Parameter(Mandatory = $true)][string]$WorkDir,
+    [Parameter(Mandatory = $true)][string]$LogRoot
+  )
+
+  $safeName = ($Name -replace '[^a-zA-Z0-9._-]', '_')
+  $logPath = Join-Path $LogRoot ((Get-Date -Format "yyyyMMdd-HHmmss") + "-" + $safeName + ".log")
+
+  Push-Location $WorkDir
+  try {
+    & $Action *>&1 | Tee-Object -LiteralPath $logPath | Out-Host
+    $exitCode = $LASTEXITCODE
+  }
+  finally {
+    Pop-Location
+  }
+
+  if ($null -eq $exitCode) { $exitCode = 0 }
+
+  return [pscustomobject]@{
+    name = $Name
+    exit_code = [int]$exitCode
+    log_path = $logPath
+  }
+}
+
+function Invoke-ShellCommand {
+  param(
+    [Parameter(Mandatory = $true)][string]$Name,
+    [Parameter(Mandatory = $true)][string]$CommandText,
+    [Parameter(Mandatory = $true)][string]$WorkDir,
+    [Parameter(Mandatory = $true)][string]$LogRoot
+  )
+
+  return Invoke-LoggedCommand -Name $Name -WorkDir $WorkDir -LogRoot $LogRoot -Action {
+    $scriptBlock = [ScriptBlock]::Create($CommandText)
+    & $scriptBlock
+  }
+}
+
+$kitRoot = Resolve-KitRoot -ProvidedPath $GovernanceKitRoot
+$analyzeScript = Join-Path $kitRoot "scripts/analyze-repo-governance.ps1"
+if (-not (Test-Path -LiteralPath $analyzeScript)) {
+  throw "Missing analyzer script: $analyzeScript"
+}
+
+Assert-Command -Name powershell
+
+$runId = [guid]::NewGuid().ToString("n")
+$logRoot = Join-Path $repoPath (".codex/logs/target-autopilot/" + (Get-Date -Format "yyyyMMdd-HHmmss") + "-" + $runId)
+New-Item -ItemType Directory -Force -Path $logRoot | Out-Null
+
+$analysisJson = & powershell -NoProfile -ExecutionPolicy Bypass -File $analyzeScript -RepoPath $repoPath -AsJson
+$analysis = [string]::Join([Environment]::NewLine, @($analysisJson)) | ConvertFrom-Json
+
+$buildCmd = [string]$analysis.recommended.build
+$testCmd = [string]$analysis.recommended.test
+$contractCmd = [string]$analysis.recommended.contract_invariant
+$hotspotCmd = [string]$analysis.recommended.hotspot
+
+$gateSteps = @(
+  [pscustomobject]@{ name = "build"; command = $buildCmd },
+  [pscustomobject]@{ name = "test"; command = $testCmd },
+  [pscustomobject]@{ name = "contract-invariant"; command = $contractCmd },
+  [pscustomobject]@{ name = "hotspot"; command = $hotspotCmd }
+)
+
+Write-Host "TARGET_SAFE_AUTOPILOT"
+Write-Host "run_id=$runId"
+Write-Host "repo_root=$repoPath"
+Write-Host "governance_kit_root=$kitRoot"
+Write-Host "logs=$logRoot"
+Write-Host "mode=gate-orchestrator"
+
+if ($DryRun) {
+  Write-Host "dry_run=true"
+  foreach ($step in $gateSteps) {
+    Write-Host ("planned_gate." + $step.name + "=" + $step.command)
+  }
+  if (-not $SkipWorkIteration.IsPresent -and $MaxWorkIterationsPerCycle -gt 0) {
+    Write-Host "planned_work_iteration=no-op (handled by outer AI session)"
+  }
+  exit 0
+}
+
+for ($cycle = 1; $cycle -le $MaxCycles; $cycle++) {
+  Write-Host ""
+  Write-Host "=== cycle $cycle / $MaxCycles ==="
+
+  foreach ($step in $gateSteps) {
+    if ([string]::IsNullOrWhiteSpace($step.command) -or $step.command -like "N/A*") {
+      throw "Required gate step '$($step.name)' is unavailable: $($step.command)"
+    }
+
+    $result = Invoke-ShellCommand -Name ("gate." + $step.name) -CommandText $step.command -WorkDir $repoPath -LogRoot $logRoot
+    if ($result.exit_code -eq 0) {
+      continue
+    }
+
+    $recovered = $false
+    for ($attempt = 1; $attempt -le $MaxFixAttemptsPerGate; $attempt++) {
+      Write-Host "RETRY step=$($step.name) attempt=$attempt/$MaxFixAttemptsPerGate"
+      $result = Invoke-ShellCommand -Name ("gate.retry." + $step.name) -CommandText $step.command -WorkDir $repoPath -LogRoot $logRoot
+      if ($result.exit_code -eq 0) {
+        $recovered = $true
+        break
+      }
+    }
+
+    if (-not $recovered) {
+      throw "Gate step '$($step.name)' failed. log=$($result.log_path)"
+    }
+  }
+
+  if (-not $SkipWorkIteration.IsPresent -and $MaxWorkIterationsPerCycle -gt 0) {
+    Write-Host "WORK_ITERATION delegated_to_outer_ai_session (no-op)"
+  }
+}
+
+Write-Host "STATUS: ITERATION_COMPLETE_CONTINUE"
+Write-Host "target safe autopilot completed"

@@ -52,6 +52,7 @@ if ($AutoRemediate.IsPresent -or $NoAutoRemediate.IsPresent -or $PSBoundParamete
   Write-Host "[DEPRECATED] in-script auto remediation options are ignored (-AutoRemediate/-NoAutoRemediate/-MaxAutoFixAttempts/-CodexCommand)."
   Write-Host "[POLICY] remediation owner=outer-ai-session (current chat agent), script role=gate orchestrator only."
 }
+Write-Host "[POLICY] when governance issue is found, fix governance-kit first, then let outer-ai-session re-run the cycle."
 
 if (-not $allowProjectRules) {
   if ($allowLocalOptimizeWithoutBackflow) {
@@ -81,6 +82,19 @@ if (-not $allowRuleOptimization -and -not $effectiveSkipOptimize) {
 Write-Host ("[POLICY] allow_project_rules={0} allow_rule_optimization={1} allow_local_optimize_without_backflow={2} max_autonomous_iterations={3} max_repeated_failure_per_step={4} stop_on_irreversible_risk={5} allow_auto_fix={6} forbid_breaking_contract={7}" -f `
   $allowProjectRules, $allowRuleOptimization, $allowLocalOptimizeWithoutBackflow, $maxAutonomousIterations, $maxRepeatedFailurePerStep, $stopOnIrreversibleRisk, $allowAutoFixByPolicy, $forbidBreakingContract)
 Write-Host ("[POLICY] auto_commit_enabled={0} auto_commit_checkpoints={1}" -f $autoCommitEnabled, (@($autoCommitOnCheckpoints) -join ","))
+
+function Get-GitStatusLines() {
+  if (-not (Test-Path -LiteralPath (Join-Path $repo ".git"))) {
+    return @()
+  }
+
+  $status = (& git -C $repo status --porcelain)
+  if ($LASTEXITCODE -ne 0) {
+    throw "failed to read git status for repo: $repo"
+  }
+
+  return @($status)
+}
 
 function Step([string]$Name, [scriptblock]$Action) {
   Write-Host "=== $Name ==="
@@ -112,6 +126,8 @@ function Write-FailureContext([string]$StepName, [string]$FailureMessage, [strin
       auto_commit_message_prefix = $autoCommitMessagePrefix
     }
     remediation_owner = "outer-ai-session"
+    remediation_scope = "governance-kit-first"
+    rerun_owner = "outer-ai-session"
     timestamp = (Get-Date).ToString("o")
     failure_message = $FailureMessage
   }
@@ -124,7 +140,7 @@ function Step-OrFail([string]$Name, [string]$RetryCommand, [scriptblock]$Action)
     return
   } catch {
     $failure = $_.Exception.Message
-    Write-Host "[BLOCK] step failed; remediation must be performed by outer AI session."
+    Write-Host "[BLOCK] step failed; fix governance-kit first when the issue belongs to governance flow, then let outer AI session re-run."
     Write-FailureContext -StepName $Name -FailureMessage $failure -RetryCommand $RetryCommand
     throw "Step failed: $Name (outer-ai-session remediation required)"
   }
@@ -193,12 +209,7 @@ function Assert-CleanCheckpoint([string]$Checkpoint) {
   if ($Mode -ne "safe") { return }
   if (-not (Test-Path -LiteralPath (Join-Path $repo ".git"))) { return }
 
-  $status = (& git -C $repo status --porcelain)
-  if ($LASTEXITCODE -ne 0) {
-    throw "clean checkpoint failed to read git status at checkpoint '$Checkpoint'."
-  }
-
-  $statusLines = @($status)
+  $statusLines = @(Get-GitStatusLines)
   if ($statusLines.Count -gt 0) {
     $preview = (@($statusLines | Select-Object -First 20) -join "; ")
     throw ("clean checkpoint failed at '{0}': working tree is not clean. dirty_entries={1}. preview={2}" -f $Checkpoint, $statusLines.Count, $preview)
@@ -206,6 +217,22 @@ function Assert-CleanCheckpoint([string]$Checkpoint) {
 
   Write-Host "[ASSERT] clean checkpoint passed: checkpoint=$Checkpoint"
 }
+
+function Assert-PreflightWorkspaceClean() {
+  if ($Mode -ne "safe") { return }
+  if (-not (Test-Path -LiteralPath (Join-Path $repo ".git"))) { return }
+
+  $statusLines = @(Get-GitStatusLines)
+  if ($statusLines.Count -eq 0) {
+    Write-Host "[ASSERT] preflight clean workspace passed"
+    return
+  }
+
+  $preview = (@($statusLines | Select-Object -First 20) -join "; ")
+  throw ("preflight failed: repo has pre-existing dirty entries ({0}). isolate non-governance changes before cycle. preview={1}" -f $statusLines.Count, $preview)
+}
+
+Assert-PreflightWorkspaceClean
 
 if (-not $SkipInstall) {
   $installRetry = "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/run-project-governance-cycle.ps1 -RepoPath `"$($repo -replace '\\','/')`" -RepoName `"$RepoName`" -Mode $Mode"
