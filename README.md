@@ -4,6 +4,20 @@
 
 变更记录：`CHANGELOG.md`
 
+`governance-kit` 用于维护全局/项目级治理规则，并把规则按配置安全分发到目标仓（含校验、回滚、证据留痕）。
+
+## Quick Start
+```powershell
+powershell -File E:\CODE\governance-kit\scripts\install-full-stack.ps1 -RepoPath E:\CODE\NewRepo -Mode safe
+```
+
+固定门禁顺序：`build -> test -> contract/invariant -> hotspot`。
+
+## Collaboration
+- 贡献说明：`CONTRIBUTING.md`
+- 安全披露：`SECURITY.md`
+- PR 模板：`.github/pull_request_template.md`
+
 ## 目录
 - `source/global/`：全局用户级规则（AGENTS/CLAUDE/GEMINI）
 - `source/project/`：项目级规则（按仓分层，示例：`source/project/<RepoName>/{AGENTS,CLAUDE,GEMINI}.md`）
