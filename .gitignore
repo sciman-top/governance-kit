@@ -1,4 +1,39 @@
 .gitmessage.txt
+
+# Governance runtime artifacts
 backups/
 backups/backflow-*/
 .locks/
+
+# Agent-local configuration
+.codex/
+.claude/
+.gemini/
+.playwright-cli/
+
+# IDE / editor files
+.idea/
+.vscode/
+*.code-workspace
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+
+# Logs / temp / debug leftovers
+*.bak
+*.cache
+*.diff
+*.err
+*.log
+*.orig
+*.out
+*.pid
+*.rej
+*.stackdump
+*.temp
+*.tmp
+cache/
+logs/
+temp/
+tmp/

@@ -1,17 +1,31 @@
 # Contributing to governance-kit
 
-感谢你参与 `governance-kit`。
+中文说明见 [README.md](README.md)。English contributors can use this file as the primary collaboration guide.
 
 ## Scope
-本仓用于治理规则与分发自动化，不接收与治理无关的功能需求。
 
-## Before You Start
-1. 阅读仓库根 `AGENTS.md`（项目级规则）。
-2. 先确认变更归宿是否在 `source/`、`config/`、`scripts/`、`tests/` 中。
-3. 变更尽量小步提交，保持可验证、可回滚。
+This repository accepts contributions related to governance rules, distribution automation, verification, evidence, rollback, and repository-onboarding workflows.
 
-## Local Verification (Required Order)
-按固定顺序执行：
+Out-of-scope changes:
+
+- product features unrelated to governance
+- local-only IDE or agent configuration
+- runtime backups, logs, caches, or temporary debugging files
+
+## Before You Change Anything
+
+1. Read the repository-level [AGENTS.md](AGENTS.md).
+2. Confirm the intended source of truth before editing:
+   - global rules: `source/global/*`
+   - project rules: `source/project/<RepoName>/*`
+   - config: `config/*.json`
+   - automation: `scripts/*.ps1`
+   - tests: `tests/*`
+3. Keep changes small, verifiable, and reversible.
+
+## Required Validation Order
+
+Run gates in this exact order:
 
 ```powershell
 powershell -File scripts/verify-kit.ps1
@@ -21,15 +35,31 @@ powershell -File scripts/verify.ps1
 powershell -File scripts/doctor.ps1
 ```
 
-如果仅文档变更且门禁脚本客观不适用，可记录 `gate_na`，并提供替代验证证据。
+If a gate is objectively not applicable for a documentation-only change, document it as `gate_na` and include alternative verification evidence.
 
-## Pull Request
-1. 使用仓库内 PR 模板（`.github/pull_request_template.md`）。
-2. 在 PR 中附上：变更目的、风险等级、验证命令与关键输出。
-3. 涉及配置结构变更时，必须补充回滚说明。
+## Pull Requests
 
-## Commit Message
-建议遵循仓内模板（`.gitmessage.txt`），提交内容聚焦单一目标。
+Each pull request should include:
+
+- purpose of the change
+- risk level
+- validation commands and key outputs
+- rollback notes if config structure or behavior changes
+
+Use the repository PR template at `.github/pull_request_template.md`.
+
+## Git Hygiene
+
+Do not commit local runtime artifacts or environment-specific files, including:
+
+- `backups/`
+- `.locks/`
+- `.codex/`, `.claude/`, `.gemini/`
+- `.vscode/`, `.idea/`
+- logs, caches, and temporary files
+
+If you accidentally tracked them before, remove them from the Git index as part of the fix.
 
 ## Security
-请勿在仓库提交密钥、令牌、私有凭据。安全问题请走 [SECURITY.md](SECURITY.md) 私下渠道。
+
+Do not commit secrets, tokens, credentials, or private operational data. Report vulnerabilities through the private path documented in [SECURITY.md](SECURITY.md).

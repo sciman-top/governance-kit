@@ -1,23 +1,28 @@
 # Security Policy
 
-## Supported Versions
-当前默认只保证 `main` 分支最新提交的安全修复支持。
+## Supported Version
+
+Security fixes are provided for the latest commit on the `main` branch.
 
 ## Reporting a Vulnerability
-请不要在公开 Issue 中披露漏洞细节。
 
-请通过以下方式私下联系维护者：
-- GitHub: 在仓库开启后使用 Security Advisory（推荐）
-- Email: `security@sciman.top`（如未启用 Advisory）
+Do not disclose vulnerability details in a public GitHub issue.
 
-请至少提供：
-- 影响范围与前置条件
-- 复现步骤
-- 预期行为与实际行为
-- 可能风险与建议修复方向
+Preferred private channels:
 
-我们会在收到报告后尽快确认并反馈处理计划。
+- GitHub Security Advisory, when enabled for the repository
+- Email: `security@sciman.top`
 
-## Disclosure Guidelines
-- 在修复发布前，请不要公开 PoC 或利用细节。
-- 修复后会在 `CHANGELOG.md` 中记录必要说明。
+Please include:
+
+- affected area and required preconditions
+- reproduction steps
+- expected behavior and actual behavior
+- impact assessment
+- suggested remediation direction, if available
+
+## Disclosure Expectations
+
+- Do not publish a PoC or exploit details before a fix is available.
+- Coordinated disclosure is preferred.
+- After the fix is released, the repository may document the change in `CHANGELOG.md` with only the necessary level of detail.
