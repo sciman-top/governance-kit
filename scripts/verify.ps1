@@ -91,8 +91,8 @@ foreach ($item in $targets) {
     continue
   }
 
-  $h1 = (Get-FileHash -Path $src -Algorithm SHA256).Hash
-  $h2 = (Get-FileHash -Path $dst -Algorithm SHA256).Hash
+  $h1 = Get-FileSha256 -Path $src
+  $h2 = Get-FileSha256 -Path $dst
   if ($h1 -eq $h2) {
     Write-Host "[OK]   $($item.source) == $dst"
     $ok++
@@ -116,7 +116,7 @@ if (Test-Path $projectSourceRoot) {
     $projectRuleFiles -contains $_.Name
   })
   foreach ($sf in $projectSourceFiles) {
-    $h = (Get-FileHash -Path $sf.FullName -Algorithm SHA256).Hash
+    $h = Get-FileSha256 -Path $sf.FullName
     $projectSourceHashesByName[$sf.Name] += $h
   }
 }
@@ -141,7 +141,7 @@ foreach ($repoRaw in $repos) {
     if ($sourceHashes.Count -eq 0) {
       continue
     }
-    $actualHash = (Get-FileHash -Path $actualPath -Algorithm SHA256).Hash
+    $actualHash = Get-FileSha256 -Path $actualPath
     if ($sourceHashes -contains $actualHash) {
       Write-Host "[POLICY] disallowed project rule content detected: $actualPath"
       $policyFail++

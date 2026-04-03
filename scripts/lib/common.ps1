@@ -28,6 +28,35 @@ function Write-Utf8NoBom([string]$Path, [string]$Content) {
   [System.IO.File]::WriteAllText($Path, $Content, $enc)
 }
 
+function Get-FileSha256([string]$Path) {
+  if ([string]::IsNullOrWhiteSpace($Path)) {
+    throw "Path is required for Get-FileSha256."
+  }
+  if (!(Test-Path -LiteralPath $Path -PathType Leaf)) {
+    throw "File not found: $Path"
+  }
+
+  $hashCmd = Get-Command -Name "Get-FileHash" -ErrorAction SilentlyContinue
+  if ($null -ne $hashCmd) {
+    return (Get-FileHash -Path $Path -Algorithm SHA256).Hash
+  }
+
+  $stream = $null
+  try {
+    $sha256 = [System.Security.Cryptography.SHA256]::Create()
+    $stream = [System.IO.File]::OpenRead($Path)
+    $bytes = $sha256.ComputeHash($stream)
+    return ([System.BitConverter]::ToString($bytes) -replace '-', '')
+  } finally {
+    if ($null -ne $stream) {
+      $stream.Dispose()
+    }
+    if ($null -ne $sha256) {
+      $sha256.Dispose()
+    }
+  }
+}
+
 function Normalize-Repo([string]$Path) {
   return ([System.IO.Path]::GetFullPath(($Path -replace '/', '\')) -replace '\\','/').TrimEnd('/')
 }

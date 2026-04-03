@@ -170,8 +170,8 @@ foreach ($item in $targets) {
   $dstExists = Test-Path $dst
   $same = $false
   if ($dstExists) {
-    $h1 = (Get-FileHash -Path $src -Algorithm SHA256).Hash
-    $h2 = (Get-FileHash -Path $dst -Algorithm SHA256).Hash
+    $h1 = Get-FileSha256 -Path $src
+    $h2 = Get-FileSha256 -Path $dst
     $same = $h1 -eq $h2
   }
 
