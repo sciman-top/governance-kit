@@ -66,6 +66,7 @@ function Run-Step([string]$Name, [string]$ScriptPath, [string[]]$ScriptArgs = @(
 $steps = @(
   [pscustomobject]@{ name = "verify-kit"; script = (Join-Path $PSScriptRoot 'verify-kit.ps1'); args = @() },
   [pscustomobject]@{ name = "validate-config"; script = (Join-Path $PSScriptRoot 'validate-config.ps1'); args = @() },
+  [pscustomobject]@{ name = "release-profile-coverage"; script = (Join-Path $PSScriptRoot 'check-release-profile-coverage.ps1'); args = @() },
   [pscustomobject]@{ name = "verify-targets"; script = (Join-Path $PSScriptRoot 'verify.ps1'); args = @('-SkipConfigValidation') },
   [pscustomobject]@{ name = "waiver-check"; script = (Join-Path $PSScriptRoot 'check-waivers.ps1'); args = @() },
   [pscustomobject]@{ name = "status"; script = (Join-Path $PSScriptRoot 'status.ps1'); args = @() },

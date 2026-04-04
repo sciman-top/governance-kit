@@ -506,6 +506,7 @@ exit 0
 
       Set-StubScript -Path (Join-Path $tmp "scripts\verify-kit.ps1")
       Set-StubScript -Path (Join-Path $tmp "scripts\validate-config.ps1")
+      Set-StubScript -Path (Join-Path $tmp "scripts\check-release-profile-coverage.ps1")
       Set-StubScript -Path (Join-Path $tmp "scripts\verify.ps1") -Message "boom" -ExitCode 1
       Set-StubScript -Path (Join-Path $tmp "scripts\check-waivers.ps1")
       Set-StubScript -Path (Join-Path $tmp "scripts\status.ps1")
@@ -529,6 +530,7 @@ exit 0
 
       Set-StubScript -Path (Join-Path $tmp "scripts\verify-kit.ps1")
       Set-StubScript -Path (Join-Path $tmp "scripts\validate-config.ps1")
+      Set-StubScript -Path (Join-Path $tmp "scripts\check-release-profile-coverage.ps1")
       Set-RequireSkipValidationVerifyScript -Path (Join-Path $tmp "scripts\verify.ps1")
       Set-StubScript -Path (Join-Path $tmp "scripts\check-waivers.ps1")
       Set-StubScript -Path (Join-Path $tmp "scripts\status.ps1")
@@ -551,6 +553,7 @@ exit 0
 
       Set-StubScript -Path (Join-Path $tmp "scripts\verify-kit.ps1")
       Set-StubScript -Path (Join-Path $tmp "scripts\validate-config.ps1")
+      Set-StubScript -Path (Join-Path $tmp "scripts\check-release-profile-coverage.ps1")
       Set-StubScript -Path (Join-Path $tmp "scripts\verify.ps1") -Message "boom" -ExitCode 1
       Set-StubScript -Path (Join-Path $tmp "scripts\check-waivers.ps1")
       Set-StubScript -Path (Join-Path $tmp "scripts\status.ps1")
@@ -574,6 +577,7 @@ exit 0
 
       Set-StubScript -Path (Join-Path $tmp "scripts\verify-kit.ps1")
       Set-StubScript -Path (Join-Path $tmp "scripts\validate-config.ps1")
+      Set-StubScript -Path (Join-Path $tmp "scripts\check-release-profile-coverage.ps1")
       Set-RequireSkipValidationVerifyScript -Path (Join-Path $tmp "scripts\verify.ps1")
       Set-StubScript -Path (Join-Path $tmp "scripts\check-waivers.ps1")
       Set-StubScript -Path (Join-Path $tmp "scripts\status.ps1")

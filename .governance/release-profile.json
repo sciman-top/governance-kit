@@ -1,0 +1,54 @@
+﻿{
+    "schema_version":  "1.0",
+    "project_type":  "generic",
+    "release_enabled":  false,
+    "owner":  "governance-kit",
+    "policies":  {
+                     "signing":  {
+                                     "required":  false,
+                                     "mode":  "none-personal"
+                                 },
+                     "compatibility":  {
+                                           "matrix_required":  false,
+                                           "minimum_os":  [
+                                                              "Windows 10 22H2",
+                                                              "Windows 11 22H2"
+                                                          ],
+                                           "architectures":  [
+                                                                 "x64"
+                                                             ]
+                                       },
+                     "packaging":  {
+                                       "default_channel":  "none",
+                                       "channels":  "none",
+                                       "require_framework_dependent":  false,
+                                       "require_self_contained":  false
+                                   },
+                     "anti_false_positive":  {
+                                                 "prefer_zip":  false,
+                                                 "disallow_self_extracting_archive":  false,
+                                                 "disallow_obfuscation":  false,
+                                                 "disallow_runtime_downloader":  false
+                                             },
+                     "traceability":  {
+                                          "require_sha256":  false,
+                                          "require_release_manifest":  false,
+                                          "require_changelog":  false
+                                      }
+                 },
+    "gates":  {
+                  "build":  "powershell -File scripts/verify-kit.ps1",
+                  "test":  "powershell -File tests/governance-kit.optimization.tests.ps1",
+                  "contract_invariant":  "powershell -File scripts/validate-config.ps1; powershell -File scripts/verify.ps1",
+                  "hotspot":  "powershell -File scripts/doctor.ps1"
+              },
+    "release":  {
+                    "preflight":  "N/A",
+                    "prepare":  "N/A",
+                    "workflow_files":  [
+
+                                       ],
+                    "output_root":  "artifacts/release",
+                    "manifest":  "artifacts/release/\u003cversion\u003e/release-manifest.json"
+                }
+}

@@ -140,15 +140,15 @@
         "target":  "E:/CODE/governance-kit/scripts/governance/run-target-autopilot.ps1"
     },
     {
-        "source":  "source/project/_common/custom/tools/browser-session/start-browser-session.ps1",
+        "source":  "source/project/ClassroomToolkit/custom/tools/browser-session/start-browser-session.ps1",
         "target":  "E:/CODE/ClassroomToolkit/tools/browser-session/start-browser-session.ps1"
     },
     {
-        "source":  "source/project/_common/custom/tools/browser-session/start-browser-session.bat",
+        "source":  "source/project/ClassroomToolkit/custom/tools/browser-session/start-browser-session.bat",
         "target":  "E:/CODE/ClassroomToolkit/tools/browser-session/start-browser-session.bat"
     },
     {
-        "source":  "source/project/_common/custom/tools/browser-session/README.md",
+        "source":  "source/project/ClassroomToolkit/custom/tools/browser-session/README.md",
         "target":  "E:/CODE/ClassroomToolkit/tools/browser-session/README.md"
     },
     {
@@ -174,5 +174,61 @@
     {
         "source":  "source/project/_common/custom/tools/browser-session/README.md",
         "target":  "E:/CODE/skills-manager/tools/browser-session/README.md"
+    },
+    {
+        "source":  "source/project/ClassroomToolkit/custom/.github/workflows/release-package.yml",
+        "target":  "E:/CODE/ClassroomToolkit/.github/workflows/release-package.yml"
+    },
+    {
+        "source":  "source/project/ClassroomToolkit/custom/docs/runbooks/release-prevention-checklist.md",
+        "target":  "E:/CODE/ClassroomToolkit/docs/runbooks/release-prevention-checklist.md"
+    },
+    {
+        "source":  "source/project/ClassroomToolkit/custom/scripts/release/clean-release-artifacts.ps1",
+        "target":  "E:/CODE/ClassroomToolkit/scripts/release/clean-release-artifacts.ps1"
+    },
+    {
+        "source":  "source/project/ClassroomToolkit/custom/scripts/release/preflight-check.ps1",
+        "target":  "E:/CODE/ClassroomToolkit/scripts/release/preflight-check.ps1"
+    },
+    {
+        "source":  "source/project/ClassroomToolkit/custom/scripts/release/prepare-distribution.ps1",
+        "target":  "E:/CODE/ClassroomToolkit/scripts/release/prepare-distribution.ps1"
+    },
+    {
+        "source":  "source/project/ClassroomToolkit/custom/scripts/release/release-config.json",
+        "target":  "E:/CODE/ClassroomToolkit/scripts/release/release-config.json"
+    },
+    {
+        "source":  "source/project/ClassroomToolkit/custom/scripts/release/templates/bootstrap-runtime.ps1",
+        "target":  "E:/CODE/ClassroomToolkit/scripts/release/templates/bootstrap-runtime.ps1"
+    },
+    {
+        "source":  "source/project/ClassroomToolkit/custom/scripts/release/templates/release-notes.txt",
+        "target":  "E:/CODE/ClassroomToolkit/scripts/release/templates/release-notes.txt"
+    },
+    {
+        "source":  "source/project/ClassroomToolkit/custom/scripts/release/templates/start-standard.bat",
+        "target":  "E:/CODE/ClassroomToolkit/scripts/release/templates/start-standard.bat"
+    },
+    {
+        "source":  "source/project/ClassroomToolkit/custom/scripts/release/templates/user-guide-offline.md",
+        "target":  "E:/CODE/ClassroomToolkit/scripts/release/templates/user-guide-offline.md"
+    },
+    {
+        "source":  "source/project/ClassroomToolkit/custom/scripts/release/templates/user-guide-standard.md",
+        "target":  "E:/CODE/ClassroomToolkit/scripts/release/templates/user-guide-standard.md"
+    },
+    {
+        "source":  "source/project/ClassroomToolkit/custom/.governance/release-profile.json",
+        "target":  "E:/CODE/ClassroomToolkit/.governance/release-profile.json"
+    },
+    {
+        "source":  "source/project/skills-manager/custom/.governance/release-profile.json",
+        "target":  "E:/CODE/skills-manager/.governance/release-profile.json"
+    },
+    {
+        "source":  "source/project/governance-kit/custom/.governance/release-profile.json",
+        "target":  "E:/CODE/governance-kit/.governance/release-profile.json"
     }
 ]
