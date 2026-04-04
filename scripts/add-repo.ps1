@@ -2,7 +2,9 @@ param(
   [Parameter(Mandatory=$true)]
   [string]$RepoPath,
   [ValidateSet("plan", "safe", "force")]
-  [string]$Mode = "safe"
+  [string]$Mode = "safe",
+  [ValidateRange(1, 3600)]
+  [int]$LockTimeoutSeconds = 120
 )
 
 $ErrorActionPreference = "Stop"
@@ -10,6 +12,8 @@ $kitRoot = Split-Path -Parent $PSScriptRoot
 $commonPath = Join-Path $PSScriptRoot "lib\common.ps1"
 . $commonPath
 Write-ModeRisk -ScriptName "add-repo.ps1" -Mode $Mode
+$scriptLock = New-ScriptLock -KitRoot $kitRoot -LockName "add-repo" -TimeoutSeconds $LockTimeoutSeconds
+try {
 $repoResolved = Resolve-Path -LiteralPath $RepoPath -ErrorAction SilentlyContinue
 if ($null -eq $repoResolved -or -not (Test-Path -LiteralPath $repoResolved.Path -PathType Container)) {
   throw "Repo path not found: $RepoPath"
@@ -172,7 +176,7 @@ if ($Mode -eq "plan") {
     Write-Host "[PLAN] ADD repositories: $repo"
   }
   Write-Host "Plan done. add_repo=$([int](-not $repoExists)) added_targets=$added removed_disallowed_targets=$removedDisallowed"
-  exit 0
+  return
 }
 
 if (-not $repoExists) {
@@ -192,3 +196,6 @@ if ($customCfgChanged) {
   Write-Host "[UPDATED] project-custom-files.json"
 }
 Write-Host "Done. added_targets=$added removed_disallowed_targets=$removedDisallowed mode=$Mode"
+} finally {
+  Release-ScriptLock -LockHandle $scriptLock
+}

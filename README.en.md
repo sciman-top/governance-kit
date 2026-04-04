@@ -21,6 +21,7 @@ This repository is not only about authoring rules. It is about keeping rules, te
 - Evidence and rollback support with backups, templates, and restore scripts
 - Project-specific custom file management through `config/project-custom-files.json`
 - Agent-first remediation: scripts orchestrate gates and emit failure context; the outer AI session performs fixes
+- Browser session baseline: `tools/browser-session/*` is distributed by default for stable profile + CDP attach workflows
 
 ## Quick Start
 
@@ -83,6 +84,13 @@ This repository uses a fixed validation order:
 4. `hotspot`: `powershell -File scripts/doctor.ps1`
 
 If the change is documentation-only and a gate is objectively not applicable, record it as `gate_na` and include alternative verification evidence.
+
+If a target repository needs persistent browser login state for automation, use the distributed helper:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File tools/browser-session/start-browser-session.ps1 -Name github -Url https://github.com
+agent-browser --cdp 9222 open https://github.com
+```
 
 ## Files That Should Not Be Pushed
 

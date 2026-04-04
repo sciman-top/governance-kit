@@ -28,6 +28,7 @@
 - 证据与回滚：所有关键操作都有备份目录、证据模板和恢复脚本
 - 项目级定制文件分发：通过 `config/project-custom-files.json` 管理非三规则文件
 - 真实仓门禁编排：脚本只负责编排与输出失败上下文，修复由当前 AI 会话代理接管
+- 浏览器会话基线：默认分发 `tools/browser-session/*` 到目标仓，支持固定 profile + CDP 接管
 
 ## 快速开始
 
@@ -104,6 +105,13 @@ powershell -File scripts\validate-config.ps1
 
 ```powershell
 powershell -File scripts\verify-kit.ps1
+```
+
+目标仓里如果要稳定复用浏览器登录态（例如 GitHub 自动化），使用默认分发的脚本：
+
+```powershell
+powershell -ExecutionPolicy Bypass -File tools/browser-session/start-browser-session.ps1 -Name github -Url https://github.com
+agent-browser --cdp 9222 open https://github.com
 ```
 
 ## 固定门禁顺序

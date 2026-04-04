@@ -1,7 +1,10 @@
 ﻿{
     "default":  [
                     "scripts/governance/run-project-governance-cycle.ps1",
-                    "scripts/governance/run-target-autopilot.ps1"
+                    "scripts/governance/run-target-autopilot.ps1",
+                    "tools/browser-session/start-browser-session.ps1",
+                    "tools/browser-session/start-browser-session.bat",
+                    "tools/browser-session/README.md"
                 ],
     "repos":  [
                   {

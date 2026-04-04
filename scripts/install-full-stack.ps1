@@ -6,6 +6,7 @@ param(
   [switch]$SkipInstallGlobalGit,
   [switch]$NoOverwriteRules,
   [switch]$SkipAutopilotSmoke,
+  [switch]$ForceGovernanceCycleOnDirty,
   [switch]$AutoRemediate,
   [switch]$NoAutoRemediate,
   [ValidateRange(1, 10)]
@@ -40,6 +41,40 @@ function Run-Step {
   Write-Host "=== $Name ==="
   & $Action
   Write-Host "[DONE] $Name"
+}
+
+function Get-DirtyRepoState {
+  param(
+    [Parameter(Mandatory = $true)][string]$Repo,
+    [int]$PreviewLimit = 20
+  )
+
+  $statusLines = @()
+  try {
+    $statusLines = @(git -C $Repo status --porcelain 2>$null)
+  } catch {
+    return [pscustomobject]@{
+      available = $false
+      count = 0
+      preview = ""
+    }
+  }
+
+  if ($LASTEXITCODE -ne 0) {
+    return [pscustomobject]@{
+      available = $false
+      count = 0
+      preview = ""
+    }
+  }
+
+  $cleanLines = @($statusLines | Where-Object { -not [string]::IsNullOrWhiteSpace($_) })
+  $preview = (($cleanLines | Select-Object -First $PreviewLimit) -join "; ").Trim()
+  return [pscustomobject]@{
+    available = $true
+    count = $cleanLines.Count
+    preview = $preview
+  }
 }
 
 $bootstrapScript = Join-Path $PSScriptRoot "bootstrap-repo.ps1"
@@ -78,25 +113,32 @@ if ($Mode -ne "plan") {
     Test-Path -LiteralPath (Join-Path $repo $_)
   }
   $isRuleSeedReady = (@($hasProjectRuleDocs | Where-Object { $_ -eq $true }).Count -eq 3)
+  $dirtyState = Get-DirtyRepoState -Repo $repo
 
-  Run-Step -Name "run-project-governance-cycle" -Action {
-    $cycleArgs = @(
-      "-NoProfile",
-      "-ExecutionPolicy", "Bypass",
-      "-File", $cycleScript,
-      "-RepoPath", $repo,
-      "-RepoName", (Split-Path -Leaf $repo),
-      "-Mode", "safe",
-      "-ShowScope"
-    )
-    if (-not $isRuleSeedReady) {
-      Write-Host "[INFO] target repo does not contain AGENTS/CLAUDE/GEMINI yet; running cycle with -SkipOptimize -SkipBackflow for first-time bootstrap."
-      $cycleArgs += @("-SkipOptimize", "-SkipBackflow")
-    }
+  $skipCycleForDirty = $dirtyState.available -and $dirtyState.count -gt 0 -and -not $ForceGovernanceCycleOnDirty.IsPresent
+  if ($skipCycleForDirty) {
+    Write-Host ("[WARN] skip run-project-governance-cycle: repo has pre-existing dirty entries ({0}). preview={1}" -f $dirtyState.count, $dirtyState.preview)
+    Write-Host "[WARN] use -ForceGovernanceCycleOnDirty to run cycle anyway."
+  } else {
+    Run-Step -Name "run-project-governance-cycle" -Action {
+      $cycleArgs = @(
+        "-NoProfile",
+        "-ExecutionPolicy", "Bypass",
+        "-File", $cycleScript,
+        "-RepoPath", $repo,
+        "-RepoName", (Split-Path -Leaf $repo),
+        "-Mode", "safe",
+        "-ShowScope"
+      )
+      if (-not $isRuleSeedReady) {
+        Write-Host "[INFO] target repo does not contain AGENTS/CLAUDE/GEMINI yet; running cycle with -SkipOptimize -SkipBackflow for first-time bootstrap."
+        $cycleArgs += @("-SkipOptimize", "-SkipBackflow")
+      }
 
-    & powershell @cycleArgs
-    if ($LASTEXITCODE -ne 0) {
-      throw "run-project-governance-cycle failed with exit code $LASTEXITCODE"
+      & powershell @cycleArgs
+      if ($LASTEXITCODE -ne 0) {
+        throw "run-project-governance-cycle failed with exit code $LASTEXITCODE"
+      }
     }
   }
 

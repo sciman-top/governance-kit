@@ -138,5 +138,41 @@
     {
         "source":  "source/project/_common/custom/scripts/governance/run-target-autopilot.ps1",
         "target":  "E:/CODE/governance-kit/scripts/governance/run-target-autopilot.ps1"
+    },
+    {
+        "source":  "source/project/_common/custom/tools/browser-session/start-browser-session.ps1",
+        "target":  "E:/CODE/ClassroomToolkit/tools/browser-session/start-browser-session.ps1"
+    },
+    {
+        "source":  "source/project/_common/custom/tools/browser-session/start-browser-session.bat",
+        "target":  "E:/CODE/ClassroomToolkit/tools/browser-session/start-browser-session.bat"
+    },
+    {
+        "source":  "source/project/_common/custom/tools/browser-session/README.md",
+        "target":  "E:/CODE/ClassroomToolkit/tools/browser-session/README.md"
+    },
+    {
+        "source":  "source/project/_common/custom/tools/browser-session/start-browser-session.ps1",
+        "target":  "E:/CODE/governance-kit/tools/browser-session/start-browser-session.ps1"
+    },
+    {
+        "source":  "source/project/_common/custom/tools/browser-session/start-browser-session.bat",
+        "target":  "E:/CODE/governance-kit/tools/browser-session/start-browser-session.bat"
+    },
+    {
+        "source":  "source/project/_common/custom/tools/browser-session/README.md",
+        "target":  "E:/CODE/governance-kit/tools/browser-session/README.md"
+    },
+    {
+        "source":  "source/project/_common/custom/tools/browser-session/start-browser-session.ps1",
+        "target":  "E:/CODE/skills-manager/tools/browser-session/start-browser-session.ps1"
+    },
+    {
+        "source":  "source/project/_common/custom/tools/browser-session/start-browser-session.bat",
+        "target":  "E:/CODE/skills-manager/tools/browser-session/start-browser-session.bat"
+    },
+    {
+        "source":  "source/project/_common/custom/tools/browser-session/README.md",
+        "target":  "E:/CODE/skills-manager/tools/browser-session/README.md"
     }
 ]
