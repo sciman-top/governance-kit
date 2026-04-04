@@ -45,6 +45,19 @@ function Resolve-HeadCommit {
   return $value.Trim()
 }
 
+function Test-CommitContainedInRef {
+  param(
+    [Parameter(Mandatory = $true)][string]$Repo,
+    [Parameter(Mandatory = $true)][string]$CommitSha,
+    [Parameter(Mandatory = $true)][string]$RefName
+  )
+
+  & git -C $Repo merge-base --is-ancestor $CommitSha $RefName 2>$null
+  if ($LASTEXITCODE -eq 0) { return $true }
+  if ($LASTEXITCODE -eq 1) { return $false }
+  throw "Cannot determine ancestry for commit=$CommitSha ref=$RefName in repo=$Repo"
+}
+
 $resolved = Resolve-Path -LiteralPath $RepoPath -ErrorAction SilentlyContinue
 if ($null -eq $resolved -or -not (Test-Path -LiteralPath $resolved.Path -PathType Container)) {
   throw "Repo path not found: $RepoPath"
@@ -73,6 +86,10 @@ if ($Mode -eq "plan") {
 
 New-Item -ItemType Directory -Force -Path $worktreeBase | Out-Null
 Run-Git -Repo $repo -Args @("fetch", $Remote, $Branch)
+if (Test-CommitContainedInRef -Repo $repo -CommitSha $commitSha -RefName $remoteRef) {
+  Write-Host "[NOOP] commit already exists in $remoteRef, nothing to push."
+  exit 0
+}
 Run-Git -Repo $repo -Args @("worktree", "add", $worktreePath, $remoteRef)
 
 $success = $false
