@@ -3,6 +3,14 @@
   "project_type": "dotnet",
   "release_enabled": true,
   "owner": "team-or-owner",
+  "classification": {
+    "release_decision": "enabled-by-signals",
+    "detected_release_signals": [
+      "scripts/release/preflight-check.ps1",
+      "scripts/release/prepare-distribution.ps1",
+      ".github/workflows/release-package.yml"
+    ]
+  },
   "policies": {
     "signing": {
       "required": false,

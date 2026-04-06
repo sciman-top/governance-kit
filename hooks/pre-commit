@@ -10,7 +10,7 @@ if [ -z "$KIT_ROOT" ]; then
   exit 0
 fi
 
-powershell -NoProfile -ExecutionPolicy Bypass -File "$KIT_ROOT/scripts/verify.ps1"
+powershell -NoProfile -ExecutionPolicy Bypass -File "$KIT_ROOT/scripts/verify.ps1" -TrackedFilesScope staged
 status=$?
 if [ $status -ne 0 ]; then
   echo "[BLOCK] governance verify failed"

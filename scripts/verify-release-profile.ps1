@@ -52,6 +52,16 @@ function Validate-ReleaseProfile {
   if ($Profile.release_enabled -isnot [bool]) {
     [void]$errors.Add("release_enabled must be boolean")
   }
+  if ($null -eq $Profile.classification) {
+    [void]$errors.Add("classification section is required")
+  } else {
+    if ([string]::IsNullOrWhiteSpace([string]$Profile.classification.release_decision)) {
+      [void]$errors.Add("classification.release_decision is required")
+    }
+    if ($null -eq $Profile.classification.detected_release_signals) {
+      [void]$errors.Add("classification.detected_release_signals is required")
+    }
+  }
   if ($null -eq $Profile.policies) {
     [void]$errors.Add("policies section is required")
   } else {
@@ -146,6 +156,108 @@ function Validate-ReleaseProfile {
   return @($errors)
 }
 
+function Validate-CompatibilityMatrixPresence {
+  param(
+    [Parameter(Mandatory = $true)]
+    [object]$Profile,
+    [Parameter(Mandatory = $true)]
+    [string]$Repo
+  )
+
+  $errors = [System.Collections.Generic.List[string]]::new()
+  if ($null -eq $Profile.policies -or $null -eq $Profile.policies.compatibility) {
+    return @($errors)
+  }
+  if (-not [bool]$Profile.policies.compatibility.matrix_required) {
+    return @($errors)
+  }
+
+  $checklistPath = Join-Path $Repo "docs\runbooks\release-prevention-checklist.md"
+  if (-not (Test-Path -LiteralPath $checklistPath)) {
+    [void]$errors.Add("compatibility matrix is required but docs/runbooks/release-prevention-checklist.md is missing")
+    return @($errors)
+  }
+
+  $text = Get-Content -LiteralPath $checklistPath -Raw -Encoding UTF8
+  function Test-ChecklistContainsOsHint {
+    param([string]$ChecklistText, [string]$OsText)
+    if ([string]::IsNullOrWhiteSpace($OsText)) { return $true }
+    if ($ChecklistText.Contains($OsText)) { return $true }
+
+    $hint = $OsText
+    if ($hint -match "^Windows\s+(\d+)") {
+      $hint = "Windows $($Matches[1])"
+      if ($ChecklistText.Contains(("Win" + $Matches[1]))) {
+        return $true
+      }
+    }
+    return $ChecklistText.Contains($hint)
+  }
+
+  foreach ($os in @($Profile.policies.compatibility.minimum_os)) {
+    $osText = [string]$os
+    if (-not (Test-ChecklistContainsOsHint -ChecklistText $text -OsText $osText)) {
+      [void]$errors.Add("compatibility matrix checklist missing minimum_os entry: $osText")
+    }
+  }
+  foreach ($arch in @($Profile.policies.compatibility.architectures)) {
+    $archText = [string]$arch
+    if (-not [string]::IsNullOrWhiteSpace($archText)) {
+      $textLower = $text.ToLowerInvariant()
+      $archLower = $archText.ToLowerInvariant()
+      $archPresent = $textLower.Contains($archLower)
+      if (-not $archPresent -and $archLower -eq "x64") {
+        $archPresent = $textLower.Contains("win-x64")
+      }
+      if (-not $archPresent) {
+        [void]$errors.Add("compatibility matrix checklist missing architectures entry: $archText")
+      }
+    }
+  }
+  return @($errors)
+}
+
+function Validate-AntiFalsePositiveStatic {
+  param(
+    [Parameter(Mandatory = $true)]
+    [object]$Profile,
+    [Parameter(Mandatory = $true)]
+    [string]$Repo
+  )
+
+  $errors = [System.Collections.Generic.List[string]]::new()
+  if ($null -eq $Profile.policies -or $null -eq $Profile.policies.anti_false_positive) {
+    return @($errors)
+  }
+  $anti = $Profile.policies.anti_false_positive
+  $preparePath = Join-Path $Repo "scripts\release\prepare-distribution.ps1"
+  $prepareText = if (Test-Path -LiteralPath $preparePath) { Get-Content -LiteralPath $preparePath -Raw -Encoding UTF8 } else { "" }
+
+  if ([bool]$anti.disallow_self_extracting_archive) {
+    foreach ($token in @("iexpress", "7z.sfx", "self-extract", "selfextract")) {
+      if ($prepareText -match [regex]::Escape($token)) {
+        [void]$errors.Add("anti_false_positive.disallow_self_extracting_archive=true but prepare script contains token: $token")
+      }
+    }
+  }
+  if ([bool]$anti.disallow_obfuscation) {
+    foreach ($token in @("confuser", "obfuscat", "upx", "dotfuscator")) {
+      if ($prepareText -match [regex]::Escape($token)) {
+        [void]$errors.Add("anti_false_positive.disallow_obfuscation=true but prepare script contains token: $token")
+      }
+    }
+  }
+  if ([bool]$anti.disallow_runtime_downloader) {
+    foreach ($token in @("Invoke-WebRequest", "Start-BitsTransfer", "bitsadmin", "curl.exe", "wget")) {
+      if ($prepareText -match [regex]::Escape($token)) {
+        [void]$errors.Add("anti_false_positive.disallow_runtime_downloader=true but prepare script contains token: $token")
+      }
+    }
+  }
+
+  return @($errors)
+}
+
 function Validate-ReleaseProfileAgainstRepo {
   param(
     [Parameter(Mandatory = $true)]
@@ -158,10 +270,6 @@ function Validate-ReleaseProfileAgainstRepo {
   $prepareScriptPath = Join-Path $Repo "scripts\release\prepare-distribution.ps1"
   $prepareScriptText = if (Test-Path -LiteralPath $prepareScriptPath) { Get-Content -LiteralPath $prepareScriptPath -Raw -Encoding UTF8 } else { "" }
   $releaseChecklistPath = Join-Path $Repo "docs\runbooks\release-prevention-checklist.md"
-
-  if ($Profile.policies.compatibility.matrix_required -eq $true -and -not (Test-Path -LiteralPath $releaseChecklistPath)) {
-    [void]$errors.Add("compatibility matrix is required but docs/runbooks/release-prevention-checklist.md is missing")
-  }
 
   if ($Profile.policies.packaging.require_framework_dependent -eq $true -and -not $prepareScriptText.Contains('--self-contained", "false')) {
     [void]$errors.Add("framework-dependent packaging is required but prepare script does not include --self-contained false")
@@ -182,6 +290,13 @@ function Validate-ReleaseProfileAgainstRepo {
   }
   if ($Profile.policies.traceability.require_changelog -eq $true -and -not (Test-Path -LiteralPath $releaseChecklistPath)) {
     [void]$errors.Add("require_changelog=true but release-prevention checklist is missing")
+  }
+
+  foreach ($err in @(Validate-CompatibilityMatrixPresence -Profile $Profile -Repo $Repo)) {
+    [void]$errors.Add($err)
+  }
+  foreach ($err in @(Validate-AntiFalsePositiveStatic -Profile $Profile -Repo $Repo)) {
+    [void]$errors.Add($err)
   }
 
   return @($errors)
@@ -222,6 +337,17 @@ if ($profileExists) {
       $status = "FAIL"
       [void]$errors.Add($err)
     }
+    if ($errors.Count -eq 0) {
+      $expectedDecision = if ($hasSignals) { "enabled-by-signals" } else { "disabled-no-release-signals" }
+      if ([bool]$profile.release_enabled -ne [bool]$hasSignals) {
+        $status = "FAIL"
+        [void]$errors.Add("release_enabled must match repository release signals")
+      }
+      if ([string]$profile.classification.release_decision -ne $expectedDecision) {
+        $status = "FAIL"
+        [void]$errors.Add("classification.release_decision must be $expectedDecision")
+      }
+    }
     if ($errors.Count -eq 0 -and [bool]$profile.release_enabled) {
       foreach ($err in @(Validate-ReleaseProfileAgainstRepo -Profile $profile -Repo $repo)) {
         $status = "FAIL"
@@ -236,6 +362,7 @@ $result = [pscustomobject]@{
   repo_name = $repoName
   profile_path = ($profilePath -replace '\\', '/')
   profile_exists = [bool]$profileExists
+  expected_release_enabled = [bool]$hasSignals
   release_signals = @($signals)
   status = $status
   errors = @($errors)

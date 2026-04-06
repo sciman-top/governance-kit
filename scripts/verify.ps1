@@ -1,5 +1,8 @@
 param(
-  [switch]$SkipConfigValidation
+  [switch]$SkipConfigValidation,
+  [ValidateSet("none", "staged", "outgoing", "both")]
+  [string]$TrackedFilesScope = "both",
+  [switch]$SkipTrackedFilesPolicy
 )
 
 $ErrorActionPreference = "Stop"
@@ -153,4 +156,24 @@ if ($policyFail -gt 0) {
   Write-Host "Verify policy failed. disallowed_project_rule_files=$policyFail"
 }
 
-if ($fail -gt 0 -or $policyFail -gt 0) { exit 1 }
+$trackedFilesFail = 0
+if (-not $SkipTrackedFilesPolicy -and $TrackedFilesScope -ne "none") {
+  $trackedScript = Join-Path $PSScriptRoot "governance\check-tracked-files.ps1"
+  if (-not (Test-Path -LiteralPath $trackedScript -PathType Leaf)) {
+    Write-Host "[TRACKED] skip: script not found: $trackedScript"
+  } else {
+    $gitTop = (& git rev-parse --show-toplevel 2>$null)
+    if ($LASTEXITCODE -ne 0 -or [string]::IsNullOrWhiteSpace([string]$gitTop)) {
+      Write-Host "[TRACKED] skip: current working directory is not a git repository"
+    } else {
+      $activeRepo = [System.IO.Path]::GetFullPath(([string]$gitTop).Trim())
+      $policyPath = Join-Path $activeRepo ".governance\tracked-files-policy.json"
+      & powershell -NoProfile -ExecutionPolicy Bypass -File $trackedScript -RepoPath $activeRepo -PolicyPath $policyPath -Scope $TrackedFilesScope
+      if ($LASTEXITCODE -ne 0) {
+        $trackedFilesFail++
+      }
+    }
+  }
+}
+
+if ($fail -gt 0 -or $policyFail -gt 0 -or $trackedFilesFail -gt 0) { exit 1 }

@@ -230,5 +230,29 @@
     {
         "source":  "source/project/governance-kit/custom/.governance/release-profile.json",
         "target":  "E:/CODE/governance-kit/.governance/release-profile.json"
+    },
+    {
+        "source":  "source/project/_common/custom/scripts/governance/check-tracked-files.ps1",
+        "target":  "E:/CODE/ClassroomToolkit/scripts/governance/check-tracked-files.ps1"
+    },
+    {
+        "source":  "source/project/_common/custom/scripts/governance/check-tracked-files.ps1",
+        "target":  "E:/CODE/skills-manager/scripts/governance/check-tracked-files.ps1"
+    },
+    {
+        "source":  "source/project/_common/custom/scripts/governance/check-tracked-files.ps1",
+        "target":  "E:/CODE/governance-kit/scripts/governance/check-tracked-files.ps1"
+    },
+    {
+        "source":  "source/project/_common/custom/.governance/tracked-files-policy.json",
+        "target":  "E:/CODE/ClassroomToolkit/.governance/tracked-files-policy.json"
+    },
+    {
+        "source":  "source/project/_common/custom/.governance/tracked-files-policy.json",
+        "target":  "E:/CODE/skills-manager/.governance/tracked-files-policy.json"
+    },
+    {
+        "source":  "source/project/_common/custom/.governance/tracked-files-policy.json",
+        "target":  "E:/CODE/governance-kit/.governance/tracked-files-policy.json"
     }
 ]

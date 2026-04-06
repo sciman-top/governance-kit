@@ -12,6 +12,7 @@ $mustExist = @(
   "config\real-repo-regression-matrix.json",
   "config\governance-baseline.json",
   "config\editorconfig.base",
+  ".governance\tracked-files-policy.json",
   "scripts\add-repo.ps1",
   "scripts\remove-repo.ps1",
   "scripts\status.ps1",
@@ -22,6 +23,7 @@ $mustExist = @(
   "scripts\install.ps1",
   "scripts\sync.ps1",
   "scripts\verify.ps1",
+  "scripts\governance\check-tracked-files.ps1",
   "scripts\restore.ps1",
   "scripts\install-extras.ps1",
   "scripts\install-global-git.ps1",
@@ -68,6 +70,8 @@ $mustExist = @(
   "source\global\GEMINI.md",
   "source\project\_common\custom\scripts\governance\run-project-governance-cycle.ps1",
   "source\project\_common\custom\scripts\governance\run-target-autopilot.ps1",
+  "source\project\_common\custom\scripts\governance\check-tracked-files.ps1",
+  "source\project\_common\custom\.governance\tracked-files-policy.json",
   "source\project"
 )
 

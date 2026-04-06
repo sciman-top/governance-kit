@@ -48,6 +48,7 @@ function Copy-WithPolicy([string]$Src, [string]$Dst, [bool]$CanOverwrite, [strin
 }
 
 function Get-HookBlock([string]$Kind) {
+  $trackedScope = if ($Kind -eq "pre-push") { "outgoing" } else { "staged" }
   return @'
 # >>> governance-kit begin
 KIT_ROOT="$(git config --get governance.kitRoot)"
@@ -56,7 +57,7 @@ if [ -z "$KIT_ROOT" ]; then
 fi
 
 if [ -n "$KIT_ROOT" ]; then
-  powershell -NoProfile -ExecutionPolicy Bypass -File "$KIT_ROOT/scripts/verify.ps1"
+  powershell -NoProfile -ExecutionPolicy Bypass -File "$KIT_ROOT/scripts/verify.ps1" -TrackedFilesScope __TRACKED_SCOPE__
   status=$?
   if [ $status -ne 0 ]; then
     echo "[BLOCK] governance verify failed"
@@ -64,7 +65,7 @@ if [ -n "$KIT_ROOT" ]; then
   fi
 fi
 # <<< governance-kit end
-'@
+'@ -replace "__TRACKED_SCOPE__", $trackedScope
 }
 
 function Ensure-Hook([string]$HookPath, [string]$Kind, [string]$TemplatePath) {

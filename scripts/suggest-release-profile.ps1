@@ -20,6 +20,59 @@ $analysisScript = Join-Path $PSScriptRoot "analyze-repo-governance.ps1"
 $analysisRaw = Invoke-ChildScriptCapture -ScriptPath $analysisScript -ScriptArgs @("-RepoPath", $repo, "-AsJson")
 $analysis = $analysisRaw | ConvertFrom-Json
 
+function Test-IsWpfProject {
+  param(
+    [Parameter(Mandatory = $true)]
+    [string]$Repo
+  )
+
+  $csprojs = @(Get-ChildItem -LiteralPath $Repo -Recurse -Filter "*.csproj" -File -ErrorAction SilentlyContinue)
+  foreach ($proj in $csprojs) {
+    try {
+      $text = Get-Content -LiteralPath $proj.FullName -Raw -Encoding UTF8
+      if ($text -match "<UseWPF>\s*true\s*</UseWPF>") {
+        return $true
+      }
+    } catch {
+      continue
+    }
+  }
+  return $false
+}
+
+function Get-ProjectArchetype {
+  param(
+    [Parameter(Mandatory = $true)]
+    [string]$Repo,
+    [Parameter(Mandatory = $true)]
+    [bool]$ReleaseEnabled
+  )
+
+  $hasSln = @(Get-ChildItem -LiteralPath $Repo -Filter "*.sln" -File -ErrorAction SilentlyContinue).Count -gt 0
+  $hasPackageJson = Test-Path -LiteralPath (Join-Path $Repo "package.json")
+  $hasBuildPs1 = Test-Path -LiteralPath (Join-Path $Repo "build.ps1")
+
+  if ($hasSln -and (Test-IsWpfProject -Repo $Repo)) {
+    return "dotnet-wpf"
+  }
+  if ($hasSln -and $ReleaseEnabled) {
+    return "dotnet"
+  }
+  if ($hasPackageJson -and $ReleaseEnabled) {
+    return "node-app"
+  }
+  if ($hasBuildPs1 -and -not $hasSln -and -not $hasPackageJson) {
+    return "script"
+  }
+  if ($hasSln) {
+    return "dotnet"
+  }
+  if ($hasPackageJson) {
+    return "node"
+  }
+  return "generic"
+}
+
 function Normalize-GateCommand {
   param(
     [string]$CommandText
@@ -62,14 +115,38 @@ $prepareCommand = if (Test-Path -LiteralPath (Join-Path $repo "scripts\release\p
 }
 $hasReleaseChecklist = Test-Path -LiteralPath (Join-Path $repo "docs\runbooks\release-prevention-checklist.md")
 $releaseEnabled = ($preflightCommand -ne "N/A") -or ($prepareCommand -ne "N/A") -or ($workflowFiles.Count -gt 0) -or $hasReleaseChecklist
-$hasSln = @(Get-ChildItem -LiteralPath $repo -Filter "*.sln" -File -ErrorAction SilentlyContinue).Count -gt 0
-$projectType = if ((Test-Path -LiteralPath (Join-Path $repo "src")) -and $hasSln) { "dotnet" } elseif (Test-Path -LiteralPath (Join-Path $repo "package.json")) { "node" } else { "generic" }
+$projectType = Get-ProjectArchetype -Repo $repo -ReleaseEnabled $releaseEnabled
+$releaseDecision = if ($releaseEnabled) { "enabled-by-signals" } else { "disabled-no-release-signals" }
+$releaseSignals = [System.Collections.Generic.List[string]]::new()
+if ($preflightCommand -ne "N/A") { [void]$releaseSignals.Add("scripts/release/preflight-check.ps1") }
+if ($prepareCommand -ne "N/A") { [void]$releaseSignals.Add("scripts/release/prepare-distribution.ps1") }
+if ($hasReleaseChecklist) { [void]$releaseSignals.Add("docs/runbooks/release-prevention-checklist.md") }
+foreach ($wf in @($workflowFiles)) { [void]$releaseSignals.Add([string]$wf) }
+
+$minimumOs = [object[]]@("Windows 10 22H2", "Windows 11 22H2")
+$architectures = [object[]]@("x64")
+$channels = if ($releaseEnabled) { [object[]]@("standard", "offline") } else { [object[]]@("none") }
+$disallowRuntimeDownloader = [bool]$releaseEnabled
+
+if ($projectType -eq "script" -or $projectType -eq "generic" -or $projectType -eq "node") {
+  $minimumOs = [object[]]@("Windows 10 22H2")
+}
+if ($projectType -eq "node-app" -or $projectType -eq "node") {
+  $architectures = [object[]]@("x64", "arm64")
+}
+if ($projectType -eq "dotnet-wpf" -or $projectType -eq "dotnet") {
+  $disallowRuntimeDownloader = $false
+}
 
 $profile = [ordered]@{
   schema_version = "1.0"
   project_type = $projectType
   release_enabled = [bool]$releaseEnabled
   owner = (Split-Path -Leaf $repo)
+  classification = [ordered]@{
+    release_decision = $releaseDecision
+    detected_release_signals = [object[]]@($releaseSignals | Select-Object -Unique)
+  }
   policies = [ordered]@{
     signing = [ordered]@{
       required = $false
@@ -77,12 +154,12 @@ $profile = [ordered]@{
     }
     compatibility = [ordered]@{
       matrix_required = [bool]$releaseEnabled
-      minimum_os = @("Windows 10 22H2", "Windows 11 22H2")
-      architectures = @("x64")
+      minimum_os = $minimumOs
+      architectures = $architectures
     }
     packaging = [ordered]@{
       default_channel = if ($releaseEnabled) { "standard" } else { "none" }
-      channels = if ($releaseEnabled) { @("standard", "offline") } else { @("none") }
+      channels = $channels
       require_framework_dependent = [bool]$releaseEnabled
       require_self_contained = [bool]$releaseEnabled
     }
@@ -90,7 +167,7 @@ $profile = [ordered]@{
       prefer_zip = [bool]$releaseEnabled
       disallow_self_extracting_archive = [bool]$releaseEnabled
       disallow_obfuscation = [bool]$releaseEnabled
-      disallow_runtime_downloader = [bool]$releaseEnabled
+      disallow_runtime_downloader = [bool]$disallowRuntimeDownloader
     }
     traceability = [ordered]@{
       require_sha256 = [bool]$releaseEnabled

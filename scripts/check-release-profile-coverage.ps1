@@ -20,6 +20,7 @@ if (-not (Test-Path -LiteralPath $verifyScript)) {
 $repos = @(Read-JsonArray $repositoriesPath)
 $results = [System.Collections.Generic.List[object]]::new()
 $failed = [System.Collections.Generic.List[string]]::new()
+$decisionSummary = [System.Collections.Generic.List[object]]::new()
 
 foreach ($repo in $repos) {
   $repoText = [string]$repo
@@ -39,6 +40,13 @@ foreach ($repo in $repos) {
   $jsonRaw = Invoke-ChildScriptCapture -ScriptPath $verifyScript -ScriptArgs @("-RepoPath", $repoResolved.Path, "-AsJson")
   $obj = $jsonRaw | ConvertFrom-Json
   [void]$results.Add($obj)
+  [void]$decisionSummary.Add([pscustomobject]@{
+    repo = [string]$obj.repo_name
+    expected_release_enabled = [bool]$obj.expected_release_enabled
+    release_signals = @($obj.release_signals).Count
+    profile_exists = [bool]$obj.profile_exists
+    status = [string]$obj.status
+  })
   if ([string]$obj.status -ne "PASS") {
     [void]$failed.Add([string]$obj.repo)
   }
@@ -50,6 +58,7 @@ if ($AsJson) {
     generated_at = (Get-Date).ToString("yyyy-MM-dd HH:mm:ss")
     failed_count = $failed.Count
     failed_repos = @($failed)
+    decision_summary = @($decisionSummary)
     results = @($results)
   } | ConvertTo-Json -Depth 12 | Write-Output
   if ($failed.Count -eq 0) { exit 0 } else { exit 1 }
@@ -57,6 +66,9 @@ if ($AsJson) {
 
 if ($failed.Count -eq 0) {
   Write-Host "[PASS] release-profile coverage"
+  foreach ($row in @($decisionSummary)) {
+    Write-Host (" - repo={0} expected_release_enabled={1} release_signals={2} profile_exists={3}" -f $row.repo, $row.expected_release_enabled, $row.release_signals, $row.profile_exists)
+  }
   exit 0
 }
 
