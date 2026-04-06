@@ -2,6 +2,10 @@
   [Parameter(Mandatory = $true)]
   [string]$RepoPath,
   [string]$RepoName,
+  [string]$IssueId = "project-governance-cycle-default",
+  [ValidateSet("auto", "plan", "requirement", "bugfix", "acceptance")]
+  [string]$ClarificationScenario = "auto",
+  [string]$ClarificationContextFile = "",
   [ValidateSet("plan", "safe")]
   [string]$Mode = "safe",
   [switch]$ShowScope,
@@ -23,7 +27,11 @@ $ErrorActionPreference = "Stop"
 $kitRoot = Split-Path -Parent $PSScriptRoot
 $commonPath = Join-Path $PSScriptRoot "lib\common.ps1"
 . $commonPath
+$clarificationTrackerScript = Join-Path $kitRoot "scripts\governance\track-issue-state.ps1"
 Write-ModeRisk -ScriptName "run-project-governance-cycle.ps1" -Mode $Mode
+if (-not (Test-Path -LiteralPath $clarificationTrackerScript)) {
+  throw "Missing clarification tracker script: $clarificationTrackerScript"
+}
 
 $repoResolved = Resolve-Path -LiteralPath $RepoPath -ErrorAction SilentlyContinue
 if ($null -eq $repoResolved -or -not (Test-Path -LiteralPath $repoResolved.Path -PathType Container)) {
@@ -93,7 +101,22 @@ function Get-GitStatusLines() {
     throw "failed to read git status for repo: $repo"
   }
 
-  return @($status)
+  $filtered = @()
+  foreach ($line in @($status)) {
+    $entry = [string]$line
+    if ($entry.Length -lt 4) {
+      $filtered += $entry
+      continue
+    }
+    $pathPart = ($entry.Substring(3)).Trim()
+    $pathNorm = ($pathPart -replace '\\', '/')
+    if ($pathNorm.StartsWith(".codex/", [System.StringComparison]::OrdinalIgnoreCase)) {
+      continue
+    }
+    $filtered += $entry
+  }
+
+  return $filtered
 }
 
 function Step([string]$Name, [scriptblock]$Action) {
@@ -134,13 +157,97 @@ function Write-FailureContext([string]$StepName, [string]$FailureMessage, [strin
   Write-Host ("[FAILURE_CONTEXT_JSON] " + ($context | ConvertTo-Json -Depth 8 -Compress))
 }
 
+function Invoke-ClarificationTracker {
+  param(
+    [Parameter(Mandatory = $true)][string]$Mode,
+    [string]$Outcome = "",
+    [string]$Reason = ""
+  )
+
+  $args = @(
+    "-NoProfile",
+    "-ExecutionPolicy", "Bypass",
+    "-File", $clarificationTrackerScript,
+    "-RepoPath", $repo,
+    "-IssueId", $IssueId,
+    "-Scenario", $effectiveClarificationScenario,
+    "-Mode", $Mode
+  )
+  if (-not [string]::IsNullOrWhiteSpace($Outcome)) {
+    $args += @("-Outcome", $Outcome)
+  }
+  if (-not [string]::IsNullOrWhiteSpace($Reason)) {
+    $args += @("-Reason", $Reason)
+  }
+
+  $json = & powershell @args
+  if ($LASTEXITCODE -ne 0) {
+    throw "clarification tracker failed with exit code $LASTEXITCODE"
+  }
+
+  return [string]::Join([Environment]::NewLine, @($json)) | ConvertFrom-Json
+}
+
+function Resolve-EffectiveClarificationScenario {
+  param(
+    [string]$RequestedScenario,
+    [string]$CurrentMode,
+    [string]$ContextFile
+  )
+
+  if ($RequestedScenario -ne "auto" -and -not [string]::IsNullOrWhiteSpace($RequestedScenario)) {
+    return [pscustomobject]@{
+      scenario = $RequestedScenario
+      source = "param"
+    }
+  }
+
+  if (-not [string]::IsNullOrWhiteSpace($ContextFile) -and (Test-Path -LiteralPath $ContextFile)) {
+    try {
+      $ctx = Get-Content -LiteralPath $ContextFile -Raw | ConvertFrom-Json
+      $ctxScenario = ""
+      if ($null -ne $ctx.PSObject.Properties['clarification_scenario']) {
+        $ctxScenario = [string]$ctx.clarification_scenario
+      } elseif ($null -ne $ctx.PSObject.Properties['scenario']) {
+        $ctxScenario = [string]$ctx.scenario
+      }
+      $valid = @("plan", "requirement", "bugfix", "acceptance")
+      if ($valid -contains $ctxScenario) {
+        return [pscustomobject]@{
+          scenario = $ctxScenario
+          source = "context_file"
+        }
+      }
+    } catch {
+      Write-Host ("[WARN] clarification context parse failed: {0}" -f $ContextFile)
+    }
+  }
+
+  if ($CurrentMode -eq "plan") {
+    return [pscustomobject]@{
+      scenario = "plan"
+      source = "mode"
+    }
+  }
+
+  return [pscustomobject]@{
+    scenario = "bugfix"
+    source = "fallback"
+  }
+}
+
 function Step-OrFail([string]$Name, [string]$RetryCommand, [scriptblock]$Action) {
   try {
     Step $Name $Action
     return
   } catch {
     $failure = $_.Exception.Message
+    $clarificationState = Invoke-ClarificationTracker -Mode "record" -Outcome "failure" -Reason ("step={0}; {1}" -f $Name, $failure)
     Write-Host "[BLOCK] step failed; fix governance-kit first when the issue belongs to governance flow, then let outer AI session re-run."
+    if ($clarificationState.clarification_required -eq $true) {
+      Write-Host ("CLARIFICATION_REQUIRED issue_id={0} attempt_count={1} scenario={2}" -f $IssueId, $clarificationState.attempt_count, $clarificationState.scenario)
+      Write-Host ("[CLARIFICATION_STATE_JSON] " + ($clarificationState | ConvertTo-Json -Depth 8 -Compress))
+    }
     Write-FailureContext -StepName $Name -FailureMessage $failure -RetryCommand $RetryCommand
     throw "Step failed: $Name (outer-ai-session remediation required)"
   }
@@ -233,6 +340,14 @@ function Assert-PreflightWorkspaceClean() {
 }
 
 Assert-PreflightWorkspaceClean
+$scenarioResolution = Resolve-EffectiveClarificationScenario -RequestedScenario $ClarificationScenario -CurrentMode $Mode -ContextFile $ClarificationContextFile
+$effectiveClarificationScenario = [string]$scenarioResolution.scenario
+$clarificationScenarioSource = [string]$scenarioResolution.source
+Write-Host ("[CLARIFICATION] issue_id={0} scenario={1} source={2}" -f $IssueId, $effectiveClarificationScenario, $clarificationScenarioSource)
+$clarificationState = Invoke-ClarificationTracker -Mode "evaluate"
+if ($clarificationState.clarification_required -eq $true) {
+  Write-Host ("CLARIFICATION_REQUIRED issue_id={0} attempt_count={1} scenario={2}" -f $IssueId, $clarificationState.attempt_count, $clarificationState.scenario)
+}
 
 if (-not $SkipInstall) {
   $installRetry = "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/run-project-governance-cycle.ps1 -RepoPath `"$($repo -replace '\\','/')`" -RepoName `"$RepoName`" -Mode $Mode"
@@ -293,3 +408,4 @@ Invoke-MilestoneAutoCommit -Checkpoint "cycle_complete"
 Assert-CleanCheckpoint -Checkpoint "cycle_complete"
 
 Write-Host "run-project-governance-cycle completed: repo=$($repo -replace '\\','/') mode=$Mode"
+Invoke-ClarificationTracker -Mode "record" -Outcome "success" | Out-Null

@@ -26,6 +26,13 @@
 - 最低字段：`reason`、`alternative_verification`、`evidence_link`、`expires_at`。
 - N/A 不得改变门禁顺序：`build -> test -> contract/invariant -> hotspot`。
 
+### A.4 触发式澄清协议（本仓）
+- 默认执行模式：`direct_fix`；在证据充分时直接修复并验证。
+- 触发升级：同一 `issue_id` 连续失败、状态反复横跳、语义冲突频发时，自动转 `clarification_mode`。
+- 澄清上限：一次最多 3 个高价值问题，问题必须具体且可判定，避免泛问。
+- 澄清后必须固化：将“用户意图 + 接受标准 + 边界条件 + 回滚点”写入 `docs/change-evidence/`，再继续执行门禁。
+- 退出条件：达成接受标准并通过 `build -> test -> contract/invariant -> hotspot`，同时重置该 `issue_id` 的失败计数。
+
 ## B. Codex 平台差异（项目内）
 ### B.1 加载与覆盖
 - 目录：`~/.codex`（可由 `CODEX_HOME` 覆盖）。

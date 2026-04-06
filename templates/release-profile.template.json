@@ -3,6 +3,9 @@
   "project_type": "dotnet",
   "release_enabled": true,
   "owner": "team-or-owner",
+  "clarification_policy_ref": "config/clarification-policy.json",
+  "clarification_mode_default": "direct_fix",
+  "clarification_scenario_default": "bugfix",
   "classification": {
     "release_decision": "enabled-by-signals",
     "detected_release_signals": [

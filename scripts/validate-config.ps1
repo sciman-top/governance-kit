@@ -8,6 +8,7 @@ $targetsPath = Join-Path $kitRoot "config\targets.json"
 $rolloutPath = Join-Path $kitRoot "config\rule-rollout.json"
 $projectRulePolicyPath = Get-ProjectRulePolicyPath $kitRoot
 $projectCustomPath = Join-Path $kitRoot "config\project-custom-files.json"
+$clarificationPolicyPath = Join-Path $kitRoot "config\clarification-policy.json"
 
 if (!(Test-Path $reposPath)) { throw "repositories.json not found: $reposPath" }
 if (!(Test-Path $targetsPath)) { throw "targets.json not found: $targetsPath" }
@@ -45,6 +46,42 @@ try {
   $projectCustom = Get-Content -Path $projectCustomPath -Raw | ConvertFrom-Json
 } catch {
   throw "project-custom-files.json invalid JSON: $projectCustomPath"
+}
+
+if (Test-Path $clarificationPolicyPath) {
+  try {
+    $clarificationPolicy = Get-Content -Path $clarificationPolicyPath -Raw | ConvertFrom-Json
+  } catch {
+    throw "clarification-policy.json invalid JSON: $clarificationPolicyPath"
+  }
+} else {
+  Write-Host "[CFG] clarification-policy.json not found, using compatibility defaults"
+  $clarificationPolicy = [pscustomobject]@{
+    enabled = $true
+    max_clarifying_questions = 3
+    trigger_attempt_threshold = 2
+    trigger_on_conflict_signal = $true
+    auto_resume_after_clarification = $true
+    default_scenario = "bugfix"
+    scenarios = [pscustomobject]@{
+      plan = [pscustomobject]@{
+        goal = "align plan"
+        question_prompts = @("q1", "q2", "q3")
+      }
+      requirement = [pscustomobject]@{
+        goal = "align requirement"
+        question_prompts = @("q1", "q2", "q3")
+      }
+      bugfix = [pscustomobject]@{
+        goal = "align bugfix"
+        question_prompts = @("q1", "q2", "q3")
+      }
+      acceptance = [pscustomobject]@{
+        goal = "align acceptance"
+        question_prompts = @("q1", "q2", "q3")
+      }
+    }
+  }
 }
 
 if ($null -ne $projectRulePolicy.defaults) {
@@ -128,6 +165,45 @@ if ($null -ne $projectRulePolicy.defaults) {
   if ($null -ne $projectRulePolicy.defaults.PSObject.Properties['auto_commit_message_prefix']) {
     if ([string]::IsNullOrWhiteSpace([string]$projectRulePolicy.defaults.auto_commit_message_prefix)) {
       Write-Host "[CFG] project-rule-policy.defaults.auto_commit_message_prefix must be non-empty string"
+      $fail++
+    }
+  }
+
+  if ($null -ne $projectRulePolicy.defaults.PSObject.Properties['clarification_mode_default']) {
+    $modeDefault = [string]$projectRulePolicy.defaults.clarification_mode_default
+    if ($modeDefault -ne "direct_fix") {
+      Write-Host "[CFG] project-rule-policy.defaults.clarification_mode_default must be 'direct_fix'"
+      $fail++
+    }
+  }
+
+  if ($null -ne $projectRulePolicy.defaults.PSObject.Properties['clarification_scenario_default']) {
+    $scenarioDefault = [string]$projectRulePolicy.defaults.clarification_scenario_default
+    $validScenarios = @("plan", "requirement", "bugfix", "acceptance")
+    if ($validScenarios -notcontains $scenarioDefault) {
+      Write-Host "[CFG] project-rule-policy.defaults.clarification_scenario_default invalid: expected one of plan/requirement/bugfix/acceptance"
+      $fail++
+    }
+  }
+
+  if ($null -ne $projectRulePolicy.defaults.PSObject.Properties['clarification_trigger_attempt_threshold']) {
+    $threshold = $projectRulePolicy.defaults.clarification_trigger_attempt_threshold
+    if ($threshold -isnot [int] -and $threshold -isnot [long]) {
+      Write-Host "[CFG] project-rule-policy.defaults.clarification_trigger_attempt_threshold must be integer"
+      $fail++
+    } elseif ([int]$threshold -lt 1 -or [int]$threshold -gt 10) {
+      Write-Host "[CFG] project-rule-policy.defaults.clarification_trigger_attempt_threshold out of range: expected 1..10"
+      $fail++
+    }
+  }
+
+  if ($null -ne $projectRulePolicy.defaults.PSObject.Properties['clarification_max_questions']) {
+    $maxQuestions = $projectRulePolicy.defaults.clarification_max_questions
+    if ($maxQuestions -isnot [int] -and $maxQuestions -isnot [long]) {
+      Write-Host "[CFG] project-rule-policy.defaults.clarification_max_questions must be integer"
+      $fail++
+    } elseif ([int]$maxQuestions -lt 1 -or [int]$maxQuestions -gt 3) {
+      Write-Host "[CFG] project-rule-policy.defaults.clarification_max_questions out of range: expected 1..3"
       $fail++
     }
   }
@@ -370,6 +446,73 @@ foreach ($rr in $rolloutRepos) {
     $d = Parse-IsoDate $planned
     if ($null -eq $d) {
       Write-Host "[CFG] invalid planned_enforce_date: repo=$repo value=$planned (expected yyyy-MM-dd)"
+      $fail++
+    }
+  }
+}
+
+if ($clarificationPolicy.enabled -isnot [bool]) {
+  Write-Host "[CFG] clarification-policy.enabled must be boolean"
+  $fail++
+}
+if ($clarificationPolicy.max_clarifying_questions -isnot [int] -and $clarificationPolicy.max_clarifying_questions -isnot [long]) {
+  Write-Host "[CFG] clarification-policy.max_clarifying_questions must be integer"
+  $fail++
+} elseif ([int]$clarificationPolicy.max_clarifying_questions -lt 1 -or [int]$clarificationPolicy.max_clarifying_questions -gt 3) {
+  Write-Host "[CFG] clarification-policy.max_clarifying_questions out of range: expected 1..3"
+  $fail++
+}
+if ($clarificationPolicy.trigger_attempt_threshold -isnot [int] -and $clarificationPolicy.trigger_attempt_threshold -isnot [long]) {
+  Write-Host "[CFG] clarification-policy.trigger_attempt_threshold must be integer"
+  $fail++
+} elseif ([int]$clarificationPolicy.trigger_attempt_threshold -lt 1 -or [int]$clarificationPolicy.trigger_attempt_threshold -gt 10) {
+  Write-Host "[CFG] clarification-policy.trigger_attempt_threshold out of range: expected 1..10"
+  $fail++
+}
+if ($clarificationPolicy.trigger_on_conflict_signal -isnot [bool]) {
+  Write-Host "[CFG] clarification-policy.trigger_on_conflict_signal must be boolean"
+  $fail++
+}
+if ($clarificationPolicy.auto_resume_after_clarification -isnot [bool]) {
+  Write-Host "[CFG] clarification-policy.auto_resume_after_clarification must be boolean"
+  $fail++
+}
+if ($null -eq $clarificationPolicy.PSObject.Properties['default_scenario'] -or [string]::IsNullOrWhiteSpace([string]$clarificationPolicy.default_scenario)) {
+  Write-Host "[CFG] clarification-policy.default_scenario must be non-empty string"
+  $fail++
+} else {
+  $defaultScenario = [string]$clarificationPolicy.default_scenario
+  $validScenarios = @("plan", "requirement", "bugfix", "acceptance")
+  if ($validScenarios -notcontains $defaultScenario) {
+    Write-Host "[CFG] clarification-policy.default_scenario invalid: expected one of plan/requirement/bugfix/acceptance"
+    $fail++
+  }
+}
+if ($null -eq $clarificationPolicy.PSObject.Properties['scenarios'] -or $null -eq $clarificationPolicy.scenarios) {
+  Write-Host "[CFG] clarification-policy.scenarios missing"
+  $fail++
+} else {
+  $requiredScenarios = @("plan", "requirement", "bugfix", "acceptance")
+  foreach ($scenarioName in $requiredScenarios) {
+    $scenarioProp = $clarificationPolicy.scenarios.PSObject.Properties[$scenarioName]
+    if ($null -eq $scenarioProp -or $null -eq $scenarioProp.Value) {
+      Write-Host ("[CFG] clarification-policy.scenarios.{0} missing" -f $scenarioName)
+      $fail++
+      continue
+    }
+    $scenarioConfig = $scenarioProp.Value
+    if ($null -eq $scenarioConfig.PSObject.Properties['goal'] -or [string]::IsNullOrWhiteSpace([string]$scenarioConfig.goal)) {
+      Write-Host ("[CFG] clarification-policy.scenarios.{0}.goal must be non-empty string" -f $scenarioName)
+      $fail++
+    }
+    if ($null -eq $scenarioConfig.PSObject.Properties['question_prompts'] -or $scenarioConfig.question_prompts -isnot [System.Array]) {
+      Write-Host ("[CFG] clarification-policy.scenarios.{0}.question_prompts must be array" -f $scenarioName)
+      $fail++
+      continue
+    }
+    $promptCount = @($scenarioConfig.question_prompts | Where-Object { -not [string]::IsNullOrWhiteSpace([string]$_) }).Count
+    if ($promptCount -lt 1 -or $promptCount -gt 3) {
+      Write-Host ("[CFG] clarification-policy.scenarios.{0}.question_prompts count out of range: expected 1..3 non-empty values" -f $scenarioName)
       $fail++
     }
   }

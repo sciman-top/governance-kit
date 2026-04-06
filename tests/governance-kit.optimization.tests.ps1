@@ -56,6 +56,34 @@ exit 0
 '@ | Set-Content -Path $Path -Encoding UTF8
 }
 
+function Initialize-ClarificationTrackerFixture {
+  param(
+    [Parameter(Mandatory = $true)]
+    [string]$TmpRoot
+  )
+
+  New-Item -ItemType Directory -Path (Join-Path $TmpRoot "scripts\governance") -Force | Out-Null
+  New-Item -ItemType Directory -Path (Join-Path $TmpRoot "config") -Force | Out-Null
+
+  Copy-Item -Path (Join-Path $repoRoot "scripts\governance\track-issue-state.ps1") -Destination (Join-Path $TmpRoot "scripts\governance\track-issue-state.ps1") -Force
+  @"
+{
+  "enabled": true,
+  "max_clarifying_questions": 3,
+  "trigger_attempt_threshold": 2,
+  "trigger_on_conflict_signal": true,
+  "auto_resume_after_clarification": true,
+  "default_scenario": "bugfix",
+  "scenarios": {
+    "plan": { "goal": "g", "question_prompts": ["q1", "q2", "q3"] },
+    "requirement": { "goal": "g", "question_prompts": ["q1", "q2", "q3"] },
+    "bugfix": { "goal": "g", "question_prompts": ["q1", "q2", "q3"] },
+    "acceptance": { "goal": "g", "question_prompts": ["q1", "q2", "q3"] }
+  }
+}
+"@ | Set-Content -Path (Join-Path $TmpRoot "config\clarification-policy.json") -Encoding UTF8
+}
+
 describe "governance-kit optimization guardrails" {
   it "has shared common script for cross-script helpers" {
     $commonPath = Join-Path $repoRoot "scripts\lib\common.ps1"
@@ -996,6 +1024,7 @@ exit 0
 
       Copy-Item -Path (Join-Path $repoRoot "scripts\run-project-governance-cycle.ps1") -Destination (Join-Path $tmp "scripts\run-project-governance-cycle.ps1") -Force
       Copy-Item -Path (Join-Path $repoRoot "scripts\lib\common.ps1") -Destination (Join-Path $tmp "scripts\lib\common.ps1") -Force
+      Initialize-ClarificationTrackerFixture -TmpRoot $tmp
 
       @{
         allowProjectRulesForRepos = @()
@@ -1047,6 +1076,7 @@ exit 0
 
       Copy-Item -Path (Join-Path $repoRoot "scripts\run-project-governance-cycle.ps1") -Destination (Join-Path $tmp "scripts\run-project-governance-cycle.ps1") -Force
       Copy-Item -Path (Join-Path $repoRoot "scripts\lib\common.ps1") -Destination (Join-Path $tmp "scripts\lib\common.ps1") -Force
+      Initialize-ClarificationTrackerFixture -TmpRoot $tmp
 
       @{
         allowProjectRulesForRepos = @()
@@ -1104,6 +1134,7 @@ exit 0
 
       Copy-Item -Path (Join-Path $repoRoot "scripts\run-project-governance-cycle.ps1") -Destination (Join-Path $tmp "scripts\run-project-governance-cycle.ps1") -Force
       Copy-Item -Path (Join-Path $repoRoot "scripts\lib\common.ps1") -Destination (Join-Path $tmp "scripts\lib\common.ps1") -Force
+      Initialize-ClarificationTrackerFixture -TmpRoot $tmp
 
       & git -C $repo init | Out-Null
       if ($LASTEXITCODE -ne 0) { throw "git init failed" }
@@ -1113,6 +1144,7 @@ exit 0
       if ($LASTEXITCODE -ne 0) { throw "git config user.email failed" }
 
       Set-Content -Path (Join-Path $repo "README.md") -Value "seed" -Encoding UTF8
+      Set-Content -Path (Join-Path $repo ".gitignore") -Value ".codex/" -Encoding UTF8
       & git -C $repo add -A | Out-Null
       & git -C $repo commit -m "初始化提交" | Out-Null
       if ($LASTEXITCODE -ne 0) { throw "initial git commit failed" }
@@ -1184,6 +1216,7 @@ exit 0
 
       Copy-Item -Path (Join-Path $repoRoot "scripts\run-project-governance-cycle.ps1") -Destination (Join-Path $tmp "scripts\run-project-governance-cycle.ps1") -Force
       Copy-Item -Path (Join-Path $repoRoot "scripts\lib\common.ps1") -Destination (Join-Path $tmp "scripts\lib\common.ps1") -Force
+      Initialize-ClarificationTrackerFixture -TmpRoot $tmp
 
       & git -C $repo init | Out-Null
       if ($LASTEXITCODE -ne 0) { throw "git init failed" }
@@ -1266,6 +1299,7 @@ exit 0
 
       Copy-Item -Path (Join-Path $repoRoot "scripts\run-project-governance-cycle.ps1") -Destination (Join-Path $tmp "scripts\run-project-governance-cycle.ps1") -Force
       Copy-Item -Path (Join-Path $repoRoot "scripts\lib\common.ps1") -Destination (Join-Path $tmp "scripts\lib\common.ps1") -Force
+      Initialize-ClarificationTrackerFixture -TmpRoot $tmp
 
       & git -C $repo init | Out-Null
       if ($LASTEXITCODE -ne 0) { throw "git init failed" }

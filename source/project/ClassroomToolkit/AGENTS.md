@@ -32,6 +32,17 @@
 - 优先判定 `platform_na`（平台能力问题），再判定 `gate_na`（门禁步骤问题）。
 - 同一阻断仅记录一种主类型；若并发出现，主类型写根因，次类型写在 `alternative_verification`。
 
+### A.5 触发式澄清协议（本仓）
+- 默认执行：`direct_fix`（先修复、后验证）。
+- 自动触发澄清（任一满足）：
+  - 同一 `issue_id` 连续失败达到阈值（默认 `2`）。
+  - 现象/期望反复冲突，修复结果不收敛。
+- 触发后行为：
+  - 按场景模板（`plan / requirement / bugfix / acceptance`）选择澄清问题。
+  - 外层 AI 代理最多提出 `3` 个关键澄清问题（状态定义/期望转移/验收样例）。
+  - 澄清确认后恢复 `direct_fix` 并清零失败计数。
+- 证据字段补充：`issue_id`、`attempt_count`、`clarification_mode`、`clarification_scenario`、`clarification_questions`、`clarification_answers`。
+
 ## B. Codex 平台差异（项目内）
 ### B.1 加载与覆盖
 - 目录：`~/.codex`（可由 `CODEX_HOME` 覆盖）。

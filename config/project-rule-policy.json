@@ -12,6 +12,10 @@
     "max_repeated_failure_per_step": 2,
     "stop_on_irreversible_risk": true,
     "forbid_breaking_contract": true,
+    "clarification_mode_default": "direct_fix",
+    "clarification_scenario_default": "bugfix",
+    "clarification_trigger_attempt_threshold": 2,
+    "clarification_max_questions": 3,
     "auto_commit_enabled": false,
     "auto_commit_on_checkpoints": [],
     "auto_commit_message_prefix": "\u6cbb\u7406\u91cc\u7a0b\u7891\u81ea\u52a8\u63d0\u4ea4"

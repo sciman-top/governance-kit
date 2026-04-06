@@ -44,6 +44,20 @@
 - `E5` 供应链门禁（存在即执行）。
 - `E6` 数据结构变更需迁移与回滚方案。
 
+### A.6 触发式澄清协议（自动）
+- 默认模式：`direct_fix`（先执行修复，不主动进入问答）。
+- 触发条件（任一满足）：
+  - 同一 `issue_id` 连续失败次数达到阈值（默认 `2`）。
+  - 出现语义冲突信号（如“现象与期望持续矛盾/重复返工”）。
+- 触发后动作：
+  - 自动切换 `clarify_required`。
+  - 按场景模板（`plan / requirement / bugfix / acceptance`）自动选择提问。
+  - 最多提出 `3` 个关键澄清问题（状态定义/期望转移/验收样例）。
+- 恢复条件：
+  - 澄清结论被确认后，状态切回 `direct_fix` 并清零失败计数。
+- 留痕要求：
+  - 在证据中记录 `issue_id / attempt_count / clarification_mode / clarification_scenario / clarification_questions / clarification_answers`。
+
 ## B. Codex 平台差异（全局）
 ### B.1 加载链与覆盖
 - 目录：`~/.codex`（可由 `CODEX_HOME` 覆盖）。

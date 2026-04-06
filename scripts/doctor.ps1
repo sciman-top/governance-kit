@@ -63,6 +63,79 @@ function Run-Step([string]$Name, [string]$ScriptPath, [string[]]$ScriptArgs = @(
   }
 }
 
+function Get-ClarificationObservability([string]$KitRootPath) {
+  $reposPath = Join-Path $KitRootPath "config\repositories.json"
+  if (-not (Test-Path -LiteralPath $reposPath)) {
+    return [pscustomobject]@{
+      trigger_count = 0
+      open_items = 0
+      tracked_repos = 0
+      tracked_files = 0
+      issues = @()
+    }
+  }
+
+  try {
+    $repos = Get-Content -LiteralPath $reposPath -Raw | ConvertFrom-Json
+  } catch {
+    return [pscustomobject]@{
+      trigger_count = 0
+      open_items = 0
+      tracked_repos = 0
+      tracked_files = 0
+      issues = @("[doctor] repositories.json parse failed")
+    }
+  }
+
+  $triggerCount = 0
+  $openItems = 0
+  $trackedFiles = 0
+  $trackedRepos = 0
+  $issues = [System.Collections.Generic.List[string]]::new()
+
+  foreach ($repo in @($repos)) {
+    $repoPathText = [string]$repo
+    if ([string]::IsNullOrWhiteSpace($repoPathText)) {
+      continue
+    }
+    $repoPath = ($repoPathText -replace '/', '\')
+    if (-not (Test-Path -LiteralPath $repoPath -PathType Container)) {
+      continue
+    }
+    $trackedRepos++
+    $clarificationDir = Join-Path $repoPath ".codex\clarification"
+    if (-not (Test-Path -LiteralPath $clarificationDir -PathType Container)) {
+      continue
+    }
+
+    $files = @(Get-ChildItem -LiteralPath $clarificationDir -Filter "*.json" -File -ErrorAction SilentlyContinue)
+    foreach ($file in $files) {
+      $trackedFiles++
+      try {
+        $state = Get-Content -LiteralPath $file.FullName -Raw | ConvertFrom-Json
+      } catch {
+        $issues.Add("invalid clarification state: $($file.FullName)") | Out-Null
+        continue
+      }
+
+      if ($state.clarification_required -eq $true) {
+        $openItems++
+      }
+      if ([int]$state.attempt_count -ge 2) {
+        $triggerCount++
+      }
+    }
+  }
+
+  return [pscustomobject]@{
+    trigger_count = $triggerCount
+    open_items = $openItems
+    tracked_repos = $trackedRepos
+    tracked_files = $trackedFiles
+    issues = @($issues)
+  }
+}
+
 $steps = @(
   [pscustomobject]@{ name = "verify-kit"; script = (Join-Path $PSScriptRoot 'verify-kit.ps1'); args = @() },
   [pscustomobject]@{ name = "validate-config"; script = (Join-Path $PSScriptRoot 'validate-config.ps1'); args = @() },
@@ -95,6 +168,7 @@ foreach ($item in $steps) {
 
 $ok = $failedSteps.Count -eq 0
 $health = if ($ok) { "GREEN" } else { "RED" }
+$clarification = Get-ClarificationObservability -KitRootPath $kitRoot
 
 if ($AsJson) {
   $jsonResult = [pscustomobject]@{
@@ -103,6 +177,7 @@ if ($AsJson) {
     health = $health
     failed_steps = @($failedSteps)
     skipped_steps = @($skippedSteps)
+    clarification = $clarification
     steps = @($stepResults)
   }
   $jsonResult | ConvertTo-Json -Depth 8 | Write-Output
@@ -110,6 +185,10 @@ if ($AsJson) {
 }
 
 Write-Host "=== SUMMARY ==="
+Write-Host ("clarification_trigger_count=" + $clarification.trigger_count)
+Write-Host ("clarification_open_items=" + $clarification.open_items)
+Write-Host ("clarification_tracked_repos=" + $clarification.tracked_repos)
+Write-Host ("clarification_tracked_files=" + $clarification.tracked_files)
 if ($ok) {
   Write-Host "HEALTH=GREEN"
   exit 0

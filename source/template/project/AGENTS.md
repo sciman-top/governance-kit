@@ -24,6 +24,18 @@
 - 兼容优先：未授权不得破坏契约与外部行为。
 - 门禁顺序固定：`build -> test -> contract/invariant -> hotspot`。
 
+### A.4 触发式澄清协议（模板）
+- 默认执行：`direct_fix`（先修复再验证）。
+- 自动触发澄清（任一满足）：
+  - 同一 `issue_id` 连续失败达到阈值（默认 `2`）。
+  - 需求语义冲突反复出现（行为与期望不收敛）。
+- 触发后行为：
+  - 按场景模板（`plan / requirement / bugfix / acceptance`）自动选择问题集。
+  - 外层代理最多提 `3` 个关键问题后继续执行。
+  - 澄清完成即恢复 `direct_fix`，并重置失败计数。
+- 证据字段必须补充：
+  - `issue_id`、`attempt_count`、`clarification_mode`、`clarification_scenario`、`clarification_questions`、`clarification_answers`。
+
 ## B. Codex 平台差异（模板）
 ### B.1 加载与覆盖
 - 目录：`~/.codex`（可由 `CODEX_HOME` 覆盖）。

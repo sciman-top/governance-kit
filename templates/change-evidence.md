@@ -6,6 +6,14 @@
 目标归宿=
 迁移批次=
 风险等级=
+issue_id=
+attempt_count=
+clarification_mode(off|required|resolved)=
+clarification_scenario(plan|requirement|bugfix|acceptance)=
+clarification_context_file=
+clarification_questions=
+clarification_answers=
+final_acceptance_examples=
 是否豁免(Waiver)=
 豁免责任人=
 豁免到期=
