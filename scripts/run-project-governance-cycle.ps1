@@ -278,6 +278,35 @@ function Invoke-MilestoneAutoCommit([string]$Checkpoint) {
     return
   }
 
+  $trackedScript = Join-Path $PSScriptRoot "governance\check-tracked-files.ps1"
+  if (-not (Test-Path -LiteralPath $trackedScript -PathType Leaf)) {
+    throw "auto commit precheck script not found: $trackedScript"
+  }
+  $trackedPolicyPath = Join-Path $repo ".governance\tracked-files-policy.json"
+  $trackedResult = & powershell -NoProfile -ExecutionPolicy Bypass -File $trackedScript -RepoPath $repo -PolicyPath $trackedPolicyPath -Scope pending -AsJson
+  $trackedExitCode = $LASTEXITCODE
+  $trackedJsonText = [string]::Join([Environment]::NewLine, @($trackedResult))
+  $trackedObj = $null
+  if (-not [string]::IsNullOrWhiteSpace($trackedJsonText)) {
+    try {
+      $trackedObj = $trackedJsonText | ConvertFrom-Json
+    } catch {
+      $trackedObj = $null
+    }
+  }
+  if ($null -ne $trackedObj -and $trackedObj.PSObject.Properties['blocked'] -and [bool]$trackedObj.blocked) {
+    throw "auto commit blocked by tracked files policy at checkpoint '$Checkpoint'."
+  }
+  if ($trackedExitCode -eq 2) {
+    throw "auto commit blocked by tracked files policy at checkpoint '$Checkpoint'."
+  }
+  if ($trackedExitCode -ne 0) {
+    throw "auto commit precheck failed at checkpoint '$Checkpoint' (tracked files policy check)."
+  }
+  if (-not [string]::IsNullOrWhiteSpace([string]($trackedResult | Out-String))) {
+    Write-Host ("[AUTO_COMMIT_PRECHECK] " + (($trackedResult | Out-String).Trim()))
+  }
+
   & git -C $repo add -A
   if ($LASTEXITCODE -ne 0) {
     throw "auto commit failed at 'git add -A' for checkpoint '$Checkpoint'."

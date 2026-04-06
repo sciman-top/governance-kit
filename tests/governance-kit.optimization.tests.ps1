@@ -1024,6 +1024,8 @@ exit 0
 
       Copy-Item -Path (Join-Path $repoRoot "scripts\run-project-governance-cycle.ps1") -Destination (Join-Path $tmp "scripts\run-project-governance-cycle.ps1") -Force
       Copy-Item -Path (Join-Path $repoRoot "scripts\lib\common.ps1") -Destination (Join-Path $tmp "scripts\lib\common.ps1") -Force
+      New-Item -ItemType Directory -Path (Join-Path $tmp "scripts\governance") -Force | Out-Null
+      Copy-Item -Path (Join-Path $repoRoot "scripts\governance\check-tracked-files.ps1") -Destination (Join-Path $tmp "scripts\governance\check-tracked-files.ps1") -Force
       Initialize-ClarificationTrackerFixture -TmpRoot $tmp
 
       @{
@@ -1070,11 +1072,13 @@ exit 0
     $repo = Join-Path $tmp "OutsideAllowListRepo"
     try {
       New-Item -ItemType Directory -Path (Join-Path $tmp "scripts\lib") -Force | Out-Null
+      New-Item -ItemType Directory -Path (Join-Path $tmp "scripts\governance") -Force | Out-Null
       New-Item -ItemType Directory -Path (Join-Path $tmp "scripts") -Force | Out-Null
       New-Item -ItemType Directory -Path (Join-Path $tmp "config") -Force | Out-Null
       New-Item -ItemType Directory -Path $repo -Force | Out-Null
 
       Copy-Item -Path (Join-Path $repoRoot "scripts\run-project-governance-cycle.ps1") -Destination (Join-Path $tmp "scripts\run-project-governance-cycle.ps1") -Force
+      Copy-Item -Path (Join-Path $repoRoot "scripts\governance\check-tracked-files.ps1") -Destination (Join-Path $tmp "scripts\governance\check-tracked-files.ps1") -Force
       Copy-Item -Path (Join-Path $repoRoot "scripts\lib\common.ps1") -Destination (Join-Path $tmp "scripts\lib\common.ps1") -Force
       Initialize-ClarificationTrackerFixture -TmpRoot $tmp
 
@@ -1128,11 +1132,13 @@ exit 0
     $repo = Join-Path $tmp "TargetRepo"
     try {
       New-Item -ItemType Directory -Path (Join-Path $tmp "scripts\lib") -Force | Out-Null
+      New-Item -ItemType Directory -Path (Join-Path $tmp "scripts\governance") -Force | Out-Null
       New-Item -ItemType Directory -Path (Join-Path $tmp "scripts") -Force | Out-Null
       New-Item -ItemType Directory -Path (Join-Path $tmp "config") -Force | Out-Null
       New-Item -ItemType Directory -Path $repo -Force | Out-Null
 
       Copy-Item -Path (Join-Path $repoRoot "scripts\run-project-governance-cycle.ps1") -Destination (Join-Path $tmp "scripts\run-project-governance-cycle.ps1") -Force
+      Copy-Item -Path (Join-Path $repoRoot "scripts\governance\check-tracked-files.ps1") -Destination (Join-Path $tmp "scripts\governance\check-tracked-files.ps1") -Force
       Copy-Item -Path (Join-Path $repoRoot "scripts\lib\common.ps1") -Destination (Join-Path $tmp "scripts\lib\common.ps1") -Force
       Initialize-ClarificationTrackerFixture -TmpRoot $tmp
 
