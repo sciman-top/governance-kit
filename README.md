@@ -107,6 +107,36 @@ powershell -File scripts\validate-config.ps1
 powershell -File scripts\verify-kit.ps1
 ```
 
+周期巡检（建议每周执行）：
+
+```powershell
+powershell -File scripts\governance\run-recurring-review.ps1
+```
+
+生成月度治理评审（个人场景）：
+
+```powershell
+powershell -File scripts\governance\run-monthly-policy-review.ps1
+```
+
+注册 Windows 定时提醒（每周一 09:30）：
+
+```powershell
+powershell -File scripts\governance\register-review-task.ps1 -Cadence Weekly -DayOfWeek Monday -At 09:30
+```
+
+注册月度评审任务（每月 1 日 10:00）：
+
+```powershell
+powershell -File scripts\governance\register-review-task.ps1 -TaskType monthly-review -Cadence Monthly -DayOfMonth 1 -At 10:00
+```
+
+取消 Windows 定时提醒：
+
+```powershell
+powershell -File scripts\governance\unregister-review-task.ps1
+```
+
 目标仓里如果要稳定复用浏览器登录态（例如 GitHub 自动化），使用默认分发的脚本：
 
 ```powershell
