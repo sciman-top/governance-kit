@@ -195,4 +195,32 @@ if ($metaFail -gt 0) {
   throw "governance-kit metadata check failed: issues=$metaFail"
 }
 
+$evidenceTemplateChecks = @(
+  "templates\change-evidence.md",
+  "docs\change-evidence\template.md"
+)
+$learningLoopRequiredFields = @(
+  "learning_points_3",
+  "reusable_checklist",
+  "open_questions"
+)
+
+foreach ($rel in $evidenceTemplateChecks) {
+  $abs = Join-Path $root $rel
+  if (-not (Test-Path -LiteralPath $abs -PathType Leaf)) {
+    continue
+  }
+  $kv = Parse-KeyValueFile -Path $abs
+  foreach ($field in $learningLoopRequiredFields) {
+    if (-not $kv.ContainsKey($field)) {
+      Write-Host "[META] evidence template missing required learning-loop field '$field': $rel"
+      $metaFail++
+    }
+  }
+}
+
+if ($metaFail -gt 0) {
+  throw "governance-kit metadata check failed: issues=$metaFail"
+}
+
 Write-Host "governance-kit integrity OK"

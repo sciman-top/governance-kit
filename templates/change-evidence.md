@@ -24,3 +24,7 @@ final_acceptance_examples=
 发布后验证(指标/阈值/窗口)=
 数据变更治理(迁移/回填/回滚)=
 回滚动作=
+
+learning_points_3=
+reusable_checklist=
+open_questions=

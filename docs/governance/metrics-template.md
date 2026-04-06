@@ -5,6 +5,7 @@ gate_pass_rate=
 rollback_rate=
 patch_recovery_overdue_rate=
 evidence_completeness_rate=
+learning_loop_evidence_rate=
 waiver_active_count=
 waiver_expired_unrecovered_count=
 notes=
