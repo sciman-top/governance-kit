@@ -1,0 +1,30 @@
+{
+  "schema_version": "1.0",
+  "cadence": {
+    "recurring_review_days": 7,
+    "monthly_review_day": 1
+  },
+  "triggers": {
+    "cli_version_drift": {
+      "enabled": true,
+      "severity": "high"
+    },
+    "rollout_observe_overdue": {
+      "enabled": true,
+      "severity": "medium"
+    },
+    "metrics_snapshot_stale": {
+      "enabled": true,
+      "severity": "medium",
+      "max_age_days": 8
+    },
+    "waiver_expired_unrecovered": {
+      "enabled": true,
+      "severity": "high"
+    },
+    "platform_na_expired": {
+      "enabled": true,
+      "severity": "medium"
+    }
+  }
+}

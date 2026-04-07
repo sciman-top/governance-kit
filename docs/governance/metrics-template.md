@@ -8,4 +8,5 @@ evidence_completeness_rate=
 learning_loop_evidence_rate=
 waiver_active_count=
 waiver_expired_unrecovered_count=
+update_trigger_alert_count=
 notes=

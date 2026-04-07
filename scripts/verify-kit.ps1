@@ -11,6 +11,7 @@ $mustExist = @(
   "config\project-custom-files.json",
   "config\real-repo-regression-matrix.json",
   "config\governance-baseline.json",
+  "config\update-trigger-policy.json",
   "config\editorconfig.base",
   ".governance\tracked-files-policy.json",
   "scripts\add-repo.ps1",
@@ -21,11 +22,14 @@ $mustExist = @(
   "scripts\bootstrap-here.ps1",
   "scripts\install-full-stack.ps1",
   "scripts\install.ps1",
+  "scripts\refresh-targets.ps1",
   "scripts\sync.ps1",
   "scripts\verify.ps1",
   "scripts\governance\check-tracked-files.ps1",
   "scripts\governance\run-recurring-review.ps1",
   "scripts\governance\run-monthly-policy-review.ps1",
+  "scripts\governance\check-update-triggers.ps1",
+  "scripts\governance\check-rule-duplication.ps1",
   "scripts\governance\register-review-task.ps1",
   "scripts\governance\unregister-review-task.ps1",
   "scripts\restore.ps1",
@@ -50,6 +54,8 @@ $mustExist = @(
   "scripts\run-endstate-onboarding.ps1",
   "scripts\run-real-repo-regression.ps1",
   "scripts\verify-json-contract.ps1",
+  "scripts\check-cli-capabilities.ps1",
+  "scripts\check-cli-version-drift.ps1",
   "scripts\validate-failure-context.ps1",
   "scripts\audit-governance-readiness.ps1",
   "scripts\merge-rules.ps1",
@@ -221,6 +227,31 @@ foreach ($rel in $evidenceTemplateChecks) {
 
 if ($metaFail -gt 0) {
   throw "governance-kit metadata check failed: issues=$metaFail"
+}
+
+$refreshScript = Join-Path $PSScriptRoot "refresh-targets.ps1"
+if (-not (Test-Path -LiteralPath $refreshScript -PathType Leaf)) {
+  throw "refresh-targets script missing: $refreshScript"
+}
+$refreshOutput = & powershell -NoProfile -ExecutionPolicy Bypass -File $refreshScript -Mode plan -AsJson
+if ($LASTEXITCODE -ne 0) {
+  throw "refresh-targets plan check failed with exit code $LASTEXITCODE"
+}
+$refreshObj = $null
+if (-not [string]::IsNullOrWhiteSpace([string]($refreshOutput | Out-String))) {
+  $refreshObj = ([string]::Join([Environment]::NewLine, @($refreshOutput))) | ConvertFrom-Json
+}
+if ($null -eq $refreshObj) {
+  throw "refresh-targets returned empty result"
+}
+if ([int]$refreshObj.target_change_count -gt 0) {
+  throw ("distribution mapping drift detected: target_change_count={0}. Run scripts/install.ps1 (or scripts/refresh-targets.ps1) to sync one-click install mapping." -f [int]$refreshObj.target_change_count)
+}
+
+$dupScript = Join-Path $root "scripts\governance\check-rule-duplication.ps1"
+& powershell -NoProfile -ExecutionPolicy Bypass -File $dupScript -RepoRoot $root
+if ($LASTEXITCODE -ne 0) {
+  throw "governance-kit rule duplication check failed"
 }
 
 Write-Host "governance-kit integrity OK"

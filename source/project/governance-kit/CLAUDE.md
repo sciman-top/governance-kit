@@ -41,7 +41,8 @@
 ## B. Claude 平台差异（项目内）
 ### B.1 平台取证命令
 - 必做：`claude --version`、`claude --help`。
-- 状态能力探测：`claude --help | Select-String status`（有命令再执行，无则记 `platform_na`）。
+- 扩展能力采用“先探测后调用”：`claude --help | Select-String "doctor|mcp|plugin|agents|permission-mode"`（可见再执行）。
+- 状态类命令不做强制假定；不可用按 `platform_na` 记录。
 - 加载链不可见时，补记 `active_rule_path`（仓库根同名文件）与来源说明。
 
 ### B.2 覆盖链与短期 override
@@ -105,6 +106,7 @@
 - Hooks：`Test-Path .git/hooks/pre-commit`、`Test-Path .git/hooks/pre-push`
 - Git 配置：`git config --get commit.template`、`git config --get governance.kitRoot`
 - 里程碑自动提交：治理闭环在策略允许时可于 `after_backflow`、`after_redistribute_verify`、`cycle_complete` 执行 `git add -A + 中文提交说明`，并在提交后强校验工作区干净；执行前必须先识别并隔离非本次治理改动，避免误纳入提交。
+- 一键安装语义：`install/sync` 默认先执行 `scripts/refresh-targets.ps1`（基于 `repositories.json + project-custom-files.json` 刷新 `targets.json`），再执行分发安装。
 - 模板：`Test-Path docs/change-evidence/template.md`、`Test-Path docs/governance/waiver-template.md`、`Test-Path docs/governance/metrics-template.md`
 
 ### C.9 承接映射（Global -> Repo）
@@ -123,6 +125,8 @@
 
 ### C.11 Git 提交与推送边界（“全部”定义）
 - `整理提交全部` 的“全部”仅指：`本次任务相关 + 应被版本管理 + 通过 tracked-files-policy/.gitignore 的文件`。
+- 未跟踪文件处置默认由外层 AI 自动执行：`自动判定(任务产物/运行产物/风险文件) -> 自动处理(纳入提交/加入忽略/保持未跟踪)`，并写入证据。
+- 仅当语义不清、存在破坏性删除风险、或与用户显式意图冲突时，才升级提示用户确认。
 - 默认不纳入“全部”：IDE/agent 本地配置、临时文件、日志、备份、调试残留、缓存与本地运行态目录。
 - `push` 仅推送已存在的 commit 历史，不再次筛选文件；文件筛选必须在 `git add/commit` 前完成。
 - 未跟踪文件仅在被确认为本次任务产物且满足策略时纳入提交；否则保持未跟踪。
@@ -149,6 +153,11 @@
 - 修复后按固定顺序复验：`build -> test -> contract/invariant -> hotspot`，确认通过后再在目标仓执行相关命令。
 - 禁止带着已知治理问题继续分发、提交或推送。
 - 若为临时止血，需在证据中记录回收时点与最终归宿。
+### C.15 周期更新触发器（最佳实践）
+- 触发策略文件：`config/update-trigger-policy.json`；默认由 `scripts/governance/check-update-triggers.ps1` 执行。
+- 周检入口：`scripts/governance/run-recurring-review.ps1`，内置更新触发检查并输出告警计数。
+- 月检入口：`scripts/governance/run-monthly-policy-review.ps1`，将更新触发告警写入月报。
+- 建议告警优先级：`cli_version_drift -> waiver_expired_unrecovered -> rollout_observe_overdue -> metrics_snapshot_stale -> platform_na_expired`。
 ## D. 维护校验清单（项目级）
 - 仅落地本仓事实，不复述全局规则正文。
 - 与全局职责互补，不重叠、不缺失。
@@ -156,6 +165,7 @@
 - 三文件同构约束：`A/C/D` 语义一致，仅 `B` 允许平台差异。
 - 规则升级后同步校验版本、日期、承接映射与门禁命令一致性。
 - 平台差异仅在 B 段表达；A/C/D 不承载平台实现细节。
+
 
 
 

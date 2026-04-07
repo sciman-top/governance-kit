@@ -5,7 +5,9 @@ param(
   [switch]$ShowScope,
   [switch]$NoOverwriteRules,
   [string]$NoOverwriteUnderRepo,
+  [switch]$SkipTargetsRefresh,
   [switch]$FullCycle,
+  [switch]$SkipPostGate,
   [switch]$AutoRemediate,
   [switch]$NoAutoRemediate,
   [ValidateRange(1, 10)]
@@ -20,6 +22,7 @@ $ErrorActionPreference = "Stop"
 $commonPath = Join-Path $PSScriptRoot "lib\common.ps1"
 . $commonPath
 $kitRoot = Split-Path -Parent $PSScriptRoot
+$refreshScript = Join-Path $PSScriptRoot "refresh-targets.ps1"
 $targetsPath = Join-Path $kitRoot "config\targets.json"
 if (!(Test-Path $targetsPath)) {
   throw "targets.json not found: $targetsPath"
@@ -34,6 +37,10 @@ if ($AutoRemediate.IsPresent -and $NoAutoRemediate.IsPresent) {
   Write-Host "[DEPRECATED] -AutoRemediate/-NoAutoRemediate are ignored. Remediation is handled by the outer AI session."
 } elseif ($AutoRemediate.IsPresent -or $NoAutoRemediate.IsPresent) {
   Write-Host "[DEPRECATED] -AutoRemediate/-NoAutoRemediate are ignored. Remediation is handled by the outer AI session."
+}
+
+if ($SkipPostGate.IsPresent) {
+  Write-Host "[WARN] SkipPostGate enabled; full local gate chain after install is skipped."
 }
 if ($PSBoundParameters.ContainsKey("MaxAutoFixAttempts")) {
   Write-Host "[DEPRECATED] -MaxAutoFixAttempts is ignored because in-script auto remediation is disabled."
@@ -83,6 +90,23 @@ function Get-FullCycleRepos {
 }
 
 try {
+
+if (-not $SkipTargetsRefresh) {
+  if (-not (Test-Path -LiteralPath $refreshScript -PathType Leaf)) {
+    Write-Host "[INFO] skip targets refresh: refresh-targets.ps1 not found in current workspace"
+  } else {
+    $reposConfigPath = Join-Path $kitRoot "config\repositories.json"
+    if (Test-Path -LiteralPath $reposConfigPath -PathType Leaf) {
+      $refreshMode = if ($modePlan) { "plan" } else { "safe" }
+      & powershell -NoProfile -ExecutionPolicy Bypass -File $refreshScript -Mode $refreshMode
+      if ($LASTEXITCODE -ne 0) {
+        throw "refresh-targets failed with exit code ${LASTEXITCODE}"
+      }
+    } else {
+      Write-Host "[INFO] skip targets refresh: repositories.json not found in current workspace"
+    }
+  }
+}
 
 try {
   $raw = Get-Content -Path $targetsPath -Raw | ConvertFrom-Json
@@ -271,6 +295,41 @@ if ($modePlan) {
       throw "Post-verify failed with exit code ${LASTEXITCODE}"
     }
     Write-Host "[ASSERT] post-verify passed"
+  }
+
+  if (-not $SkipPostGate) {
+    $buildScript = Join-Path $PSScriptRoot "verify-kit.ps1"
+    $testScript = Join-Path $kitRoot "tests\governance-kit.optimization.tests.ps1"
+    $contractScript = Join-Path $PSScriptRoot "validate-config.ps1"
+    $hotspotScript = Join-Path $PSScriptRoot "doctor.ps1"
+
+    $gateScriptsReady = (Test-Path -LiteralPath $buildScript -PathType Leaf) -and
+      (Test-Path -LiteralPath $testScript -PathType Leaf) -and
+      (Test-Path -LiteralPath $contractScript -PathType Leaf) -and
+      (Test-Path -LiteralPath $hotspotScript -PathType Leaf)
+
+    if ($gateScriptsReady) {
+      Write-Host "=== POST_GATE build ==="
+      & powershell -NoProfile -ExecutionPolicy Bypass -File $buildScript
+      if ($LASTEXITCODE -ne 0) { throw "Post-gate build failed with exit code ${LASTEXITCODE}" }
+
+      Write-Host "=== POST_GATE test ==="
+      & powershell -NoProfile -ExecutionPolicy Bypass -File $testScript
+      if ($LASTEXITCODE -ne 0) { throw "Post-gate test failed with exit code ${LASTEXITCODE}" }
+
+      Write-Host "=== POST_GATE contract/invariant ==="
+      & powershell -NoProfile -ExecutionPolicy Bypass -File $contractScript
+      if ($LASTEXITCODE -ne 0) { throw "Post-gate contract/invariant failed with exit code ${LASTEXITCODE}" }
+      & powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $PSScriptRoot "verify.ps1")
+      if ($LASTEXITCODE -ne 0) { throw "Post-gate verify failed with exit code ${LASTEXITCODE}" }
+
+      Write-Host "=== POST_GATE hotspot ==="
+      & powershell -NoProfile -ExecutionPolicy Bypass -File $hotspotScript
+      if ($LASTEXITCODE -ne 0) { throw "Post-gate hotspot failed with exit code ${LASTEXITCODE}" }
+      Write-Host "[ASSERT] post-gate full chain passed"
+    } else {
+      Write-Host "[INFO] skip post-gate: required gate scripts not found in current workspace"
+    }
   }
 
   if ($AsJson) {

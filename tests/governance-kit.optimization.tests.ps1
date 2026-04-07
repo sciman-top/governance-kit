@@ -2246,6 +2246,7 @@ exit 7
       New-Item -ItemType Directory -Path (Join-Path $tmp "docs\governance") -Force | Out-Null
 
       Copy-Item -Path (Join-Path $repoRoot "scripts\governance\run-recurring-review.ps1") -Destination (Join-Path $tmp "scripts\governance\run-recurring-review.ps1") -Force
+      Copy-Item -Path (Join-Path $repoRoot "scripts\governance\check-update-triggers.ps1") -Destination (Join-Path $tmp "scripts\governance\check-update-triggers.ps1") -Force
       Copy-Item -Path (Join-Path $repoRoot "scripts\lib\common.ps1") -Destination (Join-Path $tmp "scripts\lib\common.ps1") -Force
 
       @'
@@ -2272,6 +2273,17 @@ Write-Host "collect-governance-metrics done"
 exit 0
 '@ | Set-Content -Path (Join-Path $tmp "scripts\collect-governance-metrics.ps1") -Encoding UTF8
 
+      @'
+param()
+Write-Output (@{
+  schema_version = "1.0"
+  status = "OK"
+  alert_count = 0
+  alerts = @()
+} | ConvertTo-Json -Depth 6)
+exit 0
+'@ | Set-Content -Path (Join-Path $tmp "scripts\governance\check-update-triggers.ps1") -Encoding UTF8
+
       $json = & powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $tmp "scripts\governance\run-recurring-review.ps1") -RepoRoot $tmp -NoNotifyOnAlert -AsJson
       $LASTEXITCODE | should be 1
       $obj = $json | ConvertFrom-Json
@@ -2291,6 +2303,7 @@ exit 0
       New-Item -ItemType Directory -Path (Join-Path $tmp "docs\governance") -Force | Out-Null
 
       Copy-Item -Path (Join-Path $repoRoot "scripts\governance\run-recurring-review.ps1") -Destination (Join-Path $tmp "scripts\governance\run-recurring-review.ps1") -Force
+      Copy-Item -Path (Join-Path $repoRoot "scripts\governance\check-update-triggers.ps1") -Destination (Join-Path $tmp "scripts\governance\check-update-triggers.ps1") -Force
       Copy-Item -Path (Join-Path $repoRoot "scripts\governance\run-monthly-policy-review.ps1") -Destination (Join-Path $tmp "scripts\governance\run-monthly-policy-review.ps1") -Force
       Copy-Item -Path (Join-Path $repoRoot "scripts\lib\common.ps1") -Destination (Join-Path $tmp "scripts\lib\common.ps1") -Force
 
@@ -2317,6 +2330,17 @@ param()
 Write-Host "collect-governance-metrics done"
 exit 0
 '@ | Set-Content -Path (Join-Path $tmp "scripts\collect-governance-metrics.ps1") -Encoding UTF8
+
+      @'
+param()
+Write-Output (@{
+  schema_version = "1.0"
+  status = "OK"
+  alert_count = 0
+  alerts = @()
+} | ConvertTo-Json -Depth 6)
+exit 0
+'@ | Set-Content -Path (Join-Path $tmp "scripts\governance\check-update-triggers.ps1") -Encoding UTF8
 
       $json = & powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $tmp "scripts\governance\run-monthly-policy-review.ps1") -RepoRoot $tmp -Period "2026-04" -AsJson
       if ($LASTEXITCODE -ne 0) { throw "run-monthly-policy-review failed with exit code $LASTEXITCODE" }

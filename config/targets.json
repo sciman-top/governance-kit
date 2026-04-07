@@ -254,5 +254,41 @@
     {
         "source":  "source/project/_common/custom/.governance/tracked-files-policy.json",
         "target":  "E:/CODE/governance-kit/.governance/tracked-files-policy.json"
+    },
+    {
+        "source":  "source/project/_common/custom/scripts/governance/check-update-triggers.ps1",
+        "target":  "E:/CODE/ClassroomToolkit/scripts/governance/check-update-triggers.ps1"
+    },
+    {
+        "source":  "source/project/_common/custom/scripts/governance/run-recurring-review.ps1",
+        "target":  "E:/CODE/ClassroomToolkit/scripts/governance/run-recurring-review.ps1"
+    },
+    {
+        "source":  "source/project/_common/custom/scripts/governance/run-monthly-policy-review.ps1",
+        "target":  "E:/CODE/ClassroomToolkit/scripts/governance/run-monthly-policy-review.ps1"
+    },
+    {
+        "source":  "source/project/_common/custom/scripts/governance/check-update-triggers.ps1",
+        "target":  "E:/CODE/skills-manager/scripts/governance/check-update-triggers.ps1"
+    },
+    {
+        "source":  "source/project/_common/custom/scripts/governance/run-recurring-review.ps1",
+        "target":  "E:/CODE/skills-manager/scripts/governance/run-recurring-review.ps1"
+    },
+    {
+        "source":  "source/project/_common/custom/scripts/governance/run-monthly-policy-review.ps1",
+        "target":  "E:/CODE/skills-manager/scripts/governance/run-monthly-policy-review.ps1"
+    },
+    {
+        "source":  "source/project/governance-kit/custom/scripts/governance/check-update-triggers.ps1",
+        "target":  "E:/CODE/governance-kit/scripts/governance/check-update-triggers.ps1"
+    },
+    {
+        "source":  "source/project/governance-kit/custom/scripts/governance/run-recurring-review.ps1",
+        "target":  "E:/CODE/governance-kit/scripts/governance/run-recurring-review.ps1"
+    },
+    {
+        "source":  "source/project/governance-kit/custom/scripts/governance/run-monthly-policy-review.ps1",
+        "target":  "E:/CODE/governance-kit/scripts/governance/run-monthly-policy-review.ps1"
     }
 ]

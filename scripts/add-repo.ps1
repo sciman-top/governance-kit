@@ -150,9 +150,26 @@ if (-not $allowProjectRules) {
 }
 
 $added = 0
+$updated = 0
 foreach ($d in @($desired)) {
-  $exists = $targets | Where-Object { $_.source -eq $d.source -and $_.target -eq $d.target }
-  if (-not $exists) {
+  $sameTarget = @($targets | Where-Object { $_.target -eq $d.target })
+  if ($sameTarget.Count -gt 0) {
+    $exact = @($sameTarget | Where-Object { $_.source -eq $d.source })
+    if ($exact.Count -gt 0) {
+      continue
+    }
+
+    if ($Mode -eq "plan") {
+      Write-Host "[PLAN] UPDATE target source: $($sameTarget[0].source) -> $($d.source) | target=$($d.target)"
+    } else {
+      $sameTarget[0].source = $d.source
+      Write-Host "[UPDATED] target source: $($d.source) -> $($d.target)"
+    }
+    $updated++
+    continue
+  }
+
+  if ($sameTarget.Count -eq 0) {
     if ($Mode -eq "plan") {
       Write-Host "[PLAN] ADD target: $($d.source) -> $($d.target)"
     } else {
@@ -175,7 +192,7 @@ if ($Mode -eq "plan") {
   } else {
     Write-Host "[PLAN] ADD repositories: $repo"
   }
-  Write-Host "Plan done. add_repo=$([int](-not $repoExists)) added_targets=$added removed_disallowed_targets=$removedDisallowed"
+  Write-Host "Plan done. add_repo=$([int](-not $repoExists)) added_targets=$added updated_targets=$updated removed_disallowed_targets=$removedDisallowed"
   return
 }
 
@@ -195,7 +212,7 @@ if ($customCfgChanged) {
   $customCfg | ConvertTo-Json -Depth 8 | Set-Content -LiteralPath $projectCustomPath -Encoding UTF8
   Write-Host "[UPDATED] project-custom-files.json"
 }
-Write-Host "Done. added_targets=$added removed_disallowed_targets=$removedDisallowed mode=$Mode"
+Write-Host "Done. added_targets=$added updated_targets=$updated removed_disallowed_targets=$removedDisallowed mode=$Mode"
 } finally {
   Release-ScriptLock -LockHandle $scriptLock
 }

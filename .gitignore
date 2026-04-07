@@ -4,6 +4,9 @@
 backups/
 backups/backflow-*/
 .locks/
+docs/governance/metrics-auto.md
+docs/governance/alerts-latest.md
+docs/governance/reviews/
 
 # Agent-local configuration
 .codex/
