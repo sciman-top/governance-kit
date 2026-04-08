@@ -1,0 +1,22 @@
+规则ID=GK-20260408-DOCTOR-FALLBACK-TEST
+规则版本=3.83
+兼容窗口(观察期/强制期)=observe(2026-04-08) -> enforce(2026-04-09)
+影响模块=tests/governance-kit.optimization.tests.ps1
+当前落点=doctor fallback test case
+目标归宿=覆盖 doctor 缺失 common helper 的 fallback 执行路径
+迁移批次=20260408-batch-doctor-fallback-test
+风险等级=LOW
+是否豁免(Waiver)=no
+豁免责任人=
+豁免到期=
+豁免回收计划=
+执行命令=powershell -File scripts/verify-kit.ps1; powershell -File tests/governance-kit.optimization.tests.ps1; powershell -File scripts/validate-config.ps1; powershell -File scripts/verify.ps1; powershell -File scripts/doctor.ps1
+验证证据=new test 'doctor fallback runner works when common helper is missing' passed; full gates all pass
+供应链安全扫描=N/A(无新依赖)
+发布后验证(指标/阈值/窗口)=fallback branch remains covered in future refactors
+数据变更治理(迁移/回填/回滚)=N/A
+回滚动作=git checkout -- tests/governance-kit.optimization.tests.ps1
+
+learning_points_3=fallback 路径需有专门测试覆盖; 仅主路径测试不足以防回归; 增加测试后仍需全门禁验证
+reusable_checklist=新增 fallback 测试夹具; 保持最小依赖脚本集合; 跑 build/test/contract/hotspot
+open_questions=是否为 other fallback paths (e.g. no git env) 增加同类测试
