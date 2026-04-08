@@ -7,6 +7,9 @@ param(
 
 $ErrorActionPreference = "Stop"
 $commonPath = Join-Path $PSScriptRoot "lib\common.ps1"
+if (-not (Test-Path -LiteralPath $commonPath -PathType Leaf)) {
+  throw "Missing common helper: $commonPath"
+}
 . $commonPath
 $kitRoot = Split-Path -Parent $PSScriptRoot
 $targetsPath = Join-Path $kitRoot "config\targets.json"

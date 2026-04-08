@@ -8,6 +8,9 @@ param(
 
 $ErrorActionPreference = "Stop"
 $commonPath = Join-Path $PSScriptRoot "lib\common.ps1"
+if (-not (Test-Path -LiteralPath $commonPath -PathType Leaf)) {
+  throw "Missing common helper: $commonPath"
+}
 . $commonPath
 Write-ModeRisk -ScriptName "sync.ps1" -Mode $Mode
 

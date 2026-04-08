@@ -4,24 +4,11 @@ param(
 )
 
 $ErrorActionPreference = "Stop"
-
-function Invoke-CommandCapture {
-  param([Parameter(Mandatory = $true)][string]$Command)
-  try {
-    $output = Invoke-Expression $Command 2>&1 | Out-String
-    $exitCode = $LASTEXITCODE
-    if ($null -eq $exitCode) { $exitCode = 0 }
-    return [pscustomobject]@{
-      exit_code = [int]$exitCode
-      output = [string]$output
-    }
-  } catch {
-    return [pscustomobject]@{
-      exit_code = 1
-      output = $_.Exception.Message
-    }
-  }
+$commonPath = Join-Path $PSScriptRoot "lib\common.ps1"
+if (-not (Test-Path -LiteralPath $commonPath -PathType Leaf)) {
+  throw "Missing common helper: $commonPath"
 }
+. $commonPath
 
 function Parse-SemVer {
   param([string]$Text)

@@ -50,6 +50,12 @@ $runner = Join-Path $kitRoot "scripts/run-project-governance-cycle.ps1"
 if (-not (Test-Path -LiteralPath $runner)) {
   throw "Missing runner script: $runner"
 }
+$psExe = "powershell"
+$commonPath = Join-Path $kitRoot "scripts/lib/common.ps1"
+if (Test-Path -LiteralPath $commonPath) {
+  . $commonPath
+  $psExe = Get-CurrentPowerShellPath
+}
 
 $args = @(
   "-NoProfile",
@@ -64,7 +70,7 @@ $args = @(
 )
 if ($ShowScope.IsPresent) { $args += "-ShowScope" }
 
-& powershell @args
+& $psExe @args
 if ($LASTEXITCODE -ne 0) {
   throw "run-project-governance-cycle failed with exit code $LASTEXITCODE"
 }

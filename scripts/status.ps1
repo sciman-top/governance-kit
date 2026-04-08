@@ -6,6 +6,9 @@ $ErrorActionPreference = "Stop"
 $kitRoot = Split-Path -Parent $PSScriptRoot
 $rolloutPath = Join-Path $kitRoot "config\rule-rollout.json"
 $commonPath = Join-Path $PSScriptRoot "lib\common.ps1"
+if (-not (Test-Path -LiteralPath $commonPath -PathType Leaf)) {
+  throw "Missing common helper: $commonPath"
+}
 . $commonPath
 
 $repos = @(Read-JsonArray (Join-Path $kitRoot "config\repositories.json"))

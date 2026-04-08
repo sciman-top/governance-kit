@@ -28,6 +28,88 @@ function Write-Utf8NoBom([string]$Path, [string]$Content) {
   [System.IO.File]::WriteAllText($Path, $Content, $enc)
 }
 
+function Invoke-CommandCapture {
+  param(
+    [Parameter(Mandatory = $true)]
+    [string]$Command,
+    [int]$HeadLines = 20,
+    [switch]$IncludeTimestamp
+  )
+
+  $output = $null
+  $exitCode = 0
+  try {
+    $output = Invoke-Expression $Command 2>&1 | Out-String
+    $exitCode = $LASTEXITCODE
+    if ($null -eq $exitCode) { $exitCode = 0 }
+  } catch {
+    $output = $_.Exception.Message
+    $exitCode = 1
+  }
+
+  $lines = @()
+  if (-not [string]::IsNullOrWhiteSpace($output)) {
+    $lines = @(
+      $output -split "`r?`n" |
+      Where-Object { -not [string]::IsNullOrWhiteSpace($_) } |
+      Select-Object -First $HeadLines
+    )
+  }
+
+  $result = [ordered]@{
+    cmd = $Command
+    exit_code = [int]$exitCode
+    key_output = ($lines -join " | ")
+    raw_output = [string]$output
+    output = [string]$output
+  }
+  if ($IncludeTimestamp) {
+    $result.timestamp = (Get-Date).ToString("o")
+  }
+
+  return [pscustomobject]$result
+}
+
+function Assert-Command {
+  param([Parameter(Mandatory = $true)][string]$Name)
+
+  if (-not (Get-Command $Name -ErrorAction SilentlyContinue)) {
+    throw "Required command not found: $Name"
+  }
+}
+
+function Invoke-LoggedCommand {
+  param(
+    [Parameter(Mandatory = $true)][string]$Name,
+    [Parameter(Mandatory = $true)][scriptblock]$Action,
+    [Parameter(Mandatory = $true)][string]$WorkDir,
+    [Parameter(Mandatory = $true)][string]$LogRoot
+  )
+
+  if (-not (Test-Path -LiteralPath $LogRoot -PathType Container)) {
+    New-Item -ItemType Directory -Force -Path $LogRoot | Out-Null
+  }
+
+  $safeName = ($Name -replace '[^a-zA-Z0-9._-]', '_')
+  $logPath = Join-Path $LogRoot ((Get-Date -Format "yyyyMMdd-HHmmss") + "-" + $safeName + ".log")
+
+  Push-Location $WorkDir
+  try {
+    & $Action *>&1 | Tee-Object -LiteralPath $logPath | Out-Host
+    $exitCode = $LASTEXITCODE
+  } finally {
+    Pop-Location
+  }
+
+  if ($null -eq $exitCode) { $exitCode = 0 }
+
+  return [pscustomobject]@{
+    name = $Name
+    exit_code = [int]$exitCode
+    log_path = $logPath
+  }
+}
+
 function Get-FileSha256([string]$Path) {
   if ([string]::IsNullOrWhiteSpace($Path)) {
     throw "Path is required for Get-FileSha256."

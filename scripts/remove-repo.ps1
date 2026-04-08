@@ -8,6 +8,9 @@ param(
 $ErrorActionPreference = "Stop"
 $kitRoot = Split-Path -Parent $PSScriptRoot
 $commonPath = Join-Path $PSScriptRoot "lib\common.ps1"
+if (-not (Test-Path -LiteralPath $commonPath -PathType Leaf)) {
+  throw "Missing common helper: $commonPath"
+}
 . $commonPath
 Write-ModeRisk -ScriptName "remove-repo.ps1" -Mode $Mode
 $repo = ([System.IO.Path]::GetFullPath(($RepoPath -replace '/', '\')) -replace '\\','/').TrimEnd('/')

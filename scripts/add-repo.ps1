@@ -10,6 +10,9 @@ param(
 $ErrorActionPreference = "Stop"
 $kitRoot = Split-Path -Parent $PSScriptRoot
 $commonPath = Join-Path $PSScriptRoot "lib\common.ps1"
+if (-not (Test-Path -LiteralPath $commonPath -PathType Leaf)) {
+  throw "Missing common helper: $commonPath"
+}
 . $commonPath
 Write-ModeRisk -ScriptName "add-repo.ps1" -Mode $Mode
 $scriptLock = New-ScriptLock -KitRoot $kitRoot -LockName "add-repo" -TimeoutSeconds $LockTimeoutSeconds

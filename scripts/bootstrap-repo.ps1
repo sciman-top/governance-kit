@@ -9,6 +9,9 @@ param(
 
 $ErrorActionPreference = "Stop"
 $commonPath = Join-Path $PSScriptRoot "lib\common.ps1"
+if (-not (Test-Path -LiteralPath $commonPath -PathType Leaf)) {
+  throw "Missing common helper: $commonPath"
+}
 . $commonPath
 Write-ModeRisk -ScriptName "bootstrap-repo.ps1" -Mode $Mode
 $scriptRoot = Split-Path -Parent $MyInvocation.MyCommand.Path
@@ -30,7 +33,7 @@ if (-not $SkipInstallGlobalGit) {
   if ($Mode -eq "plan") {
     Run-Step "install-global-git" { Write-Host "[PLAN] SET global git core.hooksPath/commit.template/governance.kitRoot" }
   } else {
-    Run-Step "install-global-git" { Invoke-ChildScript (Join-Path $scriptRoot 'install-global-git.ps1') }
+    Run-Step "install-global-git" { Invoke-ChildScript -ScriptPath (Join-Path $scriptRoot 'install-global-git.ps1') }
   }
 }
 
@@ -49,7 +52,7 @@ Run-Step "install" { Invoke-ChildScript -ScriptPath (Join-Path $scriptRoot 'inst
 if ($Mode -eq "plan") {
   Run-Step "doctor" { Write-Host "[PLAN] SKIP doctor in read-only mode" }
 } else {
-  Run-Step "doctor" { Invoke-ChildScript (Join-Path $scriptRoot 'doctor.ps1') }
+  Run-Step "doctor" { Invoke-ChildScript -ScriptPath (Join-Path $scriptRoot 'doctor.ps1') }
 }
 
 Write-Host "bootstrap-repo completed: $RepoPath"

@@ -1,6 +1,9 @@
 $ErrorActionPreference = "Stop"
 $root = Split-Path -Parent $PSScriptRoot
 $commonPath = Join-Path $PSScriptRoot "lib\common.ps1"
+if (-not (Test-Path -LiteralPath $commonPath -PathType Leaf)) {
+  throw "Missing common helper: $commonPath"
+}
 . $commonPath
 
 $mustExist = @(
@@ -233,10 +236,7 @@ $refreshScript = Join-Path $PSScriptRoot "refresh-targets.ps1"
 if (-not (Test-Path -LiteralPath $refreshScript -PathType Leaf)) {
   throw "refresh-targets script missing: $refreshScript"
 }
-$refreshOutput = & powershell -NoProfile -ExecutionPolicy Bypass -File $refreshScript -Mode plan -AsJson
-if ($LASTEXITCODE -ne 0) {
-  throw "refresh-targets plan check failed with exit code $LASTEXITCODE"
-}
+$refreshOutput = Invoke-ChildScriptCapture -ScriptPath $refreshScript -ScriptArgs @("-Mode", "plan", "-AsJson")
 $refreshObj = $null
 if (-not [string]::IsNullOrWhiteSpace([string]($refreshOutput | Out-String))) {
   $refreshObj = ([string]::Join([Environment]::NewLine, @($refreshOutput))) | ConvertFrom-Json
@@ -249,9 +249,6 @@ if ([int]$refreshObj.target_change_count -gt 0) {
 }
 
 $dupScript = Join-Path $root "scripts\governance\check-rule-duplication.ps1"
-& powershell -NoProfile -ExecutionPolicy Bypass -File $dupScript -RepoRoot $root
-if ($LASTEXITCODE -ne 0) {
-  throw "governance-kit rule duplication check failed"
-}
+Invoke-ChildScript -ScriptPath $dupScript -ScriptArgs @("-RepoRoot", $root)
 
 Write-Host "governance-kit integrity OK"

@@ -9,6 +9,7 @@ $ErrorActionPreference = "Stop"
 
 $repoPath = (Resolve-Path -LiteralPath $RepoRoot).Path
 $reviewScript = Join-Path $repoPath "scripts\governance\run-recurring-review.ps1"
+$commonPath = Join-Path $repoPath "scripts\lib\common.ps1"
 if (-not (Test-Path -LiteralPath $reviewScript -PathType Leaf)) {
   throw "Missing recurring review script: $reviewScript"
 }
@@ -21,9 +22,15 @@ if (-not [regex]::IsMatch($periodValue, "^[0-9]{4}-[0-9]{2}$")) {
   throw "Invalid -Period value: $periodValue (expected yyyy-MM)"
 }
 
-$psExe = (Get-Process -Id $PID -ErrorAction SilentlyContinue).Path
-if ([string]::IsNullOrWhiteSpace($psExe)) {
-  $psExe = "powershell"
+if (Test-Path -LiteralPath $commonPath -PathType Leaf) {
+  . $commonPath
+  Assert-Command -Name powershell
+  $psExe = Get-CurrentPowerShellPath
+} else {
+  $psExe = (Get-Process -Id $PID -ErrorAction SilentlyContinue).Path
+  if ([string]::IsNullOrWhiteSpace($psExe)) {
+    $psExe = "powershell"
+  }
 }
 
 $reviewOut = & $psExe -NoProfile -ExecutionPolicy Bypass -File $reviewScript -RepoRoot $repoPath -NoNotifyOnAlert -AsJson 2>&1

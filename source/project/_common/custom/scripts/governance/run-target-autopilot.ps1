@@ -48,43 +48,6 @@ function Resolve-KitRoot {
   throw "Cannot resolve governance-kit root. Set git config governance.kitRoot or pass -GovernanceKitRoot."
 }
 
-function Assert-Command {
-  param([string]$Name)
-
-  if (-not (Get-Command $Name -ErrorAction SilentlyContinue)) {
-    throw "Required command not found: $Name"
-  }
-}
-
-function Invoke-LoggedCommand {
-  param(
-    [Parameter(Mandatory = $true)][string]$Name,
-    [Parameter(Mandatory = $true)][scriptblock]$Action,
-    [Parameter(Mandatory = $true)][string]$WorkDir,
-    [Parameter(Mandatory = $true)][string]$LogRoot
-  )
-
-  $safeName = ($Name -replace '[^a-zA-Z0-9._-]', '_')
-  $logPath = Join-Path $LogRoot ((Get-Date -Format "yyyyMMdd-HHmmss") + "-" + $safeName + ".log")
-
-  Push-Location $WorkDir
-  try {
-    & $Action *>&1 | Tee-Object -LiteralPath $logPath | Out-Host
-    $exitCode = $LASTEXITCODE
-  }
-  finally {
-    Pop-Location
-  }
-
-  if ($null -eq $exitCode) { $exitCode = 0 }
-
-  return [pscustomobject]@{
-    name = $Name
-    exit_code = [int]$exitCode
-    log_path = $logPath
-  }
-}
-
 function Invoke-ShellCommand {
   param(
     [Parameter(Mandatory = $true)][string]$Name,
@@ -134,7 +97,7 @@ function Invoke-ClarificationTracker {
     $args += @("-Reason", $Reason)
   }
 
-  $json = & powershell @args
+  $json = & $psExe @args
   if ($LASTEXITCODE -ne 0) {
     throw "clarification tracker failed with exit code $LASTEXITCODE"
   }
@@ -183,16 +146,22 @@ function Resolve-EffectiveClarificationScenario {
 }
 
 $kitRoot = Resolve-KitRoot -ProvidedPath $GovernanceKitRoot
+$commonPath = Join-Path $kitRoot "scripts/lib/common.ps1"
 $analyzeScript = Join-Path $kitRoot "scripts/analyze-repo-governance.ps1"
 $trackerScript = Join-Path $kitRoot "scripts/governance/track-issue-state.ps1"
+if (-not (Test-Path -LiteralPath $commonPath)) {
+  throw "Missing common helper: $commonPath"
+}
 if (-not (Test-Path -LiteralPath $analyzeScript)) {
   throw "Missing analyzer script: $analyzeScript"
 }
 if (-not (Test-Path -LiteralPath $trackerScript)) {
   throw "Missing clarification tracker script: $trackerScript"
 }
+. $commonPath
 
 Assert-Command -Name powershell
+$psExe = Get-CurrentPowerShellPath
 
 $runId = [guid]::NewGuid().ToString("n")
 $scenarioResolution = Resolve-EffectiveClarificationScenario -RequestedScenario $ClarificationScenario -ContextFile $ClarificationContextFile
@@ -201,7 +170,7 @@ $clarificationScenarioSource = [string]$scenarioResolution.source
 $logRoot = Join-Path $repoPath (".codex/logs/target-autopilot/" + (Get-Date -Format "yyyyMMdd-HHmmss") + "-" + $runId)
 New-Item -ItemType Directory -Force -Path $logRoot | Out-Null
 
-$analysisJson = & powershell -NoProfile -ExecutionPolicy Bypass -File $analyzeScript -RepoPath $repoPath -AsJson
+$analysisJson = & $psExe -NoProfile -ExecutionPolicy Bypass -File $analyzeScript -RepoPath $repoPath -AsJson
 $analysis = [string]::Join([Environment]::NewLine, @($analysisJson)) | ConvertFrom-Json
 
 $buildCmd = [string]$analysis.recommended.build

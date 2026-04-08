@@ -15,6 +15,9 @@ param(
 $ErrorActionPreference = "Stop"
 $kitRoot = Split-Path -Parent $PSScriptRoot
 $commonPath = Join-Path $PSScriptRoot "lib\common.ps1"
+if (-not (Test-Path -LiteralPath $commonPath -PathType Leaf)) {
+  throw "Missing common helper: $commonPath"
+}
 . $commonPath
 Write-ModeRisk -ScriptName "run-endstate-onboarding.ps1" -Mode $Mode
 
@@ -59,15 +62,15 @@ function Invoke-Step([string]$Name, [scriptblock]$Action) {
 }
 
 Invoke-Step "add-repo" {
-  Invoke-ChildScript (Join-Path $PSScriptRoot "add-repo.ps1") @("-RepoPath", $repo, "-Mode", $Mode)
+  Invoke-ChildScript -ScriptPath (Join-Path $PSScriptRoot "add-repo.ps1") -ScriptArgs @("-RepoPath", $repo, "-Mode", $Mode)
 }
 
 Invoke-Step "install" {
-  Invoke-ChildScript (Join-Path $PSScriptRoot "install.ps1") @("-Mode", $Mode)
+  Invoke-ChildScript -ScriptPath (Join-Path $PSScriptRoot "install.ps1") -ScriptArgs @("-Mode", $Mode)
 }
 
 Invoke-Step "install-extras" {
-  Invoke-ChildScript (Join-Path $PSScriptRoot "install-extras.ps1") @("-Mode", $Mode)
+  Invoke-ChildScript -ScriptPath (Join-Path $PSScriptRoot "install-extras.ps1") -ScriptArgs @("-Mode", $Mode)
 }
 
 $checkEvidence = Join-Path $repo "scripts/governance/check-evidence-completeness.ps1"
@@ -76,13 +79,10 @@ $runLoop = Join-Path $repo "scripts/governance/run-endstate-loop.ps1"
 $isPlan = $Mode -eq "plan"
 
 if (-not $isPlan -and (Test-Path -LiteralPath $checkEvidence -PathType Leaf)) {
-  $evidenceArgs = @("-NoProfile", "-ExecutionPolicy", "Bypass", "-File", $checkEvidence, "-Mode", $EvidenceMode, "-Threshold", ([string]$EvidenceThreshold))
-
   $evidenceOk = $true
   try {
     Invoke-Step "evidence-check-initial" {
-      & powershell @evidenceArgs
-      if ($LASTEXITCODE -ne 0) { throw "evidence check failed: exit=$LASTEXITCODE" }
+      Invoke-ChildScript -ScriptPath $checkEvidence -ScriptArgs @("-Mode", $EvidenceMode, "-Threshold", ([string]$EvidenceThreshold))
     }
   } catch {
     $evidenceOk = $false
@@ -91,27 +91,24 @@ if (-not $isPlan -and (Test-Path -LiteralPath $checkEvidence -PathType Leaf)) {
 
   if (-not $evidenceOk -and $AutoBackfillEvidence -and (Test-Path -LiteralPath $backfillEvidence -PathType Leaf)) {
     Invoke-Step "evidence-backfill" {
-      & powershell -NoProfile -ExecutionPolicy Bypass -File $backfillEvidence
-      if ($LASTEXITCODE -ne 0) { throw "evidence backfill failed: exit=$LASTEXITCODE" }
+      Invoke-ChildScript -ScriptPath $backfillEvidence
     }
 
     Invoke-Step "evidence-check-after-backfill" {
-      & powershell @evidenceArgs
-      if ($LASTEXITCODE -ne 0) { throw "evidence re-check failed: exit=$LASTEXITCODE" }
+      Invoke-ChildScript -ScriptPath $checkEvidence -ScriptArgs @("-Mode", $EvidenceMode, "-Threshold", ([string]$EvidenceThreshold))
     }
   }
 }
 
 if (-not $isPlan -and -not $SkipEndstateLoop -and (Test-Path -LiteralPath $runLoop -PathType Leaf)) {
   Invoke-Step "endstate-loop" {
-    & powershell -NoProfile -ExecutionPolicy Bypass -File $runLoop -Profile quick -Configuration Debug -EvidenceMode $EvidenceMode
-    if ($LASTEXITCODE -ne 0) { throw "endstate loop failed: exit=$LASTEXITCODE" }
+    Invoke-ChildScript -ScriptPath $runLoop -ScriptArgs @("-Profile", "quick", "-Configuration", "Debug", "-EvidenceMode", $EvidenceMode)
   }
 }
 
 if (-not $isPlan) {
   Invoke-Step "doctor" {
-    Invoke-ChildScript (Join-Path $PSScriptRoot "doctor.ps1") @()
+    Invoke-ChildScript -ScriptPath (Join-Path $PSScriptRoot "doctor.ps1")
   }
 } else {
   Write-Host "[PLAN] skip evidence/backfill/endstate-loop/doctor"

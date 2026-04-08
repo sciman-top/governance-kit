@@ -20,6 +20,9 @@ param(
 
 $ErrorActionPreference = "Stop"
 $commonPath = Join-Path $PSScriptRoot "lib\common.ps1"
+if (-not (Test-Path -LiteralPath $commonPath -PathType Leaf)) {
+  throw "Missing common helper: $commonPath"
+}
 . $commonPath
 $kitRoot = Split-Path -Parent $PSScriptRoot
 $refreshScript = Join-Path $PSScriptRoot "refresh-targets.ps1"
@@ -98,10 +101,7 @@ if (-not $SkipTargetsRefresh) {
     $reposConfigPath = Join-Path $kitRoot "config\repositories.json"
     if (Test-Path -LiteralPath $reposConfigPath -PathType Leaf) {
       $refreshMode = if ($modePlan) { "plan" } else { "safe" }
-      & powershell -NoProfile -ExecutionPolicy Bypass -File $refreshScript -Mode $refreshMode
-      if ($LASTEXITCODE -ne 0) {
-        throw "refresh-targets failed with exit code ${LASTEXITCODE}"
-      }
+      Invoke-ChildScript -ScriptPath $refreshScript -ScriptArgs @("-Mode", $refreshMode)
     } else {
       Write-Host "[INFO] skip targets refresh: repositories.json not found in current workspace"
     }
@@ -310,22 +310,17 @@ if ($modePlan) {
 
     if ($gateScriptsReady) {
       Write-Host "=== POST_GATE build ==="
-      & powershell -NoProfile -ExecutionPolicy Bypass -File $buildScript
-      if ($LASTEXITCODE -ne 0) { throw "Post-gate build failed with exit code ${LASTEXITCODE}" }
+      Invoke-ChildScript -ScriptPath $buildScript
 
       Write-Host "=== POST_GATE test ==="
-      & powershell -NoProfile -ExecutionPolicy Bypass -File $testScript
-      if ($LASTEXITCODE -ne 0) { throw "Post-gate test failed with exit code ${LASTEXITCODE}" }
+      Invoke-ChildScript -ScriptPath $testScript
 
       Write-Host "=== POST_GATE contract/invariant ==="
-      & powershell -NoProfile -ExecutionPolicy Bypass -File $contractScript
-      if ($LASTEXITCODE -ne 0) { throw "Post-gate contract/invariant failed with exit code ${LASTEXITCODE}" }
-      & powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $PSScriptRoot "verify.ps1")
-      if ($LASTEXITCODE -ne 0) { throw "Post-gate verify failed with exit code ${LASTEXITCODE}" }
+      Invoke-ChildScript -ScriptPath $contractScript
+      Invoke-ChildScript -ScriptPath (Join-Path $PSScriptRoot "verify.ps1")
 
       Write-Host "=== POST_GATE hotspot ==="
-      & powershell -NoProfile -ExecutionPolicy Bypass -File $hotspotScript
-      if ($LASTEXITCODE -ne 0) { throw "Post-gate hotspot failed with exit code ${LASTEXITCODE}" }
+      Invoke-ChildScript -ScriptPath $hotspotScript
       Write-Host "[ASSERT] post-gate full chain passed"
     } else {
       Write-Host "[INFO] skip post-gate: required gate scripts not found in current workspace"
@@ -361,19 +356,12 @@ if ($FullCycle) {
   }
   foreach ($repoPath in $fullCycleTargets) {
     Write-Host ("=== FULL_CYCLE " + ($repoPath -replace '\\', '/') + " ===")
-    $args = @(
-      "-NoProfile",
-      "-ExecutionPolicy", "Bypass",
-      "-File", $cycleScript,
+    $cycleArgs = @(
       "-RepoPath", $repoPath,
       "-RepoName", (Split-Path -Leaf $repoPath),
       "-Mode", $fullCycleMode
     )
-    if ($ShowScope) { $args += "-ShowScope" }
-
-    & powershell @args
-    if ($LASTEXITCODE -ne 0) {
-      throw "run-project-governance-cycle failed for $repoPath with exit code $LASTEXITCODE"
-    }
+    if ($ShowScope) { $cycleArgs += "-ShowScope" }
+    Invoke-ChildScript -ScriptPath $cycleScript -ScriptArgs $cycleArgs
   }
 }

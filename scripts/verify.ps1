@@ -14,10 +14,13 @@ if (!(Test-Path $targetsPath)) {
 }
 
 $commonPath = Join-Path $PSScriptRoot "lib\common.ps1"
+if (-not (Test-Path -LiteralPath $commonPath -PathType Leaf)) {
+  throw "Missing common helper: $commonPath"
+}
 . $commonPath
 
 if (-not $SkipConfigValidation) {
-  Invoke-ChildScript (Join-Path $PSScriptRoot "validate-config.ps1")
+  Invoke-ChildScript -ScriptPath (Join-Path $PSScriptRoot "validate-config.ps1")
 }
 
 try {
@@ -168,8 +171,10 @@ if (-not $SkipTrackedFilesPolicy -and $TrackedFilesScope -ne "none") {
     } else {
       $activeRepo = [System.IO.Path]::GetFullPath(([string]$gitTop).Trim())
       $policyPath = Join-Path $activeRepo ".governance\tracked-files-policy.json"
-      & powershell -NoProfile -ExecutionPolicy Bypass -File $trackedScript -RepoPath $activeRepo -PolicyPath $policyPath -Scope $TrackedFilesScope
-      if ($LASTEXITCODE -ne 0) {
+      try {
+        Invoke-ChildScript -ScriptPath $trackedScript -ScriptArgs @("-RepoPath", $activeRepo, "-PolicyPath", $policyPath, "-Scope", $TrackedFilesScope)
+      } catch {
+        Write-Host ("[TRACKED] policy check failed: " + $_.Exception.Message)
         $trackedFilesFail++
       }
     }

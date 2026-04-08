@@ -92,9 +92,6 @@ Write-Host "[POLICY] if governance issue is discovered during install, repair go
 
 Run-Step -Name "bootstrap-repo" -Action {
   $args = @(
-    "-NoProfile",
-    "-ExecutionPolicy", "Bypass",
-    "-File", $bootstrapScript,
     "-RepoPath", $repo,
     "-Mode", $Mode
   )
@@ -102,10 +99,7 @@ Run-Step -Name "bootstrap-repo" -Action {
   if ($SkipInstallGlobalGit.IsPresent) { $args += "-SkipInstallGlobalGit" }
   if ($NoOverwriteRules.IsPresent) { $args += "-NoOverwriteRules" }
 
-  & powershell @args
-  if ($LASTEXITCODE -ne 0) {
-    throw "bootstrap-repo failed with exit code $LASTEXITCODE"
-  }
+  Invoke-ChildScript -ScriptPath $bootstrapScript -ScriptArgs $args
 }
 
 if ($Mode -ne "plan") {
@@ -122,9 +116,6 @@ if ($Mode -ne "plan") {
   } else {
     Run-Step -Name "run-project-governance-cycle" -Action {
       $cycleArgs = @(
-        "-NoProfile",
-        "-ExecutionPolicy", "Bypass",
-        "-File", $cycleScript,
         "-RepoPath", $repo,
         "-RepoName", (Split-Path -Leaf $repo),
         "-Mode", "safe",
@@ -135,10 +126,7 @@ if ($Mode -ne "plan") {
         $cycleArgs += @("-SkipOptimize", "-SkipBackflow")
       }
 
-      & powershell @cycleArgs
-      if ($LASTEXITCODE -ne 0) {
-        throw "run-project-governance-cycle failed with exit code $LASTEXITCODE"
-      }
+      Invoke-ChildScript -ScriptPath $cycleScript -ScriptArgs $cycleArgs
     }
   }
 
@@ -149,18 +137,12 @@ if ($Mode -ne "plan") {
         throw "Missing target autopilot script after install: $targetAutopilot"
       }
 
-      & powershell -NoProfile -ExecutionPolicy Bypass -File $targetAutopilot -RepoRoot $repo -GovernanceKitRoot $kitRoot -DryRun
-      if ($LASTEXITCODE -ne 0) {
-        throw "target autopilot dry-run failed with exit code $LASTEXITCODE"
-      }
+      Invoke-ChildScript -ScriptPath $targetAutopilot -ScriptArgs @("-RepoRoot", $repo, "-GovernanceKitRoot", $kitRoot, "-DryRun")
     }
   }
 
   Run-Step -Name "doctor" -Action {
-    & powershell -NoProfile -ExecutionPolicy Bypass -File $doctorScript
-    if ($LASTEXITCODE -ne 0) {
-      throw "doctor failed with exit code $LASTEXITCODE"
-    }
+    Invoke-ChildScript -ScriptPath $doctorScript
   }
 }
 

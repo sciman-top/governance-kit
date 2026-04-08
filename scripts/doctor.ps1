@@ -9,14 +9,18 @@ $commonPath = Join-Path $PSScriptRoot "lib\common.ps1"
 if (Test-Path -LiteralPath $commonPath) {
   . $commonPath
 } else {
+  $localPsExe = (Get-Process -Id $PID -ErrorAction SilentlyContinue).Path
+  if ([string]::IsNullOrWhiteSpace($localPsExe)) {
+    $localPsExe = "powershell"
+  }
   function Invoke-ChildScript([string]$ScriptPath, [string[]]$ScriptArgs = @()) {
-    & powershell -NoProfile -ExecutionPolicy Bypass -File $ScriptPath @ScriptArgs
+    & $localPsExe -NoProfile -ExecutionPolicy Bypass -File $ScriptPath @ScriptArgs
     if ($LASTEXITCODE -ne 0) {
       throw "Script failed with exit code ${LASTEXITCODE}: $ScriptPath"
     }
   }
   function Invoke-ChildScriptCapture([string]$ScriptPath, [string[]]$ScriptArgs = @()) {
-    $out = & powershell -NoProfile -ExecutionPolicy Bypass -File $ScriptPath @ScriptArgs
+    $out = & $localPsExe -NoProfile -ExecutionPolicy Bypass -File $ScriptPath @ScriptArgs
     if ($LASTEXITCODE -ne 0) {
       throw "Script failed with exit code ${LASTEXITCODE}: $ScriptPath"
     }

@@ -7,6 +7,9 @@ param(
 $ErrorActionPreference = "Stop"
 $kitRoot = Split-Path -Parent $PSScriptRoot
 $commonPath = Join-Path $PSScriptRoot "lib\common.ps1"
+if (-not (Test-Path -LiteralPath $commonPath -PathType Leaf)) {
+  throw "Missing common helper: $commonPath"
+}
 . $commonPath
 
 $reposPath = Join-Path $kitRoot "config\repositories.json"
@@ -26,12 +29,8 @@ foreach ($repo in @($repos)) {
   $repoText = [string]$repo
   if ([string]::IsNullOrWhiteSpace($repoText)) { continue }
 
-  $out = & powershell -NoProfile -ExecutionPolicy Bypass -File $addRepoScript -RepoPath $repoText -Mode $Mode 2>&1
-  $exitCode = $LASTEXITCODE
+  $out = Invoke-ChildScriptCapture -ScriptPath $addRepoScript -ScriptArgs @("-RepoPath", $repoText, "-Mode", $Mode)
   $text = ($out | Out-String).Trim()
-  if ($exitCode -ne 0) {
-    throw "refresh-targets failed for repo=$repoText with exit code $exitCode`n$text"
-  }
 
   $m = [regex]::Match($text, "updated_targets=([0-9]+)")
   if ($m.Success) {

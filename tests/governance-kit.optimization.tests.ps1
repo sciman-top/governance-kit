@@ -1677,8 +1677,9 @@ exit 0
       Set-Content -Path (Join-Path $repo "CLAUDE.md") -Value $seed -Encoding UTF8
       Set-Content -Path (Join-Path $repo "GEMINI.md") -Value $seed -Encoding UTF8
 
-      & powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $repoRoot "scripts\optimize-project-rules.ps1") -RepoPath $repo -Mode safe | Out-Null
-      if ($LASTEXITCODE -ne 0) { throw "optimize-project-rules.ps1 failed with exit code $LASTEXITCODE" }
+      $optimizeScript = Join-Path $repoRoot "scripts\optimize-project-rules.ps1"
+      & $optimizeScript -RepoPath $repo -Mode safe | Out-Null
+      if (-not $?) { throw "optimize-project-rules.ps1 failed" }
 
       $agents = Get-Content -Raw (Join-Path $repo "AGENTS.md")
       $agents | should match "dotnet build RepoB.sln -c Debug"
@@ -2238,6 +2239,155 @@ exit 7
     }
   }
 
+  it "common Assert-Command and Invoke-LoggedCommand provide shared command guards" {
+    $tmp = Join-Path $env:TEMP ("govkit-test-" + [guid]::NewGuid().ToString("N"))
+    try {
+      New-Item -ItemType Directory -Path (Join-Path $tmp "scripts\lib") -Force | Out-Null
+      New-Item -ItemType Directory -Path (Join-Path $tmp "logs") -Force | Out-Null
+      Copy-Item -Path (Join-Path $repoRoot "scripts\lib\common.ps1") -Destination (Join-Path $tmp "scripts\lib\common.ps1") -Force
+
+      . (Join-Path $tmp "scripts\lib\common.ps1")
+
+      Assert-Command -Name powershell
+
+      $missingThrown = $false
+      try {
+        Assert-Command -Name "govkit-definitely-missing-command"
+      } catch {
+        $missingThrown = $true
+      }
+      $missingThrown | should be $true
+
+      $result = Invoke-LoggedCommand -Name "unit.test.log" -WorkDir $tmp -LogRoot (Join-Path $tmp "logs") -Action {
+        & powershell -NoProfile -ExecutionPolicy Bypass -Command "Write-Output 'hello-log'; exit 0"
+      }
+      $result.exit_code | should be 0
+      (Test-Path -LiteralPath $result.log_path) | should be $true
+      ((Get-Content -LiteralPath $result.log_path -Raw) -match "hello-log") | should be $true
+    } finally {
+      if (Test-Path $tmp) { Remove-Item -LiteralPath $tmp -Recurse -Force }
+    }
+  }
+
+  it "common Invoke-LoggedCommand creates missing log directory automatically" {
+    $tmp = Join-Path $env:TEMP ("govkit-test-" + [guid]::NewGuid().ToString("N"))
+    try {
+      New-Item -ItemType Directory -Path (Join-Path $tmp "scripts\lib") -Force | Out-Null
+      Copy-Item -Path (Join-Path $repoRoot "scripts\lib\common.ps1") -Destination (Join-Path $tmp "scripts\lib\common.ps1") -Force
+
+      . (Join-Path $tmp "scripts\lib\common.ps1")
+
+      $logRoot = Join-Path $tmp "nested\logs\autocreate"
+      (Test-Path -LiteralPath $logRoot) | should be $false
+
+      $result = Invoke-LoggedCommand -Name "unit.test.autocreate" -WorkDir $tmp -LogRoot $logRoot -Action {
+        & powershell -NoProfile -ExecutionPolicy Bypass -Command "Write-Output 'auto-log'; exit 0"
+      }
+
+      $result.exit_code | should be 0
+      (Test-Path -LiteralPath $logRoot) | should be $true
+      (Test-Path -LiteralPath $result.log_path) | should be $true
+      ((Get-Content -LiteralPath $result.log_path -Raw) -match "auto-log") | should be $true
+    } finally {
+      if (Test-Path $tmp) { Remove-Item -LiteralPath $tmp -Recurse -Force }
+    }
+  }
+
+  it "common Invoke-CommandCapture returns stable fields for success and failure probes" {
+    $tmp = Join-Path $env:TEMP ("govkit-test-" + [guid]::NewGuid().ToString("N"))
+    try {
+      New-Item -ItemType Directory -Path (Join-Path $tmp "scripts\lib") -Force | Out-Null
+      Copy-Item -Path (Join-Path $repoRoot "scripts\lib\common.ps1") -Destination (Join-Path $tmp "scripts\lib\common.ps1") -Force
+
+      @'
+param()
+Write-Output "cap-ok"
+exit 0
+'@ | Set-Content -Path (Join-Path $tmp "ok.ps1") -Encoding UTF8
+
+      @'
+param()
+Write-Error "cap-fail"
+exit 7
+'@ | Set-Content -Path (Join-Path $tmp "fail.ps1") -Encoding UTF8
+
+      . (Join-Path $tmp "scripts\lib\common.ps1")
+
+      $okCmd = "powershell -NoProfile -ExecutionPolicy Bypass -File `"$($tmp -replace '\\','/')/ok.ps1`""
+      $ok = Invoke-CommandCapture -Command $okCmd -HeadLines 1 -IncludeTimestamp
+      $ok.exit_code | should be 0
+      $ok.key_output | should match "cap-ok"
+      ([string]::IsNullOrWhiteSpace([string]$ok.timestamp)) | should be $false
+
+      $failCmd = "powershell -NoProfile -ExecutionPolicy Bypass -File `"$($tmp -replace '\\','/')/fail.ps1`""
+      $fail = Invoke-CommandCapture -Command $failCmd -HeadLines 1
+      $fail.exit_code | should not be 0
+      $fail.raw_output | should match "cap-fail"
+    } finally {
+      if (Test-Path $tmp) { Remove-Item -LiteralPath $tmp -Recurse -Force }
+    }
+  }
+
+  it "doctor fallback runner works when common helper is missing" {
+    $tmp = Join-Path $env:TEMP ("govkit-test-" + [guid]::NewGuid().ToString("N"))
+    try {
+      New-Item -ItemType Directory -Path (Join-Path $tmp "scripts") -Force | Out-Null
+
+      Copy-Item -Path (Join-Path $repoRoot "scripts\doctor.ps1") -Destination (Join-Path $tmp "scripts\doctor.ps1") -Force
+
+      @'
+param()
+Write-Host "governance-kit integrity OK"
+exit 0
+'@ | Set-Content -Path (Join-Path $tmp "scripts\verify-kit.ps1") -Encoding UTF8
+
+      @'
+param()
+Write-Host "Config validation passed. repositories=1 targets=1 rolloutRepos=1"
+exit 0
+'@ | Set-Content -Path (Join-Path $tmp "scripts\validate-config.ps1") -Encoding UTF8
+
+      @'
+param()
+Write-Host "release profile coverage OK"
+exit 0
+'@ | Set-Content -Path (Join-Path $tmp "scripts\check-release-profile-coverage.ps1") -Encoding UTF8
+
+      @'
+param([switch]$SkipConfigValidation)
+Write-Host "Verify done. ok=1 fail=0"
+exit 0
+'@ | Set-Content -Path (Join-Path $tmp "scripts\verify.ps1") -Encoding UTF8
+
+      @'
+param()
+Write-Host "Waiver check done. files=0 expired=0 blocked=0"
+exit 0
+'@ | Set-Content -Path (Join-Path $tmp "scripts\check-waivers.ps1") -Encoding UTF8
+
+      @'
+param()
+Write-Host "status ok"
+exit 0
+'@ | Set-Content -Path (Join-Path $tmp "scripts\status.ps1") -Encoding UTF8
+
+      @'
+param()
+Write-Host "phase.observe_overdue=0"
+exit 0
+'@ | Set-Content -Path (Join-Path $tmp "scripts\rollout-status.ps1") -Encoding UTF8
+
+      New-Item -ItemType Directory -Path (Join-Path $tmp "config") -Force | Out-Null
+      @('E:/CODE/governance-kit') | ConvertTo-Json | Set-Content -Path (Join-Path $tmp "config\repositories.json") -Encoding UTF8
+
+      $out = & powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $tmp "scripts\doctor.ps1") 2>&1 | Out-String
+      $LASTEXITCODE | should be 0
+      $out | should match "HEALTH=GREEN"
+    } finally {
+      if (Test-Path $tmp) { Remove-Item -LiteralPath $tmp -Recurse -Force }
+    }
+  }
+
   it "run-recurring-review writes alert snapshot when alerts exist" {
     $tmp = Join-Path $env:TEMP ("govkit-test-" + [guid]::NewGuid().ToString("N"))
     try {
@@ -2352,3 +2502,4 @@ exit 0
     }
   }
 }
+

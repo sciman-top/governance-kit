@@ -57,6 +57,18 @@ function Add-Alert {
 
 $repoPath = (Resolve-Path -LiteralPath $RepoRoot).Path
 $kitRoot = $repoPath
+$commonPath = Join-Path $kitRoot "scripts\lib\common.ps1"
+if (Test-Path -LiteralPath $commonPath -PathType Leaf) {
+  . $commonPath
+  Assert-Command -Name powershell
+  $psExe = Get-CurrentPowerShellPath
+} else {
+  $psExe = (Get-Process -Id $PID -ErrorAction SilentlyContinue).Path
+  if ([string]::IsNullOrWhiteSpace($psExe)) {
+    $psExe = "powershell"
+  }
+}
+
 $policyPath = Join-Path $kitRoot "config\update-trigger-policy.json"
 $policy = $null
 if (Test-Path -LiteralPath $policyPath -PathType Leaf) {
@@ -84,7 +96,7 @@ $today = (Get-Date).Date
 # 1) CLI drift trigger
 $driftScript = Join-Path $kitRoot "scripts\check-cli-version-drift.ps1"
 if ([bool]$policy.triggers.cli_version_drift.enabled -and (Test-Path -LiteralPath $driftScript -PathType Leaf)) {
-  $driftOut = & powershell -NoProfile -ExecutionPolicy Bypass -File $driftScript -AsJson 2>&1
+  $driftOut = & $psExe -NoProfile -ExecutionPolicy Bypass -File $driftScript -AsJson 2>&1
   $driftExit = $LASTEXITCODE
   $driftText = [string]::Join([Environment]::NewLine, @($driftOut))
   $drift = $null
@@ -105,7 +117,7 @@ if ([bool]$policy.triggers.cli_version_drift.enabled -and (Test-Path -LiteralPat
 # 2) rollout observe overdue trigger
 $rolloutScript = Join-Path $kitRoot "scripts\rollout-status.ps1"
 if ([bool]$policy.triggers.rollout_observe_overdue.enabled -and (Test-Path -LiteralPath $rolloutScript -PathType Leaf)) {
-  $rolloutOut = & powershell -NoProfile -ExecutionPolicy Bypass -File $rolloutScript 2>&1
+  $rolloutOut = & $psExe -NoProfile -ExecutionPolicy Bypass -File $rolloutScript 2>&1
   $rolloutExit = $LASTEXITCODE
   $rolloutText = ($rolloutOut | Out-String)
   $steps.Add([pscustomobject]@{ name = "rollout-observe-overdue"; exit_code = [int]$rolloutExit }) | Out-Null

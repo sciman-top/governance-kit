@@ -3,38 +3,11 @@ param(
 )
 
 $ErrorActionPreference = "Stop"
-
-function Invoke-CommandCapture {
-  param(
-    [Parameter(Mandatory = $true)]
-    [string]$Command,
-    [int]$HeadLines = 20
-  )
-
-  $output = $null
-  $exitCode = 0
-  try {
-    $output = Invoke-Expression $Command 2>&1 | Out-String
-    $exitCode = $LASTEXITCODE
-    if ($null -eq $exitCode) { $exitCode = 0 }
-  } catch {
-    $output = $_.Exception.Message
-    $exitCode = 1
-  }
-
-  $lines = @()
-  if (-not [string]::IsNullOrWhiteSpace($output)) {
-    $lines = @($output -split "`r?`n" | Where-Object { -not [string]::IsNullOrWhiteSpace($_) } | Select-Object -First $HeadLines)
-  }
-
-  [pscustomobject]@{
-    cmd = $Command
-    exit_code = [int]$exitCode
-    key_output = ($lines -join " | ")
-    raw_output = [string]$output
-    timestamp = (Get-Date).ToString("o")
-  }
+$commonPath = Join-Path $PSScriptRoot "lib\common.ps1"
+if (-not (Test-Path -LiteralPath $commonPath -PathType Leaf)) {
+  throw "Missing common helper: $commonPath"
 }
+. $commonPath
 
 function New-PlatformNa {
   param(
@@ -91,8 +64,8 @@ function Get-CliReport {
     }
   }
 
-  $versionProbe = Invoke-CommandCapture -Command "$Executable --version"
-  $helpProbe = Invoke-CommandCapture -Command "$Executable --help"
+  $versionProbe = Invoke-CommandCapture -Command "$Executable --version" -IncludeTimestamp
+  $helpProbe = Invoke-CommandCapture -Command "$Executable --help" -IncludeTimestamp
   $probes += @($versionProbe, $helpProbe)
 
   $version = $null
@@ -118,7 +91,7 @@ function Get-CliReport {
   }
 
   if ($Name -eq "codex") {
-    $statusProbe = Invoke-CommandCapture -Command "codex status"
+    $statusProbe = Invoke-CommandCapture -Command "codex status" -IncludeTimestamp
     $probes += $statusProbe
     if ($statusProbe.exit_code -ne 0) {
       $reason = "codex status failed: $($statusProbe.key_output)"

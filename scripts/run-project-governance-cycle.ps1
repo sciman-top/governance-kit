@@ -26,7 +26,11 @@
 $ErrorActionPreference = "Stop"
 $kitRoot = Split-Path -Parent $PSScriptRoot
 $commonPath = Join-Path $PSScriptRoot "lib\common.ps1"
+if (-not (Test-Path -LiteralPath $commonPath -PathType Leaf)) {
+  throw "Missing common helper: $commonPath"
+}
 . $commonPath
+$psExe = Get-CurrentPowerShellPath
 $clarificationTrackerScript = Join-Path $kitRoot "scripts\governance\track-issue-state.ps1"
 Write-ModeRisk -ScriptName "run-project-governance-cycle.ps1" -Mode $Mode
 if (-not (Test-Path -LiteralPath $clarificationTrackerScript)) {
@@ -180,7 +184,7 @@ function Invoke-ClarificationTracker {
     $args += @("-Reason", $Reason)
   }
 
-  $json = & powershell @args
+  $json = & $psExe @args
   if ($LASTEXITCODE -ne 0) {
     throw "clarification tracker failed with exit code $LASTEXITCODE"
   }
@@ -236,6 +240,22 @@ function Resolve-EffectiveClarificationScenario {
   }
 }
 
+function Get-NormalizedRepoPathForCmd() {
+  return ($repo -replace '\\', '/')
+}
+
+function New-CycleRetryCommand([string]$ModeValue) {
+  return ("powershell -NoProfile -ExecutionPolicy Bypass -File scripts/run-project-governance-cycle.ps1 -RepoPath `"{0}`" -RepoName `"{1}`" -Mode {2}" -f (Get-NormalizedRepoPathForCmd), $RepoName, $ModeValue)
+}
+
+function New-ChildScriptRetryCommand([string]$ScriptName, [string[]]$Args = @()) {
+  $base = "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/$ScriptName"
+  if ($null -eq $Args -or $Args.Count -eq 0) {
+    return $base
+  }
+  return ($base + " " + ([string]::Join(" ", $Args)))
+}
+
 function Step-OrFail([string]$Name, [string]$RetryCommand, [scriptblock]$Action) {
   try {
     Step $Name $Action
@@ -283,7 +303,7 @@ function Invoke-MilestoneAutoCommit([string]$Checkpoint) {
     throw "auto commit precheck script not found: $trackedScript"
   }
   $trackedPolicyPath = Join-Path $repo ".governance\tracked-files-policy.json"
-  $trackedResult = & powershell -NoProfile -ExecutionPolicy Bypass -File $trackedScript -RepoPath $repo -PolicyPath $trackedPolicyPath -Scope pending -AsJson
+  $trackedResult = & $psExe -NoProfile -ExecutionPolicy Bypass -File $trackedScript -RepoPath $repo -PolicyPath $trackedPolicyPath -Scope pending -AsJson
   $trackedExitCode = $LASTEXITCODE
   $trackedJsonText = [string]::Join([Environment]::NewLine, @($trackedResult))
   $trackedObj = $null
@@ -379,26 +399,26 @@ if ($clarificationState.clarification_required -eq $true) {
 }
 
 if (-not $SkipInstall) {
-  $installRetry = "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/run-project-governance-cycle.ps1 -RepoPath `"$($repo -replace '\\','/')`" -RepoName `"$RepoName`" -Mode $Mode"
+  $installRetry = New-CycleRetryCommand -ModeValue $Mode
   Step-OrFail "install" $installRetry {
     $argsInstall = @("-Mode", $Mode)
     if ($ShowScope) { $argsInstall += "-ShowScope" }
-    Invoke-ChildScript (Join-Path $PSScriptRoot "install.ps1") $argsInstall
-    Invoke-ChildScript (Join-Path $PSScriptRoot "install-extras.ps1") @("-Mode", $Mode)
+    Invoke-ChildScript -ScriptPath (Join-Path $PSScriptRoot "install.ps1") -ScriptArgs $argsInstall
+    Invoke-ChildScript -ScriptPath (Join-Path $PSScriptRoot "install-extras.ps1") -ScriptArgs @("-Mode", $Mode)
   }
   Invoke-MilestoneAutoCommit -Checkpoint "after_install"
 }
 
-Step-OrFail "analyze" ("powershell -NoProfile -ExecutionPolicy Bypass -File scripts/analyze-repo-governance.ps1 -RepoPath `"$($repo -replace '\\','/')`"") {
-  Invoke-ChildScript (Join-Path $PSScriptRoot "analyze-repo-governance.ps1") @("-RepoPath", $repo)
+Step-OrFail "analyze" (New-ChildScriptRetryCommand -ScriptName "analyze-repo-governance.ps1" -Args @("-RepoPath", "`"$(Get-NormalizedRepoPathForCmd)`"")) {
+  Invoke-ChildScript -ScriptPath (Join-Path $PSScriptRoot "analyze-repo-governance.ps1") -ScriptArgs @("-RepoPath", $repo)
 }
 
-Step-OrFail "custom-policy-check" ("powershell -NoProfile -ExecutionPolicy Bypass -File scripts/suggest-project-custom-files.ps1 -RepoPath `"$($repo -replace '\\','/')`" -RepoName `"$RepoName`"") {
+Step-OrFail "custom-policy-check" (New-ChildScriptRetryCommand -ScriptName "suggest-project-custom-files.ps1" -Args @("-RepoPath", "`"$(Get-NormalizedRepoPathForCmd)`"", "-RepoName", "`"$RepoName`"")) {
   $customFiles = @(Get-ProjectCustomFilesForRepo -KitRoot $kitRoot -RepoPath $repo -RepoName $RepoName)
   if ($customFiles.Count -eq 0) {
     Write-Host "[WARN] custom policy is empty for repo: $RepoName"
     Write-Host "[ACTION] running candidate scan: suggest-project-custom-files.ps1"
-    Invoke-ChildScript (Join-Path $PSScriptRoot "suggest-project-custom-files.ps1") @("-RepoPath", $repo, "-RepoName", $RepoName)
+    Invoke-ChildScript -ScriptPath (Join-Path $PSScriptRoot "suggest-project-custom-files.ps1") -ScriptArgs @("-RepoPath", $repo, "-RepoName", $RepoName)
     Write-Host "[HINT] review candidates and update config/project-custom-files.json before backflow"
   } else {
     Write-Host "[INFO] custom policy files configured: $($customFiles.Count)"
@@ -406,29 +426,30 @@ Step-OrFail "custom-policy-check" ("powershell -NoProfile -ExecutionPolicy Bypas
 }
 
 if (-not $effectiveSkipOptimize) {
-  Step-OrFail "optimize-project-rules" ("powershell -NoProfile -ExecutionPolicy Bypass -File scripts/optimize-project-rules.ps1 -RepoPath `"$($repo -replace '\\','/')`" -Mode $Mode") {
+  Step-OrFail "optimize-project-rules" (New-ChildScriptRetryCommand -ScriptName "optimize-project-rules.ps1" -Args @("-RepoPath", "`"$(Get-NormalizedRepoPathForCmd)`"", "-Mode", $Mode)) {
     $argsOptimize = @("-RepoPath", $repo, "-Mode", $Mode)
     if ($ShowScope) { $argsOptimize += "-ShowScope" }
-    Invoke-ChildScript (Join-Path $PSScriptRoot "optimize-project-rules.ps1") $argsOptimize
+    Invoke-ChildScript -ScriptPath (Join-Path $PSScriptRoot "optimize-project-rules.ps1") -ScriptArgs $argsOptimize
   }
   Invoke-MilestoneAutoCommit -Checkpoint "after_optimize"
 }
 
 if (-not $effectiveSkipBackflow) {
-  Step-OrFail "backflow-project-rules" ("powershell -NoProfile -ExecutionPolicy Bypass -File scripts/backflow-project-rules.ps1 -RepoPath `"$($repo -replace '\\','/')`" -RepoName `"$RepoName`" -Mode $Mode") {
+  Step-OrFail "backflow-project-rules" (New-ChildScriptRetryCommand -ScriptName "backflow-project-rules.ps1" -Args @("-RepoPath", "`"$(Get-NormalizedRepoPathForCmd)`"", "-RepoName", "`"$RepoName`"", "-Mode", $Mode)) {
     $argsBackflow = @("-RepoPath", $repo, "-RepoName", $RepoName, "-Mode", $Mode)
     if ($ShowScope) { $argsBackflow += "-ShowScope" }
-    Invoke-ChildScript (Join-Path $PSScriptRoot "backflow-project-rules.ps1") $argsBackflow
+    Invoke-ChildScript -ScriptPath (Join-Path $PSScriptRoot "backflow-project-rules.ps1") -ScriptArgs $argsBackflow
   }
   Invoke-MilestoneAutoCommit -Checkpoint "after_backflow"
 }
 
 if ($Mode -eq "safe") {
-  Step-OrFail "re-distribute-and-verify" "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/install.ps1 -Mode safe; powershell -NoProfile -ExecutionPolicy Bypass -File scripts/doctor.ps1" {
+  $redistributeRetry = (New-ChildScriptRetryCommand -ScriptName "install.ps1" -Args @("-Mode", "safe")) + "; " + (New-ChildScriptRetryCommand -ScriptName "doctor.ps1")
+  Step-OrFail "re-distribute-and-verify" $redistributeRetry {
     $argsRedistribute = @("-Mode", "safe")
     if ($ShowScope) { $argsRedistribute += "-ShowScope" }
-    Invoke-ChildScript (Join-Path $PSScriptRoot "install.ps1") $argsRedistribute
-    Invoke-ChildScript (Join-Path $PSScriptRoot "doctor.ps1")
+    Invoke-ChildScript -ScriptPath (Join-Path $PSScriptRoot "install.ps1") -ScriptArgs $argsRedistribute
+    Invoke-ChildScript -ScriptPath (Join-Path $PSScriptRoot "doctor.ps1")
   }
   Invoke-MilestoneAutoCommit -Checkpoint "after_redistribute_verify"
 }

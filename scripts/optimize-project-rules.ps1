@@ -9,6 +9,9 @@ param(
 
 $ErrorActionPreference = "Stop"
 $commonPath = Join-Path $PSScriptRoot "lib\common.ps1"
+if (-not (Test-Path -LiteralPath $commonPath -PathType Leaf)) {
+  throw "Missing common helper: $commonPath"
+}
 . $commonPath
 $repoResolved = Resolve-Path -LiteralPath $RepoPath -ErrorAction SilentlyContinue
 if ($null -eq $repoResolved -or -not (Test-Path -LiteralPath $repoResolved.Path -PathType Container)) {
@@ -133,18 +136,18 @@ foreach ($f in $files) {
 
   # Only auto-rewrite template-style docs. If a doc has been manually/openly rewritten,
   # keep custom sections to avoid over-optimization or semantic rollback.
-  $isTemplateDoc = ($text -match "(?m)^### A\.3 N/A policy$") -and
-                   ($text -match "(?m)^### C\.2 (Gate commands and execution order|Gates)$") -and
-                   ($text -match "(?m)^### C\.3 (Command presence and N/A fallback verification|N/A fallback)$")
+  $isTemplateDoc = ($text -match "(?mi)^###\s*A\.3\s+N/?A policy\s*$") -and
+                   ($text -match "(?mi)^###\s*C\.2\s+(Gate commands and execution order|Gates)\s*$") -and
+                   ($text -match "(?mi)^###\s*C\.3\s+(Command presence and N/?A fallback verification|N/?A fallback)\s*$")
   if (-not $isTemplateDoc) {
     Write-Host "[SKIP] custom-optimized doc preserved $path"
     $actions += [pscustomobject]@{ file = $path; action = "CUSTOM_PRESERVED" }
     continue
   }
 
-  $next = [regex]::Replace($next, "(?ms)^### A\.3 N/A policy.*?(?=^## B\.)", ($a3Block.Trim() + "`r`n`r`n"))
-  $next = [regex]::Replace($next, "(?ms)^### C\.2 (Gate commands and execution order|Gates).*?(?=^### C\.3 )", ($c2Block.Trim() + "`r`n`r`n"))
-  $next = [regex]::Replace($next, "(?ms)^### C\.3 (Command presence and N/A fallback verification|N/A fallback).*?(?=^### C\.4 )", ($c3Block.Trim() + "`r`n`r`n"))
+  $next = [regex]::Replace($next, "(?mis)^###\s*A\.3\s+N/?A policy.*?(?=^##\s*B\.)", ($a3Block.Trim() + "`r`n`r`n"))
+  $next = [regex]::Replace($next, "(?mis)^###\s*C\.2\s+(Gate commands and execution order|Gates).*?(?=^###\s*C\.3\s+)", ($c2Block.Trim() + "`r`n`r`n"))
+  $next = [regex]::Replace($next, "(?mis)^###\s*C\.3\s+(Command presence and N/?A fallback verification|N/?A fallback).*?(?=^###\s*C\.4\s+)", ($c3Block.Trim() + "`r`n`r`n"))
 
   $hasAnyC7 = $next -match "(?m)^### C\.7 "
   $hasTemplateC7 = $next -match "(?m)^### C\.7 Target-repo direct edit backflow policy$"

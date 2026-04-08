@@ -22,6 +22,7 @@ if (-not (Test-Path -LiteralPath $commonPath)) {
 }
 
 . $commonPath
+$psExe = Get-CurrentPowerShellPath
 
 $runId = [guid]::NewGuid().ToString("n")
 $timestamp = Get-Date -Format "yyyyMMdd-HHmmss"
@@ -34,55 +35,17 @@ $effectiveMaxRepeatedFailurePerStep = 1
 $stopOnIrreversibleRisk = $true
 $failureCounts = [System.Collections.Generic.Dictionary[string, int]]::new([System.StringComparer]::OrdinalIgnoreCase)
 
-function Assert-Command {
-  param([string]$Name)
-
-  if (-not (Get-Command $Name -ErrorAction SilentlyContinue)) {
-    throw "Required command not found: $Name"
-  }
-}
-
-function Invoke-LoggedCommand {
-  param(
-    [Parameter(Mandatory = $true)][string]$Name,
-    [Parameter(Mandatory = $true)][scriptblock]$Action,
-    [Parameter(Mandatory = $true)][string]$WorkDir
-  )
-
-  $safeName = ($Name -replace '[^a-zA-Z0-9._-]', '_')
-  $file = Join-Path $logRoot ((Get-Date -Format "yyyyMMdd-HHmmss") + "-" + $safeName + ".log")
-
-  Push-Location $WorkDir
-  try {
-    & $Action *>&1 | Tee-Object -LiteralPath $file | Out-Host
-    $exitCode = $LASTEXITCODE
-  }
-  finally {
-    Pop-Location
-  }
-
-  if ($null -eq $exitCode) {
-    $exitCode = 0
-  }
-
-  return [pscustomobject]@{
-    name = $Name
-    exit_code = [int]$exitCode
-    log_path = $file
-  }
-}
-
 function Invoke-GovernanceGateChain {
   $steps = @(
-    [pscustomobject]@{ name = "build.verify-kit"; workdir = $repoPath; action = { & powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $repoPath "scripts/verify-kit.ps1") } },
-    [pscustomobject]@{ name = "test.optimization"; workdir = $repoPath; action = { & powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $repoPath "tests/governance-kit.optimization.tests.ps1") } },
-    [pscustomobject]@{ name = "contract.validate-config"; workdir = $repoPath; action = { & powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $repoPath "scripts/validate-config.ps1") } },
-    [pscustomobject]@{ name = "contract.verify"; workdir = $repoPath; action = { & powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $repoPath "scripts/verify.ps1") } },
-    [pscustomobject]@{ name = "hotspot.doctor"; workdir = $repoPath; action = { & powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $repoPath "scripts/doctor.ps1") } }
+    [pscustomobject]@{ name = "build.verify-kit"; workdir = $repoPath; action = { & $psExe -NoProfile -ExecutionPolicy Bypass -File (Join-Path $repoPath "scripts/verify-kit.ps1") } },
+    [pscustomobject]@{ name = "test.optimization"; workdir = $repoPath; action = { & $psExe -NoProfile -ExecutionPolicy Bypass -File (Join-Path $repoPath "tests/governance-kit.optimization.tests.ps1") } },
+    [pscustomobject]@{ name = "contract.validate-config"; workdir = $repoPath; action = { & $psExe -NoProfile -ExecutionPolicy Bypass -File (Join-Path $repoPath "scripts/validate-config.ps1") } },
+    [pscustomobject]@{ name = "contract.verify"; workdir = $repoPath; action = { & $psExe -NoProfile -ExecutionPolicy Bypass -File (Join-Path $repoPath "scripts/verify.ps1") } },
+    [pscustomobject]@{ name = "hotspot.doctor"; workdir = $repoPath; action = { & $psExe -NoProfile -ExecutionPolicy Bypass -File (Join-Path $repoPath "scripts/doctor.ps1") } }
   )
 
   foreach ($step in $steps) {
-    $result = Invoke-LoggedCommand -Name $step.name -Action $step.action -WorkDir $step.workdir
+    $result = Invoke-LoggedCommand -Name $step.name -Action $step.action -WorkDir $step.workdir -LogRoot $logRoot
     if ($result.exit_code -ne 0) {
       return [pscustomobject]@{
         ok = $false
@@ -118,8 +81,8 @@ function Invoke-TargetCycle {
     $cycleArgs += "-SkipOptimize"
   }
 
-  return Invoke-LoggedCommand -Name "target.run-project-governance-cycle" -WorkDir $repoPath -Action {
-    & powershell @cycleArgs
+  return Invoke-LoggedCommand -Name "target.run-project-governance-cycle" -WorkDir $repoPath -LogRoot $logRoot -Action {
+    & $psExe @cycleArgs
   }
 }
 
@@ -128,6 +91,16 @@ function Is-IrreversibleRiskBoundary {
 
   if ([string]::IsNullOrWhiteSpace($FailedStep)) { return $false }
   return $FailedStep.StartsWith("contract.", [System.StringComparison]::OrdinalIgnoreCase)
+}
+
+function New-SafeAutopilotRetryCommand {
+  param([string]$RepoPathText, [int]$MaxCyclesValue)
+  return "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/automation/run-safe-autopilot.ps1 -RepoRoot `"$($RepoPathText -replace '\\','/')`" -MaxCycles $MaxCyclesValue"
+}
+
+function New-TargetCycleRetryCommand {
+  param([string]$TargetRepoPathText)
+  return "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/run-project-governance-cycle.ps1 -RepoPath `"$($TargetRepoPathText -replace '\\','/')`" -RepoName `"$((Split-Path -Leaf $TargetRepoPathText))`" -Mode safe -ShowScope"
 }
 
 function Write-FailureContextAndThrow {
@@ -228,7 +201,7 @@ try {
       if (-not $failureCounts.ContainsKey($stepName)) { $failureCounts[$stepName] = 0 }
       $failureCounts[$stepName] = $failureCounts[$stepName] + 1
       $count = $failureCounts[$stepName]
-      $retryCmd = "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/automation/run-safe-autopilot.ps1 -RepoRoot `"$($repoPath -replace '\\','/')`" -MaxCycles $effectiveMaxCycles"
+      $retryCmd = New-SafeAutopilotRetryCommand -RepoPathText $repoPath -MaxCyclesValue $effectiveMaxCycles
       $policySnapshot = [pscustomobject]@{
         allow_auto_fix = $kitAllowAutoFix
         allow_rule_optimization = [bool]$kitPolicy.allow_rule_optimization
@@ -272,7 +245,7 @@ try {
         if (-not $failureCounts.ContainsKey($targetStepName)) { $failureCounts[$targetStepName] = 0 }
         $failureCounts[$targetStepName] = $failureCounts[$targetStepName] + 1
         $targetCount = $failureCounts[$targetStepName]
-        $targetRetry = "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/run-project-governance-cycle.ps1 -RepoPath `"$($targetResolved.Path -replace '\\','/')`" -RepoName `"$((Split-Path -Leaf $targetResolved.Path))`" -Mode safe -ShowScope"
+        $targetRetry = New-TargetCycleRetryCommand -TargetRepoPathText $targetResolved.Path
         $targetPolicySnapshot = [pscustomobject]@{
           allow_auto_fix = $targetAllowAutoFix
           allow_rule_optimization = [bool]$targetPolicy.allow_rule_optimization
