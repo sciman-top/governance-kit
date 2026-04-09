@@ -17,7 +17,8 @@
   "policies": {
     "signing": {
       "required": false,
-      "mode": "none-personal"
+      "mode": "none-personal",
+      "allow_paid_signing": false
     },
     "compatibility": {
       "matrix_required": true,
@@ -33,6 +34,14 @@
       "default_channel": "standard",
       "channels": [
         "standard",
+        "offline"
+      ],
+      "distribution_forms": [
+        "installer",
+        "portable"
+      ],
+      "network_modes": [
+        "online",
         "offline"
       ],
       "require_framework_dependent": true,

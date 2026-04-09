@@ -76,6 +76,18 @@ function Validate-ReleaseProfile {
       if ([string]::IsNullOrWhiteSpace([string]$Profile.policies.signing.mode)) {
         [void]$errors.Add("policies.signing.mode is required")
       }
+      if ($Profile.policies.signing.allow_paid_signing -isnot [bool]) {
+        [void]$errors.Add("policies.signing.allow_paid_signing must be boolean")
+      } elseif ([bool]$Profile.policies.signing.allow_paid_signing) {
+        [void]$errors.Add("policies.signing.allow_paid_signing must be false")
+      }
+      $signingMode = ([string]$Profile.policies.signing.mode).ToLowerInvariant()
+      foreach ($token in @("paid", "ev", "ov", "codesign-certificate", "cloud-hsm")) {
+        if ($signingMode.Contains($token)) {
+          [void]$errors.Add("policies.signing.mode must not require paid signing service")
+          break
+        }
+      }
     }
 
     if ($null -eq $Profile.policies.compatibility) {
@@ -101,9 +113,38 @@ function Validate-ReleaseProfile {
       if ($null -eq $Profile.policies.packaging.channels -or @($Profile.policies.packaging.channels).Count -eq 0) {
         [void]$errors.Add("policies.packaging.channels must contain at least one entry")
       }
+      if ($null -eq $Profile.policies.packaging.distribution_forms -or @($Profile.policies.packaging.distribution_forms).Count -eq 0) {
+        [void]$errors.Add("policies.packaging.distribution_forms must contain at least one entry")
+      }
+      if ($null -eq $Profile.policies.packaging.network_modes -or @($Profile.policies.packaging.network_modes).Count -eq 0) {
+        [void]$errors.Add("policies.packaging.network_modes must contain at least one entry")
+      }
       foreach ($k in @("require_framework_dependent", "require_self_contained")) {
         if ($Profile.policies.packaging.$k -isnot [bool]) {
           [void]$errors.Add("policies.packaging.$k must be boolean")
+        }
+      }
+      $allowedForms = @("installer", "portable")
+      foreach ($f in @($Profile.policies.packaging.distribution_forms)) {
+        if ($allowedForms -notcontains [string]$f) {
+          [void]$errors.Add("policies.packaging.distribution_forms contains unsupported value: $f")
+        }
+      }
+      $allowedNetworkModes = @("online", "offline")
+      foreach ($m in @($Profile.policies.packaging.network_modes)) {
+        if ($allowedNetworkModes -notcontains [string]$m) {
+          [void]$errors.Add("policies.packaging.network_modes contains unsupported value: $m")
+        }
+      }
+      if (@($Profile.policies.packaging.channels) -notcontains [string]$Profile.policies.packaging.default_channel) {
+        [void]$errors.Add("policies.packaging.default_channel must be included in policies.packaging.channels")
+      }
+      if ([bool]$Profile.release_enabled) {
+        if (@($Profile.policies.packaging.distribution_forms) -notcontains "installer" -or @($Profile.policies.packaging.distribution_forms) -notcontains "portable") {
+          [void]$errors.Add("release-enabled profile must support both distribution_forms: installer + portable")
+        }
+        if (@($Profile.policies.packaging.network_modes) -notcontains "online" -or @($Profile.policies.packaging.network_modes) -notcontains "offline") {
+          [void]$errors.Add("release-enabled profile must support both network_modes: online + offline")
         }
       }
     }

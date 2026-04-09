@@ -2671,5 +2671,119 @@ exit 0
       if (Test-Path $tmp) { Remove-Item -LiteralPath $tmp -Recurse -Force }
     }
   }
+
+  it "verify-release-profile rejects paid signing mode" {
+    $tmp = Join-Path $env:TEMP ("govkit-test-" + [guid]::NewGuid().ToString("N"))
+    try {
+      New-Item -ItemType Directory -Path (Join-Path $tmp "scripts\lib") -Force | Out-Null
+      New-Item -ItemType Directory -Path (Join-Path $tmp "scripts") -Force | Out-Null
+      New-Item -ItemType Directory -Path (Join-Path $tmp "RepoA\.governance") -Force | Out-Null
+
+      Copy-Item -Path (Join-Path $repoRoot "scripts\verify-release-profile.ps1") -Destination (Join-Path $tmp "scripts\verify-release-profile.ps1") -Force
+      Copy-Item -Path (Join-Path $repoRoot "scripts\lib\common.ps1") -Destination (Join-Path $tmp "scripts\lib\common.ps1") -Force
+
+      @'
+{
+  "schema_version": "1.0",
+  "project_type": "generic",
+  "release_enabled": false,
+  "owner": "RepoA",
+  "classification": {
+    "release_decision": "disabled-no-release-signals",
+    "detected_release_signals": []
+  },
+  "policies": {
+    "signing": {
+      "required": false,
+      "mode": "ev-paid",
+      "allow_paid_signing": true
+    },
+    "compatibility": {
+      "matrix_required": false,
+      "minimum_os": ["Windows 10 22H2"],
+      "architectures": ["x64"]
+    },
+    "packaging": {
+      "default_channel": "none",
+      "channels": ["none"],
+      "distribution_forms": ["portable"],
+      "network_modes": ["online"],
+      "require_framework_dependent": false,
+      "require_self_contained": false
+    },
+    "anti_false_positive": {
+      "prefer_zip": false,
+      "disallow_self_extracting_archive": false,
+      "disallow_obfuscation": false,
+      "disallow_runtime_downloader": false
+    },
+    "traceability": {
+      "require_sha256": false,
+      "require_release_manifest": false,
+      "require_changelog": false
+    }
+  },
+  "gates": {
+    "build": "echo ok",
+    "test": "echo ok",
+    "contract_invariant": "echo ok",
+    "hotspot": "echo ok"
+  },
+  "release": {
+    "preflight": "N/A",
+    "prepare": "N/A",
+    "workflow_files": [],
+    "output_root": "artifacts/release",
+    "manifest": "artifacts/release/<version>/release-manifest.json"
+  }
+}
+'@ | Set-Content -Path (Join-Path $tmp "RepoA\.governance\release-profile.json") -Encoding UTF8
+
+      $json = & powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $tmp "scripts\verify-release-profile.ps1") -RepoPath (Join-Path $tmp "RepoA") -AsJson
+      $LASTEXITCODE | should be 1
+      $obj = $json | ConvertFrom-Json
+      $obj.status | should be "FAIL"
+      (@($obj.errors | Where-Object { $_ -match "allow_paid_signing must be false" }).Count -ge 1) | should be $true
+    } finally {
+      if (Test-Path $tmp) { Remove-Item -LiteralPath $tmp -Recurse -Force }
+    }
+  }
+
+  it "suggest-release-profile emits packaging forms and no-paid-signing policy" {
+    $tmp = Join-Path $env:TEMP ("govkit-test-" + [guid]::NewGuid().ToString("N"))
+    try {
+      New-Item -ItemType Directory -Path (Join-Path $tmp "scripts\lib") -Force | Out-Null
+      New-Item -ItemType Directory -Path (Join-Path $tmp "scripts") -Force | Out-Null
+      New-Item -ItemType Directory -Path (Join-Path $tmp "RepoA") -Force | Out-Null
+      New-Item -ItemType Directory -Path (Join-Path $tmp "RepoA\scripts\release") -Force | Out-Null
+      New-Item -ItemType Directory -Path (Join-Path $tmp "RepoA\docs\runbooks") -Force | Out-Null
+
+      Copy-Item -Path (Join-Path $repoRoot "scripts\suggest-release-profile.ps1") -Destination (Join-Path $tmp "scripts\suggest-release-profile.ps1") -Force
+      Copy-Item -Path (Join-Path $repoRoot "scripts\lib\common.ps1") -Destination (Join-Path $tmp "scripts\lib\common.ps1") -Force
+
+      @'
+param([Parameter(Mandatory = $true)][string]$RepoPath,[switch]$AsJson)
+if ($AsJson) {
+  @{ recommended = @{ build = "echo build"; test = "echo test"; contract_invariant = "echo contract"; hotspot = "echo hotspot" } } | ConvertTo-Json -Depth 6 | Write-Output
+  exit 0
+}
+'@ | Set-Content -Path (Join-Path $tmp "scripts\analyze-repo-governance.ps1") -Encoding UTF8
+
+      Set-Content -Path (Join-Path $tmp "RepoA\scripts\release\prepare-distribution.ps1") -Value "param(); Write-Host ok" -Encoding UTF8
+      Set-Content -Path (Join-Path $tmp "RepoA\scripts\release\preflight-check.ps1") -Value "param(); Write-Host ok" -Encoding UTF8
+      Set-Content -Path (Join-Path $tmp "RepoA\docs\runbooks\release-prevention-checklist.md") -Value "# checklist" -Encoding UTF8
+
+      $json = & powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $tmp "scripts\suggest-release-profile.ps1") -RepoPath (Join-Path $tmp "RepoA") -AsJson
+      if ($LASTEXITCODE -ne 0) { throw "suggest-release-profile.ps1 failed with exit code $LASTEXITCODE" }
+      $obj = $json | ConvertFrom-Json
+      (@($obj.profile.policies.packaging.distribution_forms) -contains "installer") | should be $true
+      (@($obj.profile.policies.packaging.distribution_forms) -contains "portable") | should be $true
+      (@($obj.profile.policies.packaging.network_modes) -contains "online") | should be $true
+      (@($obj.profile.policies.packaging.network_modes) -contains "offline") | should be $true
+      [bool]$obj.profile.policies.signing.allow_paid_signing | should be $false
+    } finally {
+      if (Test-Path $tmp) { Remove-Item -LiteralPath $tmp -Recurse -Force }
+    }
+  }
 }
 

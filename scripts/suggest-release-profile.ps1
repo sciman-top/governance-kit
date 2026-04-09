@@ -126,6 +126,8 @@ foreach ($wf in @($workflowFiles)) { [void]$releaseSignals.Add([string]$wf) }
 $minimumOs = [object[]]@("Windows 10 22H2", "Windows 11 22H2")
 $architectures = [object[]]@("x64")
 $channels = if ($releaseEnabled) { [object[]]@("standard", "offline") } else { [object[]]@("none") }
+$distributionForms = if ($releaseEnabled) { [object[]]@("installer", "portable") } else { [object[]]@("portable") }
+$networkModes = if ($releaseEnabled) { [object[]]@("online", "offline") } else { [object[]]@("online") }
 $disallowRuntimeDownloader = [bool]$releaseEnabled
 
 if ($projectType -eq "script" -or $projectType -eq "generic" -or $projectType -eq "node") {
@@ -151,6 +153,7 @@ $profile = [ordered]@{
     signing = [ordered]@{
       required = $false
       mode = "none-personal"
+      allow_paid_signing = $false
     }
     compatibility = [ordered]@{
       matrix_required = [bool]$releaseEnabled
@@ -160,6 +163,8 @@ $profile = [ordered]@{
     packaging = [ordered]@{
       default_channel = if ($releaseEnabled) { "standard" } else { "none" }
       channels = $channels
+      distribution_forms = $distributionForms
+      network_modes = $networkModes
       require_framework_dependent = [bool]$releaseEnabled
       require_self_contained = [bool]$releaseEnabled
     }
@@ -201,11 +206,12 @@ if ($WriteFile) {
 }
 
 if ($AsJson) {
+  $profileObj = $profileJson | ConvertFrom-Json
   [pscustomobject]@{
     repo = ($repo -replace '\\', '/')
     output = ($OutputPath -replace '\\', '/')
     wrote_file = [bool]$WriteFile
-    profile = ($profile | ConvertFrom-Json -InputObject $profileJson)
+    profile = $profileObj
   } | ConvertTo-Json -Depth 10 | Write-Output
   exit 0
 }
