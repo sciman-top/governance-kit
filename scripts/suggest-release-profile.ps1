@@ -89,35 +89,6 @@ function Normalize-GateCommand {
   return $CommandText
 }
 
-function Get-ReleaseDistributionPolicy {
-  param(
-    [Parameter(Mandatory = $true)]
-    [string]$KitRoot
-  )
-
-  $path = Join-Path $KitRoot "config\release-distribution-policy.json"
-  if (-not (Test-Path -LiteralPath $path -PathType Leaf)) {
-    return $null
-  }
-  try {
-    return (Get-Content -LiteralPath $path -Raw | ConvertFrom-Json)
-  } catch {
-    return $null
-  }
-}
-
-function Get-ReleaseDistributionPolicyForRepo {
-  param(
-    [object]$Policy,
-    [Parameter(Mandatory = $true)]
-    [string]$RepoName
-  )
-
-  if ($null -eq $Policy) { return $null }
-  if ($null -eq $Policy.PSObject.Properties['repos'] -or $null -eq $Policy.repos) { return $null }
-  return @($Policy.repos | Where-Object { $_ -ne $null -and $_.PSObject.Properties['repoName'] -and ([string]$_.repoName).Equals($RepoName, [System.StringComparison]::OrdinalIgnoreCase) } | Select-Object -First 1)[0]
-}
-
 if ([string]::IsNullOrWhiteSpace($OutputPath)) {
   $OutputPath = Join-Path $repo ".governance\release-profile.json"
 }

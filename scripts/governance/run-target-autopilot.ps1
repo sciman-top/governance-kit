@@ -74,77 +74,6 @@ function Emit-BrowserSessionHint {
   Write-Host "browser_session.attach=agent-browser --cdp 9222 open about:blank"
 }
 
-function Invoke-ClarificationTracker {
-  param(
-    [Parameter(Mandatory = $true)][string]$Mode,
-    [string]$Outcome = "",
-    [string]$Reason = ""
-  )
-
-  $args = @(
-    "-NoProfile",
-    "-ExecutionPolicy", "Bypass",
-    "-File", $trackerScript,
-    "-RepoPath", $repoPath,
-    "-IssueId", $IssueId,
-    "-Scenario", $effectiveClarificationScenario,
-    "-Mode", $Mode
-  )
-  if (-not [string]::IsNullOrWhiteSpace($Outcome)) {
-    $args += @("-Outcome", $Outcome)
-  }
-  if (-not [string]::IsNullOrWhiteSpace($Reason)) {
-    $args += @("-Reason", $Reason)
-  }
-
-  $json = & $psExe @args
-  if ($LASTEXITCODE -ne 0) {
-    throw "clarification tracker failed with exit code $LASTEXITCODE"
-  }
-
-  return [string]::Join([Environment]::NewLine, @($json)) | ConvertFrom-Json
-}
-
-function Resolve-EffectiveClarificationScenario {
-  param(
-    [string]$RequestedScenario,
-    [string]$ContextFile
-  )
-
-  if ($RequestedScenario -ne "auto" -and -not [string]::IsNullOrWhiteSpace($RequestedScenario)) {
-    return [pscustomobject]@{
-      scenario = $RequestedScenario
-      source = "param"
-    }
-  }
-
-  if (-not [string]::IsNullOrWhiteSpace($ContextFile) -and (Test-Path -LiteralPath $ContextFile)) {
-    try {
-      $ctx = Get-Content -LiteralPath $ContextFile -Raw | ConvertFrom-Json
-      $ctxScenario = ""
-      if ($null -ne $ctx.PSObject.Properties['clarification_scenario']) {
-        $ctxScenario = [string]$ctx.clarification_scenario
-      } elseif ($null -ne $ctx.PSObject.Properties['scenario']) {
-        $ctxScenario = [string]$ctx.scenario
-      }
-      $valid = @("plan", "requirement", "bugfix", "acceptance")
-      if ($valid -contains $ctxScenario) {
-        return [pscustomobject]@{
-          scenario = $ctxScenario
-          source = "context_file"
-        }
-      }
-    } catch {
-      Write-Host ("[WARN] clarification context parse failed: {0}" -f $ContextFile)
-    }
-  }
-
-  return [pscustomobject]@{
-    scenario = "bugfix"
-    source = "fallback"
-  }
-}
-
 $kitRoot = Resolve-KitRoot -ProvidedPath $GovernanceKitRoot
 $commonPath = Join-Path $kitRoot "scripts/lib/common.ps1"
 $analyzeScript = Join-Path $kitRoot "scripts/analyze-repo-governance.ps1"
@@ -207,7 +136,7 @@ if ($DryRun) {
   exit 0
 }
 
-$clarificationState = Invoke-ClarificationTracker -Mode "evaluate"
+$clarificationState = Invoke-ClarificationTracker -TrackerScript $trackerScript -RepoPath $repoPath -IssueId $IssueId -Scenario $effectiveClarificationScenario -Mode "evaluate" -PowerShellPath $psExe
 if ($clarificationState.clarification_required -eq $true) {
   Write-Host ("CLARIFICATION_REQUIRED issue_id={0} attempt_count={1} scenario={2}" -f $IssueId, $clarificationState.attempt_count, $clarificationState.scenario)
 }
@@ -238,7 +167,7 @@ for ($cycle = 1; $cycle -le $MaxCycles; $cycle++) {
 
     if (-not $recovered) {
       $failureReason = "gate:$($step.name) failed; log=$($result.log_path)"
-      $clarificationState = Invoke-ClarificationTracker -Mode "record" -Outcome "failure" -Reason $failureReason
+      $clarificationState = Invoke-ClarificationTracker -TrackerScript $trackerScript -RepoPath $repoPath -IssueId $IssueId -Scenario $effectiveClarificationScenario -Mode "record" -Outcome "failure" -Reason $failureReason -PowerShellPath $psExe
       if ($clarificationState.clarification_required -eq $true) {
         Write-Host ("CLARIFICATION_REQUIRED issue_id={0} attempt_count={1} scenario={2}" -f $IssueId, $clarificationState.attempt_count, $clarificationState.scenario)
         Write-Host ("[CLARIFICATION_STATE_JSON] " + ($clarificationState | ConvertTo-Json -Depth 8 -Compress))
@@ -254,4 +183,4 @@ for ($cycle = 1; $cycle -le $MaxCycles; $cycle++) {
 
 Write-Host "STATUS: ITERATION_COMPLETE_CONTINUE"
 Write-Host "target safe autopilot completed"
-Invoke-ClarificationTracker -Mode "record" -Outcome "success" | Out-Null
+Invoke-ClarificationTracker -TrackerScript $trackerScript -RepoPath $repoPath -IssueId $IssueId -Scenario $effectiveClarificationScenario -Mode "record" -Outcome "success" -PowerShellPath $psExe | Out-Null

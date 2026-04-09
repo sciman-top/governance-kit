@@ -161,85 +161,6 @@ function Write-FailureContext([string]$StepName, [string]$FailureMessage, [strin
   Write-Host ("[FAILURE_CONTEXT_JSON] " + ($context | ConvertTo-Json -Depth 8 -Compress))
 }
 
-function Invoke-ClarificationTracker {
-  param(
-    [Parameter(Mandatory = $true)][string]$Mode,
-    [string]$Outcome = "",
-    [string]$Reason = ""
-  )
-
-  $args = @(
-    "-NoProfile",
-    "-ExecutionPolicy", "Bypass",
-    "-File", $clarificationTrackerScript,
-    "-RepoPath", $repo,
-    "-IssueId", $IssueId,
-    "-Scenario", $effectiveClarificationScenario,
-    "-Mode", $Mode
-  )
-  if (-not [string]::IsNullOrWhiteSpace($Outcome)) {
-    $args += @("-Outcome", $Outcome)
-  }
-  if (-not [string]::IsNullOrWhiteSpace($Reason)) {
-    $args += @("-Reason", $Reason)
-  }
-
-  $json = & $psExe @args
-  if ($LASTEXITCODE -ne 0) {
-    throw "clarification tracker failed with exit code $LASTEXITCODE"
-  }
-
-  return [string]::Join([Environment]::NewLine, @($json)) | ConvertFrom-Json
-}
-
-function Resolve-EffectiveClarificationScenario {
-  param(
-    [string]$RequestedScenario,
-    [string]$CurrentMode,
-    [string]$ContextFile
-  )
-
-  if ($RequestedScenario -ne "auto" -and -not [string]::IsNullOrWhiteSpace($RequestedScenario)) {
-    return [pscustomobject]@{
-      scenario = $RequestedScenario
-      source = "param"
-    }
-  }
-
-  if (-not [string]::IsNullOrWhiteSpace($ContextFile) -and (Test-Path -LiteralPath $ContextFile)) {
-    try {
-      $ctx = Get-Content -LiteralPath $ContextFile -Raw | ConvertFrom-Json
-      $ctxScenario = ""
-      if ($null -ne $ctx.PSObject.Properties['clarification_scenario']) {
-        $ctxScenario = [string]$ctx.clarification_scenario
-      } elseif ($null -ne $ctx.PSObject.Properties['scenario']) {
-        $ctxScenario = [string]$ctx.scenario
-      }
-      $valid = @("plan", "requirement", "bugfix", "acceptance")
-      if ($valid -contains $ctxScenario) {
-        return [pscustomobject]@{
-          scenario = $ctxScenario
-          source = "context_file"
-        }
-      }
-    } catch {
-      Write-Host ("[WARN] clarification context parse failed: {0}" -f $ContextFile)
-    }
-  }
-
-  if ($CurrentMode -eq "plan") {
-    return [pscustomobject]@{
-      scenario = "plan"
-      source = "mode"
-    }
-  }
-
-  return [pscustomobject]@{
-    scenario = "bugfix"
-    source = "fallback"
-  }
-}
-
 function Get-NormalizedRepoPathForCmd() {
   return ($repo -replace '\\', '/')
 }
@@ -262,7 +183,7 @@ function Step-OrFail([string]$Name, [string]$RetryCommand, [scriptblock]$Action)
     return
   } catch {
     $failure = $_.Exception.Message
-    $clarificationState = Invoke-ClarificationTracker -Mode "record" -Outcome "failure" -Reason ("step={0}; {1}" -f $Name, $failure)
+    $clarificationState = Invoke-ClarificationTracker -TrackerScript $clarificationTrackerScript -RepoPath $repo -IssueId $IssueId -Scenario $effectiveClarificationScenario -Mode "record" -Outcome "failure" -Reason ("step={0}; {1}" -f $Name, $failure) -PowerShellPath $psExe
     Write-Host "[BLOCK] step failed; fix governance-kit first when the issue belongs to governance flow, then let outer AI session re-run."
     if ($clarificationState.clarification_required -eq $true) {
       Write-Host ("CLARIFICATION_REQUIRED issue_id={0} attempt_count={1} scenario={2}" -f $IssueId, $clarificationState.attempt_count, $clarificationState.scenario)
@@ -393,7 +314,7 @@ $scenarioResolution = Resolve-EffectiveClarificationScenario -RequestedScenario 
 $effectiveClarificationScenario = [string]$scenarioResolution.scenario
 $clarificationScenarioSource = [string]$scenarioResolution.source
 Write-Host ("[CLARIFICATION] issue_id={0} scenario={1} source={2}" -f $IssueId, $effectiveClarificationScenario, $clarificationScenarioSource)
-$clarificationState = Invoke-ClarificationTracker -Mode "evaluate"
+$clarificationState = Invoke-ClarificationTracker -TrackerScript $clarificationTrackerScript -RepoPath $repo -IssueId $IssueId -Scenario $effectiveClarificationScenario -Mode "evaluate" -PowerShellPath $psExe
 if ($clarificationState.clarification_required -eq $true) {
   Write-Host ("CLARIFICATION_REQUIRED issue_id={0} attempt_count={1} scenario={2}" -f $IssueId, $clarificationState.attempt_count, $clarificationState.scenario)
 }
@@ -458,4 +379,4 @@ Invoke-MilestoneAutoCommit -Checkpoint "cycle_complete"
 Assert-CleanCheckpoint -Checkpoint "cycle_complete"
 
 Write-Host "run-project-governance-cycle completed: repo=$($repo -replace '\\','/') mode=$Mode"
-Invoke-ClarificationTracker -Mode "record" -Outcome "success" | Out-Null
+Invoke-ClarificationTracker -TrackerScript $clarificationTrackerScript -RepoPath $repo -IssueId $IssueId -Scenario $effectiveClarificationScenario -Mode "record" -Outcome "success" -PowerShellPath $psExe | Out-Null

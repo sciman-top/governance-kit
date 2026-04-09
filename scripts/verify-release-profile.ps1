@@ -36,41 +36,6 @@ function Get-ReleaseSignals {
   return @($signals | Select-Object -Unique)
 }
 
-function Get-ReleaseDistributionPolicy {
-  param(
-    [Parameter(Mandatory = $true)]
-    [string]$KitRoot
-  )
-
-  $path = Join-Path $KitRoot "config\release-distribution-policy.json"
-  if (-not (Test-Path -LiteralPath $path -PathType Leaf)) {
-    return $null
-  }
-  try {
-    return (Get-Content -LiteralPath $path -Raw | ConvertFrom-Json)
-  } catch {
-    return $null
-  }
-}
-
-function Get-ReleaseDistributionPolicyForRepo {
-  param(
-    [object]$Policy,
-    [Parameter(Mandatory = $true)]
-    [string]$RepoName
-  )
-
-  if ($null -eq $Policy) { return $null }
-  if ($null -ne $Policy.PSObject.Properties['repos'] -and $null -ne $Policy.repos) {
-    $repoEntry = @($Policy.repos | Where-Object { $_ -ne $null -and $_.PSObject.Properties['repoName'] -and ([string]$_.repoName).Equals($RepoName, [System.StringComparison]::OrdinalIgnoreCase) } | Select-Object -First 1)[0]
-    if ($null -ne $repoEntry) { return $repoEntry }
-  }
-  if ($null -ne $Policy.PSObject.Properties['default']) {
-    return $Policy.default
-  }
-  return $null
-}
-
 function Validate-ReleaseProfile {
   param(
     [Parameter(Mandatory = $true)]
@@ -435,7 +400,7 @@ $repo = [System.IO.Path]::GetFullPath($repoResolved.Path)
 $repoName = Split-Path -Leaf $repo
 $kitRoot = Split-Path -Parent $PSScriptRoot
 $distributionPolicy = Get-ReleaseDistributionPolicy -KitRoot $kitRoot
-$repoDistributionPolicy = Get-ReleaseDistributionPolicyForRepo -Policy $distributionPolicy -RepoName $repoName
+$repoDistributionPolicy = Get-ReleaseDistributionPolicyForRepo -Policy $distributionPolicy -RepoName $repoName -FallbackToDefault
 $profilePath = Join-Path $repo ".governance\release-profile.json"
 
 $signals = @(Get-ReleaseSignals -Repo $repo)
