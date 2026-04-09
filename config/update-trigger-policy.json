@@ -26,6 +26,10 @@
       "enabled": true,
       "severity": "medium"
     },
+    "release_distribution_policy_drift": {
+      "enabled": true,
+      "severity": "high"
+    },
     "low_value_orphan_custom_sources": {
       "enabled": false,
       "severity": "medium"
