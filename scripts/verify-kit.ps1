@@ -12,6 +12,7 @@ $mustExist = @(
   "config\rule-rollout.json",
   "config\project-rule-policy.json",
   "config\project-custom-files.json",
+  "config\release-distribution-policy.json",
   "config\real-repo-regression-matrix.json",
   "config\governance-baseline.json",
   "config\codex-runtime-policy.json",

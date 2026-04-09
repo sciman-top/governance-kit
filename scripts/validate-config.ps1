@@ -11,6 +11,7 @@ $targetsPath = Join-Path $kitRoot "config\targets.json"
 $rolloutPath = Join-Path $kitRoot "config\rule-rollout.json"
 $projectRulePolicyPath = Get-ProjectRulePolicyPath $kitRoot
 $projectCustomPath = Join-Path $kitRoot "config\project-custom-files.json"
+$releaseDistributionPolicyPath = Join-Path $kitRoot "config\release-distribution-policy.json"
 $clarificationPolicyPath = Join-Path $kitRoot "config\clarification-policy.json"
 $codexProfileRegistryPath = Join-Path $kitRoot "config\codex-profile-registry.json"
 $codexRuntimePolicyPath = Join-Path $kitRoot "config\codex-runtime-policy.json"
@@ -20,6 +21,7 @@ if (!(Test-Path $targetsPath)) { throw "targets.json not found: $targetsPath" }
 if (!(Test-Path $rolloutPath)) { throw "rule-rollout.json not found: $rolloutPath" }
 if (!(Test-Path $projectRulePolicyPath)) { throw "project-rule-policy.json not found: $projectRulePolicyPath" }
 if (!(Test-Path $projectCustomPath)) { throw "project-custom-files.json not found: $projectCustomPath" }
+if (!(Test-Path $releaseDistributionPolicyPath)) { throw "release-distribution-policy.json not found: $releaseDistributionPolicyPath" }
 
 $fail = 0
 
@@ -51,6 +53,12 @@ try {
   $projectCustom = Get-Content -Path $projectCustomPath -Raw | ConvertFrom-Json
 } catch {
   throw "project-custom-files.json invalid JSON: $projectCustomPath"
+}
+
+try {
+  $releaseDistributionPolicy = Get-Content -Path $releaseDistributionPolicyPath -Raw | ConvertFrom-Json
+} catch {
+  throw "release-distribution-policy.json invalid JSON: $releaseDistributionPolicyPath"
 }
 
 if (Test-Path $clarificationPolicyPath) {
@@ -635,6 +643,111 @@ if (Test-Path -LiteralPath $codexRuntimePolicyPath -PathType Leaf) {
         }
       }
     }
+  }
+}
+
+if ($null -eq $releaseDistributionPolicy.PSObject.Properties['schema_version'] -or [string]::IsNullOrWhiteSpace([string]$releaseDistributionPolicy.schema_version)) {
+  Write-Host "[CFG] release-distribution-policy.schema_version missing"
+  $fail++
+}
+if ($null -eq $releaseDistributionPolicy.PSObject.Properties['default'] -or $null -eq $releaseDistributionPolicy.default) {
+  Write-Host "[CFG] release-distribution-policy.default missing"
+  $fail++
+}
+if ($null -eq $releaseDistributionPolicy.PSObject.Properties['repos'] -or $releaseDistributionPolicy.repos -isnot [System.Array]) {
+  Write-Host "[CFG] release-distribution-policy.repos must be array"
+  $fail++
+}
+
+$allowedChannels = @("none", "standard", "offline")
+$allowedForms = @("installer", "portable")
+$allowedNetworkModes = @("online", "offline")
+if ($null -ne $releaseDistributionPolicy.default) {
+  $d = $releaseDistributionPolicy.default
+  if ($null -eq $d.signing -or $null -eq $d.packaging) {
+    Write-Host "[CFG] release-distribution-policy.default.signing/default.packaging missing"
+    $fail++
+  } else {
+    if ($d.signing.required -isnot [bool] -or $d.signing.allow_paid_signing -isnot [bool]) {
+      Write-Host "[CFG] release-distribution-policy.default.signing.required/allow_paid_signing must be boolean"
+      $fail++
+    }
+    if ([string]::IsNullOrWhiteSpace([string]$d.signing.mode)) {
+      Write-Host "[CFG] release-distribution-policy.default.signing.mode missing"
+      $fail++
+    }
+    if ([string]::IsNullOrWhiteSpace([string]$d.packaging.default_channel) -or ($allowedChannels -notcontains [string]$d.packaging.default_channel)) {
+      Write-Host "[CFG] release-distribution-policy.default.packaging.default_channel invalid"
+      $fail++
+    }
+    if ($d.packaging.channels -isnot [System.Array] -or @($d.packaging.channels).Count -eq 0) {
+      Write-Host "[CFG] release-distribution-policy.default.packaging.channels must be non-empty array"
+      $fail++
+    } else {
+      foreach ($c in @($d.packaging.channels)) {
+        if ($allowedChannels -notcontains [string]$c) {
+          Write-Host ("[CFG] release-distribution-policy.default.packaging.channels invalid value: {0}" -f [string]$c)
+          $fail++
+        }
+      }
+    }
+    if ($d.packaging.distribution_forms -isnot [System.Array] -or @($d.packaging.distribution_forms).Count -eq 0) {
+      Write-Host "[CFG] release-distribution-policy.default.packaging.distribution_forms must be non-empty array"
+      $fail++
+    } else {
+      foreach ($fItem in @($d.packaging.distribution_forms)) {
+        if ($allowedForms -notcontains [string]$fItem) {
+          Write-Host ("[CFG] release-distribution-policy.default.packaging.distribution_forms invalid value: {0}" -f [string]$fItem)
+          $fail++
+        }
+      }
+    }
+    if ($d.packaging.network_modes -isnot [System.Array] -or @($d.packaging.network_modes).Count -eq 0) {
+      Write-Host "[CFG] release-distribution-policy.default.packaging.network_modes must be non-empty array"
+      $fail++
+    } else {
+      foreach ($mItem in @($d.packaging.network_modes)) {
+        if ($allowedNetworkModes -notcontains [string]$mItem) {
+          Write-Host ("[CFG] release-distribution-policy.default.packaging.network_modes invalid value: {0}" -f [string]$mItem)
+          $fail++
+        }
+      }
+    }
+    if ($d.packaging.require_framework_dependent -isnot [bool] -or $d.packaging.require_self_contained -isnot [bool]) {
+      Write-Host "[CFG] release-distribution-policy.default.packaging.require_* must be boolean"
+      $fail++
+    }
+  }
+}
+
+$seenReleasePolicyRepo = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::OrdinalIgnoreCase)
+foreach ($rp in @($releaseDistributionPolicy.repos)) {
+  if ($null -eq $rp) {
+    Write-Host "[CFG] release-distribution-policy.repos contains null entry"
+    $fail++
+    continue
+  }
+  $rpName = [string]$rp.repoName
+  if ([string]::IsNullOrWhiteSpace($rpName)) {
+    Write-Host "[CFG] release-distribution-policy.repos.repoName missing"
+    $fail++
+    continue
+  }
+  if (-not $seenReleasePolicyRepo.Add($rpName)) {
+    Write-Host ("[CFG] release-distribution-policy duplicate repoName: {0}" -f $rpName)
+    $fail++
+  }
+
+  $repoNameMatched = $false
+  foreach ($repoNorm in $seenRepo) {
+    if ((Split-Path -Leaf $repoNorm).Equals($rpName, [System.StringComparison]::OrdinalIgnoreCase)) {
+      $repoNameMatched = $true
+      break
+    }
+  }
+  if (-not $repoNameMatched) {
+    Write-Host ("[CFG] release-distribution-policy repoName not in repositories.json: {0}" -f $rpName)
+    $fail++
   }
 }
 

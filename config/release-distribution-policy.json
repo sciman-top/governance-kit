@@ -1,0 +1,95 @@
+{
+  "schema_version": "1.0",
+  "default": {
+    "signing": {
+      "required": false,
+      "mode": "none-personal",
+      "allow_paid_signing": false
+    },
+    "packaging": {
+      "default_channel": "none",
+      "channels": [
+        "none"
+      ],
+      "distribution_forms": [
+        "portable"
+      ],
+      "network_modes": [
+        "online"
+      ],
+      "require_framework_dependent": false,
+      "require_self_contained": false
+    }
+  },
+  "repos": [
+    {
+      "repoName": "ClassroomToolkit",
+      "signing": {
+        "required": false,
+        "mode": "none-personal",
+        "allow_paid_signing": false
+      },
+      "packaging": {
+        "default_channel": "standard",
+        "channels": [
+          "standard",
+          "offline"
+        ],
+        "distribution_forms": [
+          "installer",
+          "portable"
+        ],
+        "network_modes": [
+          "online",
+          "offline"
+        ],
+        "require_framework_dependent": true,
+        "require_self_contained": true
+      }
+    },
+    {
+      "repoName": "skills-manager",
+      "signing": {
+        "required": false,
+        "mode": "none-personal",
+        "allow_paid_signing": false
+      },
+      "packaging": {
+        "default_channel": "none",
+        "channels": [
+          "none"
+        ],
+        "distribution_forms": [
+          "portable"
+        ],
+        "network_modes": [
+          "online"
+        ],
+        "require_framework_dependent": false,
+        "require_self_contained": false
+      }
+    },
+    {
+      "repoName": "governance-kit",
+      "signing": {
+        "required": false,
+        "mode": "none-personal",
+        "allow_paid_signing": false
+      },
+      "packaging": {
+        "default_channel": "none",
+        "channels": [
+          "none"
+        ],
+        "distribution_forms": [
+          "portable"
+        ],
+        "network_modes": [
+          "online"
+        ],
+        "require_framework_dependent": false,
+        "require_self_contained": false
+      }
+    }
+  ]
+}

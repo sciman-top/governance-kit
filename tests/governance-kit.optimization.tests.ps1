@@ -24,6 +24,52 @@ function Set-MinProjectRulePolicy {
   } | ConvertTo-Json -Depth 4 | Set-Content -Path (Join-Path $ConfigDir "project-rule-policy.json") -Encoding UTF8
 }
 
+function Set-MinReleaseDistributionPolicy {
+  param(
+    [Parameter(Mandatory = $true)]
+    [string]$ConfigDir
+  )
+
+  @'
+{
+  "schema_version": "1.0",
+  "default": {
+    "signing": {
+      "required": false,
+      "mode": "none-personal",
+      "allow_paid_signing": false
+    },
+    "packaging": {
+      "default_channel": "none",
+      "channels": ["none"],
+      "distribution_forms": ["portable"],
+      "network_modes": ["online"],
+      "require_framework_dependent": false,
+      "require_self_contained": false
+    }
+  },
+  "repos": [
+    {
+      "repoName": "FakeRepo",
+      "signing": {
+        "required": false,
+        "mode": "none-personal",
+        "allow_paid_signing": false
+      },
+      "packaging": {
+        "default_channel": "none",
+        "channels": ["none"],
+        "distribution_forms": ["portable"],
+        "network_modes": ["online"],
+        "require_framework_dependent": false,
+        "require_self_contained": false
+      }
+    }
+  ]
+}
+'@ | Set-Content -Path (Join-Path $ConfigDir "release-distribution-policy.json") -Encoding UTF8
+}
+
 function Set-StubScript {
   param(
     [Parameter(Mandatory = $true)]
@@ -297,6 +343,7 @@ exit 0
         )
       } | ConvertTo-Json -Depth 6 | Set-Content -Path (Join-Path $tmp "config\project-custom-files.json") -Encoding UTF8
       Set-MinProjectRulePolicy -ConfigDir (Join-Path $tmp "config") -RepoPath "E:/CODE/FakeRepo"
+      Set-MinReleaseDistributionPolicy -ConfigDir (Join-Path $tmp "config")
       @(@{ source = "source/global/AGENTS.md"; target = "C:/Users/sciman/.codex/AGENTS.md" }) | ConvertTo-Json -Depth 4 | Set-Content -Path (Join-Path $tmp "config\targets.json") -Encoding UTF8
       @{
         default = @{ phase = "observe"; blockExpiredWaiver = $false }
@@ -340,6 +387,7 @@ exit 0
         )
       } | ConvertTo-Json -Depth 6 | Set-Content -Path (Join-Path $tmp "config\project-custom-files.json") -Encoding UTF8
       Set-MinProjectRulePolicy -ConfigDir (Join-Path $tmp "config") -RepoPath "E:/CODE/FakeRepo"
+      Set-MinReleaseDistributionPolicy -ConfigDir (Join-Path $tmp "config")
       @(@{ source = "source/global/AGENTS.md"; target = "C:/Users/sciman/.codex/AGENTS.md" }) | ConvertTo-Json -Depth 4 | Set-Content -Path (Join-Path $tmp "config\targets.json") -Encoding UTF8
       @{
         default = @{ phase = "observe"; blockExpiredWaiver = $false }
@@ -391,6 +439,7 @@ exit 0
         default = @()
         repos = @(@{ repoName = "FakeRepo"; files = @() })
       } | ConvertTo-Json -Depth 6 | Set-Content -Path (Join-Path $tmp "config\project-custom-files.json") -Encoding UTF8
+      Set-MinReleaseDistributionPolicy -ConfigDir (Join-Path $tmp "config")
 
       $output = & powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $tmp "scripts\validate-config.ps1") 2>&1 | Out-String
       $LASTEXITCODE | should be 1
@@ -435,6 +484,7 @@ exit 0
         default = @()
         repos = @(@{ repoName = "FakeRepo"; files = @() })
       } | ConvertTo-Json -Depth 6 | Set-Content -Path (Join-Path $tmp "config\project-custom-files.json") -Encoding UTF8
+      Set-MinReleaseDistributionPolicy -ConfigDir (Join-Path $tmp "config")
 
       $output = & powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $tmp "scripts\validate-config.ps1") 2>&1 | Out-String
       $LASTEXITCODE | should be 1
@@ -476,6 +526,7 @@ exit 0
         )
       } | ConvertTo-Json -Depth 6 | Set-Content -Path (Join-Path $tmp "config\project-custom-files.json") -Encoding UTF8
       Set-MinProjectRulePolicy -ConfigDir (Join-Path $tmp "config") -RepoPath "E:/CODE/FakeRepo"
+      Set-MinReleaseDistributionPolicy -ConfigDir (Join-Path $tmp "config")
       @{
         default = @{ phase = "observe"; blockExpiredWaiver = $false }
         repos = @(
@@ -2781,6 +2832,179 @@ if ($AsJson) {
       (@($obj.profile.policies.packaging.network_modes) -contains "online") | should be $true
       (@($obj.profile.policies.packaging.network_modes) -contains "offline") | should be $true
       [bool]$obj.profile.policies.signing.allow_paid_signing | should be $false
+    } finally {
+      if (Test-Path $tmp) { Remove-Item -LiteralPath $tmp -Recurse -Force }
+    }
+  }
+
+  it "suggest-release-profile honors release-distribution-policy signing override" {
+    $tmp = Join-Path $env:TEMP ("govkit-test-" + [guid]::NewGuid().ToString("N"))
+    try {
+      New-Item -ItemType Directory -Path (Join-Path $tmp "scripts\lib") -Force | Out-Null
+      New-Item -ItemType Directory -Path (Join-Path $tmp "scripts") -Force | Out-Null
+      New-Item -ItemType Directory -Path (Join-Path $tmp "config") -Force | Out-Null
+      New-Item -ItemType Directory -Path (Join-Path $tmp "RepoA") -Force | Out-Null
+      New-Item -ItemType Directory -Path (Join-Path $tmp "RepoA\scripts\release") -Force | Out-Null
+      New-Item -ItemType Directory -Path (Join-Path $tmp "RepoA\docs\runbooks") -Force | Out-Null
+
+      Copy-Item -Path (Join-Path $repoRoot "scripts\suggest-release-profile.ps1") -Destination (Join-Path $tmp "scripts\suggest-release-profile.ps1") -Force
+      Copy-Item -Path (Join-Path $repoRoot "scripts\lib\common.ps1") -Destination (Join-Path $tmp "scripts\lib\common.ps1") -Force
+
+      @'
+param([Parameter(Mandatory = $true)][string]$RepoPath,[switch]$AsJson)
+if ($AsJson) {
+  @{ recommended = @{ build = "echo build"; test = "echo test"; contract_invariant = "echo contract"; hotspot = "echo hotspot" } } | ConvertTo-Json -Depth 6 | Write-Output
+  exit 0
+}
+'@ | Set-Content -Path (Join-Path $tmp "scripts\analyze-repo-governance.ps1") -Encoding UTF8
+
+      @'
+{
+  "schema_version": "1.0",
+  "default": {
+    "signing": { "required": false, "mode": "none-personal", "allow_paid_signing": false },
+    "packaging": {
+      "default_channel": "none",
+      "channels": ["none"],
+      "distribution_forms": ["portable"],
+      "network_modes": ["online"],
+      "require_framework_dependent": false,
+      "require_self_contained": false
+    }
+  },
+  "repos": [
+    {
+      "repoName": "RepoA",
+      "signing": { "required": false, "mode": "none-personal-custom", "allow_paid_signing": false },
+      "packaging": {
+        "default_channel": "standard",
+        "channels": ["standard", "offline"],
+        "distribution_forms": ["installer", "portable"],
+        "network_modes": ["online", "offline"],
+        "require_framework_dependent": true,
+        "require_self_contained": true
+      }
+    }
+  ]
+}
+'@ | Set-Content -Path (Join-Path $tmp "config\release-distribution-policy.json") -Encoding UTF8
+
+      Set-Content -Path (Join-Path $tmp "RepoA\scripts\release\prepare-distribution.ps1") -Value "param(); Write-Host ok" -Encoding UTF8
+      Set-Content -Path (Join-Path $tmp "RepoA\scripts\release\preflight-check.ps1") -Value "param(); Write-Host ok" -Encoding UTF8
+      Set-Content -Path (Join-Path $tmp "RepoA\docs\runbooks\release-prevention-checklist.md") -Value "# checklist" -Encoding UTF8
+
+      $json = & powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $tmp "scripts\suggest-release-profile.ps1") -RepoPath (Join-Path $tmp "RepoA") -AsJson
+      if ($LASTEXITCODE -ne 0) { throw "suggest-release-profile.ps1 failed with exit code $LASTEXITCODE" }
+      $obj = $json | ConvertFrom-Json
+      [string]$obj.profile.policies.signing.mode | should be "none-personal-custom"
+    } finally {
+      if (Test-Path $tmp) { Remove-Item -LiteralPath $tmp -Recurse -Force }
+    }
+  }
+
+  it "verify-release-profile enforces release-distribution-policy consistency" {
+    $tmp = Join-Path $env:TEMP ("govkit-test-" + [guid]::NewGuid().ToString("N"))
+    try {
+      New-Item -ItemType Directory -Path (Join-Path $tmp "scripts\lib") -Force | Out-Null
+      New-Item -ItemType Directory -Path (Join-Path $tmp "scripts") -Force | Out-Null
+      New-Item -ItemType Directory -Path (Join-Path $tmp "config") -Force | Out-Null
+      New-Item -ItemType Directory -Path (Join-Path $tmp "RepoA\.governance") -Force | Out-Null
+
+      Copy-Item -Path (Join-Path $repoRoot "scripts\verify-release-profile.ps1") -Destination (Join-Path $tmp "scripts\verify-release-profile.ps1") -Force
+      Copy-Item -Path (Join-Path $repoRoot "scripts\lib\common.ps1") -Destination (Join-Path $tmp "scripts\lib\common.ps1") -Force
+
+      @'
+{
+  "schema_version": "1.0",
+  "default": {
+    "signing": { "required": false, "mode": "none-personal", "allow_paid_signing": false },
+    "packaging": {
+      "default_channel": "none",
+      "channels": ["none"],
+      "distribution_forms": ["portable"],
+      "network_modes": ["online"],
+      "require_framework_dependent": false,
+      "require_self_contained": false
+    }
+  },
+  "repos": [
+    {
+      "repoName": "RepoA",
+      "signing": { "required": false, "mode": "none-personal-policy", "allow_paid_signing": false },
+      "packaging": {
+        "default_channel": "none",
+        "channels": ["none"],
+        "distribution_forms": ["portable"],
+        "network_modes": ["online"],
+        "require_framework_dependent": false,
+        "require_self_contained": false
+      }
+    }
+  ]
+}
+'@ | Set-Content -Path (Join-Path $tmp "config\release-distribution-policy.json") -Encoding UTF8
+
+      @'
+{
+  "schema_version": "1.0",
+  "project_type": "generic",
+  "release_enabled": false,
+  "owner": "RepoA",
+  "classification": {
+    "release_decision": "disabled-no-release-signals",
+    "detected_release_signals": []
+  },
+  "policies": {
+    "signing": {
+      "required": false,
+      "mode": "none-personal",
+      "allow_paid_signing": false
+    },
+    "compatibility": {
+      "matrix_required": false,
+      "minimum_os": ["Windows 10 22H2"],
+      "architectures": ["x64"]
+    },
+    "packaging": {
+      "default_channel": "none",
+      "channels": ["none"],
+      "distribution_forms": ["portable"],
+      "network_modes": ["online"],
+      "require_framework_dependent": false,
+      "require_self_contained": false
+    },
+    "anti_false_positive": {
+      "prefer_zip": false,
+      "disallow_self_extracting_archive": false,
+      "disallow_obfuscation": false,
+      "disallow_runtime_downloader": false
+    },
+    "traceability": {
+      "require_sha256": false,
+      "require_release_manifest": false,
+      "require_changelog": false
+    }
+  },
+  "gates": {
+    "build": "echo ok",
+    "test": "echo ok",
+    "contract_invariant": "echo ok",
+    "hotspot": "echo ok"
+  },
+  "release": {
+    "preflight": "N/A",
+    "prepare": "N/A",
+    "workflow_files": [],
+    "output_root": "artifacts/release",
+    "manifest": "artifacts/release/<version>/release-manifest.json"
+  }
+}
+'@ | Set-Content -Path (Join-Path $tmp "RepoA\.governance\release-profile.json") -Encoding UTF8
+
+      $json = & powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $tmp "scripts\verify-release-profile.ps1") -RepoPath (Join-Path $tmp "RepoA") -AsJson
+      $LASTEXITCODE | should be 1
+      $obj = $json | ConvertFrom-Json
+      (@($obj.errors | Where-Object { $_ -match "signing.mode does not match release-distribution-policy" }).Count -ge 1) | should be $true
     } finally {
       if (Test-Path $tmp) { Remove-Item -LiteralPath $tmp -Recurse -Force }
     }

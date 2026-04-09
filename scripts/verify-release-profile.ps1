@@ -36,6 +36,41 @@ function Get-ReleaseSignals {
   return @($signals | Select-Object -Unique)
 }
 
+function Get-ReleaseDistributionPolicy {
+  param(
+    [Parameter(Mandatory = $true)]
+    [string]$KitRoot
+  )
+
+  $path = Join-Path $KitRoot "config\release-distribution-policy.json"
+  if (-not (Test-Path -LiteralPath $path -PathType Leaf)) {
+    return $null
+  }
+  try {
+    return (Get-Content -LiteralPath $path -Raw | ConvertFrom-Json)
+  } catch {
+    return $null
+  }
+}
+
+function Get-ReleaseDistributionPolicyForRepo {
+  param(
+    [object]$Policy,
+    [Parameter(Mandatory = $true)]
+    [string]$RepoName
+  )
+
+  if ($null -eq $Policy) { return $null }
+  if ($null -ne $Policy.PSObject.Properties['repos'] -and $null -ne $Policy.repos) {
+    $repoEntry = @($Policy.repos | Where-Object { $_ -ne $null -and $_.PSObject.Properties['repoName'] -and ([string]$_.repoName).Equals($RepoName, [System.StringComparison]::OrdinalIgnoreCase) } | Select-Object -First 1)[0]
+    if ($null -ne $repoEntry) { return $repoEntry }
+  }
+  if ($null -ne $Policy.PSObject.Properties['default']) {
+    return $Policy.default
+  }
+  return $null
+}
+
 function Validate-ReleaseProfile {
   param(
     [Parameter(Mandatory = $true)]
@@ -304,7 +339,8 @@ function Validate-ReleaseProfileAgainstRepo {
     [Parameter(Mandatory = $true)]
     [object]$Profile,
     [Parameter(Mandatory = $true)]
-    [string]$Repo
+    [string]$Repo,
+    [object]$DistributionPolicy
   )
 
   $errors = [System.Collections.Generic.List[string]]::new()
@@ -340,6 +376,54 @@ function Validate-ReleaseProfileAgainstRepo {
     [void]$errors.Add($err)
   }
 
+  if ($null -ne $DistributionPolicy) {
+    if ($DistributionPolicy.PSObject.Properties['signing'] -and $null -ne $DistributionPolicy.signing) {
+      $s = $DistributionPolicy.signing
+      if ($s.PSObject.Properties['required'] -and [bool]$Profile.policies.signing.required -ne [bool]$s.required) {
+        [void]$errors.Add("release profile signing.required does not match release-distribution-policy")
+      }
+      if ($s.PSObject.Properties['allow_paid_signing'] -and [bool]$Profile.policies.signing.allow_paid_signing -ne [bool]$s.allow_paid_signing) {
+        [void]$errors.Add("release profile signing.allow_paid_signing does not match release-distribution-policy")
+      }
+      if ($s.PSObject.Properties['mode'] -and -not [string]::IsNullOrWhiteSpace([string]$s.mode) -and [string]$Profile.policies.signing.mode -ne [string]$s.mode) {
+        [void]$errors.Add("release profile signing.mode does not match release-distribution-policy")
+      }
+    }
+    if ($DistributionPolicy.PSObject.Properties['packaging'] -and $null -ne $DistributionPolicy.packaging) {
+      $p = $DistributionPolicy.packaging
+      if ($p.PSObject.Properties['default_channel'] -and [string]$Profile.policies.packaging.default_channel -ne [string]$p.default_channel) {
+        [void]$errors.Add("release profile packaging.default_channel does not match release-distribution-policy")
+      }
+      if ($p.PSObject.Properties['require_framework_dependent'] -and [bool]$Profile.policies.packaging.require_framework_dependent -ne [bool]$p.require_framework_dependent) {
+        [void]$errors.Add("release profile packaging.require_framework_dependent does not match release-distribution-policy")
+      }
+      if ($p.PSObject.Properties['require_self_contained'] -and [bool]$Profile.policies.packaging.require_self_contained -ne [bool]$p.require_self_contained) {
+        [void]$errors.Add("release profile packaging.require_self_contained does not match release-distribution-policy")
+      }
+      if ($p.PSObject.Properties['channels'] -and $p.channels -is [System.Array]) {
+        $expectedChannels = @($p.channels | ForEach-Object { [string]$_ } | Sort-Object -Unique)
+        $actualChannels = @($Profile.policies.packaging.channels | ForEach-Object { [string]$_ } | Sort-Object -Unique)
+        if (($expectedChannels -join "|") -ne ($actualChannels -join "|")) {
+          [void]$errors.Add("release profile packaging.channels does not match release-distribution-policy")
+        }
+      }
+      if ($p.PSObject.Properties['distribution_forms'] -and $p.distribution_forms -is [System.Array]) {
+        $expectedForms = @($p.distribution_forms | ForEach-Object { [string]$_ } | Sort-Object -Unique)
+        $actualForms = @($Profile.policies.packaging.distribution_forms | ForEach-Object { [string]$_ } | Sort-Object -Unique)
+        if (($expectedForms -join "|") -ne ($actualForms -join "|")) {
+          [void]$errors.Add("release profile packaging.distribution_forms does not match release-distribution-policy")
+        }
+      }
+      if ($p.PSObject.Properties['network_modes'] -and $p.network_modes -is [System.Array]) {
+        $expectedModes = @($p.network_modes | ForEach-Object { [string]$_ } | Sort-Object -Unique)
+        $actualModes = @($Profile.policies.packaging.network_modes | ForEach-Object { [string]$_ } | Sort-Object -Unique)
+        if (($expectedModes -join "|") -ne ($actualModes -join "|")) {
+          [void]$errors.Add("release profile packaging.network_modes does not match release-distribution-policy")
+        }
+      }
+    }
+  }
+
   return @($errors)
 }
 
@@ -349,6 +433,9 @@ if ($null -eq $repoResolved -or -not (Test-Path -LiteralPath $repoResolved.Path 
 }
 $repo = [System.IO.Path]::GetFullPath($repoResolved.Path)
 $repoName = Split-Path -Leaf $repo
+$kitRoot = Split-Path -Parent $PSScriptRoot
+$distributionPolicy = Get-ReleaseDistributionPolicy -KitRoot $kitRoot
+$repoDistributionPolicy = Get-ReleaseDistributionPolicyForRepo -Policy $distributionPolicy -RepoName $repoName
 $profilePath = Join-Path $repo ".governance\release-profile.json"
 
 $signals = @(Get-ReleaseSignals -Repo $repo)
@@ -390,7 +477,12 @@ if ($profileExists) {
       }
     }
     if ($errors.Count -eq 0 -and [bool]$profile.release_enabled) {
-      foreach ($err in @(Validate-ReleaseProfileAgainstRepo -Profile $profile -Repo $repo)) {
+      foreach ($err in @(Validate-ReleaseProfileAgainstRepo -Profile $profile -Repo $repo -DistributionPolicy $repoDistributionPolicy)) {
+        $status = "FAIL"
+        [void]$errors.Add($err)
+      }
+    } elseif ($errors.Count -eq 0) {
+      foreach ($err in @(Validate-ReleaseProfileAgainstRepo -Profile $profile -Repo $repo -DistributionPolicy $repoDistributionPolicy)) {
         $status = "FAIL"
         [void]$errors.Add($err)
       }
