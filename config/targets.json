@@ -290,5 +290,137 @@
     {
         "source":  "source/project/governance-kit/custom/scripts/governance/run-monthly-policy-review.ps1",
         "target":  "E:/CODE/governance-kit/scripts/governance/run-monthly-policy-review.ps1"
+    },
+    {
+        "source":  "source/project/_common/custom/docs/PLANS.md",
+        "target":  "E:/CODE/ClassroomToolkit/docs/PLANS.md"
+    },
+    {
+        "source":  "source/project/_common/custom/.agents/skills/governance-refactor-safe/SKILL.md",
+        "target":  "E:/CODE/ClassroomToolkit/.agents/skills/governance-refactor-safe/SKILL.md"
+    },
+    {
+        "source":  "source/project/_common/custom/.agents/skills/governance-reuse-analyst/SKILL.md",
+        "target":  "E:/CODE/ClassroomToolkit/.agents/skills/governance-reuse-analyst/SKILL.md"
+    },
+    {
+        "source":  "source/project/_common/custom/.agents/plugins/marketplace.json",
+        "target":  "E:/CODE/ClassroomToolkit/.agents/plugins/marketplace.json"
+    },
+    {
+        "source":  "source/project/_common/custom/plugins/governance-kit-internal/.codex-plugin/plugin.json",
+        "target":  "E:/CODE/ClassroomToolkit/plugins/governance-kit-internal/.codex-plugin/plugin.json"
+    },
+    {
+        "source":  "source/project/_common/custom/plugins/governance-kit-internal/skills/governance-refactor-safe/SKILL.md",
+        "target":  "E:/CODE/ClassroomToolkit/plugins/governance-kit-internal/skills/governance-refactor-safe/SKILL.md"
+    },
+    {
+        "source":  "source/project/_common/custom/plugins/governance-kit-internal/skills/governance-reuse-analyst/SKILL.md",
+        "target":  "E:/CODE/ClassroomToolkit/plugins/governance-kit-internal/skills/governance-reuse-analyst/SKILL.md"
+    },
+    {
+        "source":  "source/project/_common/custom/docs/PLANS.md",
+        "target":  "E:/CODE/skills-manager/docs/PLANS.md"
+    },
+    {
+        "source":  "source/project/_common/custom/.agents/skills/governance-refactor-safe/SKILL.md",
+        "target":  "E:/CODE/skills-manager/.agents/skills/governance-refactor-safe/SKILL.md"
+    },
+    {
+        "source":  "source/project/_common/custom/.agents/skills/governance-reuse-analyst/SKILL.md",
+        "target":  "E:/CODE/skills-manager/.agents/skills/governance-reuse-analyst/SKILL.md"
+    },
+    {
+        "source":  "source/project/_common/custom/.agents/plugins/marketplace.json",
+        "target":  "E:/CODE/skills-manager/.agents/plugins/marketplace.json"
+    },
+    {
+        "source":  "source/project/_common/custom/plugins/governance-kit-internal/.codex-plugin/plugin.json",
+        "target":  "E:/CODE/skills-manager/plugins/governance-kit-internal/.codex-plugin/plugin.json"
+    },
+    {
+        "source":  "source/project/_common/custom/plugins/governance-kit-internal/skills/governance-refactor-safe/SKILL.md",
+        "target":  "E:/CODE/skills-manager/plugins/governance-kit-internal/skills/governance-refactor-safe/SKILL.md"
+    },
+    {
+        "source":  "source/project/_common/custom/plugins/governance-kit-internal/skills/governance-reuse-analyst/SKILL.md",
+        "target":  "E:/CODE/skills-manager/plugins/governance-kit-internal/skills/governance-reuse-analyst/SKILL.md"
+    },
+    {
+        "source":  "source/project/governance-kit/custom/docs/PLANS.md",
+        "target":  "E:/CODE/governance-kit/docs/PLANS.md"
+    },
+    {
+        "source":  "source/project/_common/custom/.agents/skills/governance-refactor-safe/SKILL.md",
+        "target":  "E:/CODE/governance-kit/.agents/skills/governance-refactor-safe/SKILL.md"
+    },
+    {
+        "source":  "source/project/_common/custom/.agents/skills/governance-reuse-analyst/SKILL.md",
+        "target":  "E:/CODE/governance-kit/.agents/skills/governance-reuse-analyst/SKILL.md"
+    },
+    {
+        "source":  "source/project/_common/custom/.agents/plugins/marketplace.json",
+        "target":  "E:/CODE/governance-kit/.agents/plugins/marketplace.json"
+    },
+    {
+        "source":  "source/project/_common/custom/plugins/governance-kit-internal/.codex-plugin/plugin.json",
+        "target":  "E:/CODE/governance-kit/plugins/governance-kit-internal/.codex-plugin/plugin.json"
+    },
+    {
+        "source":  "source/project/_common/custom/plugins/governance-kit-internal/skills/governance-refactor-safe/SKILL.md",
+        "target":  "E:/CODE/governance-kit/plugins/governance-kit-internal/skills/governance-refactor-safe/SKILL.md"
+    },
+    {
+        "source":  "source/project/_common/custom/plugins/governance-kit-internal/skills/governance-reuse-analyst/SKILL.md",
+        "target":  "E:/CODE/governance-kit/plugins/governance-kit-internal/skills/governance-reuse-analyst/SKILL.md"
+    },
+    {
+        "source":  "source/project/_common/custom/.codex/config.toml",
+        "target":  "E:/CODE/governance-kit/.codex/config.toml"
+    },
+    {
+        "source":  "source/project/_common/custom/.codex/agents/planner.toml",
+        "target":  "E:/CODE/governance-kit/.codex/agents/planner.toml"
+    },
+    {
+        "source":  "source/project/_common/custom/.codex/agents/reuse-analyst.toml",
+        "target":  "E:/CODE/governance-kit/.codex/agents/reuse-analyst.toml"
+    },
+    {
+        "source":  "source/project/_common/custom/.codex/agents/reviewer.toml",
+        "target":  "E:/CODE/governance-kit/.codex/agents/reviewer.toml"
+    },
+    {
+        "source":  "source/project/_common/custom/.codex/config.toml",
+        "target":  "E:/CODE/ClassroomToolkit/.codex/config.toml"
+    },
+    {
+        "source":  "source/project/_common/custom/.codex/agents/planner.toml",
+        "target":  "E:/CODE/ClassroomToolkit/.codex/agents/planner.toml"
+    },
+    {
+        "source":  "source/project/_common/custom/.codex/agents/reuse-analyst.toml",
+        "target":  "E:/CODE/ClassroomToolkit/.codex/agents/reuse-analyst.toml"
+    },
+    {
+        "source":  "source/project/_common/custom/.codex/agents/reviewer.toml",
+        "target":  "E:/CODE/ClassroomToolkit/.codex/agents/reviewer.toml"
+    },
+    {
+        "source":  "source/project/_common/custom/.codex/config.toml",
+        "target":  "E:/CODE/skills-manager/.codex/config.toml"
+    },
+    {
+        "source":  "source/project/_common/custom/.codex/agents/planner.toml",
+        "target":  "E:/CODE/skills-manager/.codex/agents/planner.toml"
+    },
+    {
+        "source":  "source/project/_common/custom/.codex/agents/reuse-analyst.toml",
+        "target":  "E:/CODE/skills-manager/.codex/agents/reuse-analyst.toml"
+    },
+    {
+        "source":  "source/project/_common/custom/.codex/agents/reviewer.toml",
+        "target":  "E:/CODE/skills-manager/.codex/agents/reviewer.toml"
     }
 ]

@@ -1,0 +1,24 @@
+﻿{
+    "schema_version":  "1.0",
+    "enabled_by_default":  false,
+    "default_files":  [
+                          ".codex/config.toml",
+                          ".codex/agents/planner.toml",
+                          ".codex/agents/reuse-analyst.toml",
+                          ".codex/agents/reviewer.toml"
+                      ],
+    "repos":  [
+                  {
+                      "repoName":  "governance-kit",
+                      "enabled":  true
+                  },
+                  {
+                      "repoName":  "skills-manager",
+                      "enabled":  true
+                  },
+                  {
+                      "repoName":  "ClassroomToolkit",
+                      "enabled":  true
+                  }
+              ]
+}

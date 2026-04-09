@@ -14,6 +14,7 @@ $mustExist = @(
   "config\project-custom-files.json",
   "config\real-repo-regression-matrix.json",
   "config\governance-baseline.json",
+  "config\codex-runtime-policy.json",
   "config\update-trigger-policy.json",
   "config\editorconfig.base",
   ".governance\tracked-files-policy.json",
@@ -41,6 +42,7 @@ $mustExist = @(
   "scripts\verify-kit.ps1",
   "scripts\rollout-status.ps1",
   "scripts\set-rollout.ps1",
+  "scripts\set-codex-runtime-policy.ps1",
   "scripts\check-waivers.ps1",
   "scripts\check-orphan-custom-sources.ps1",
   "scripts\prune-orphan-custom-sources.ps1",
@@ -85,6 +87,10 @@ $mustExist = @(
   "source\project\_common\custom\scripts\governance\run-target-autopilot.ps1",
   "source\project\_common\custom\scripts\governance\check-tracked-files.ps1",
   "source\project\_common\custom\.governance\tracked-files-policy.json",
+  "source\project\_common\custom\.codex\config.toml",
+  "source\project\_common\custom\.codex\agents\planner.toml",
+  "source\project\_common\custom\.codex\agents\reuse-analyst.toml",
+  "source\project\_common\custom\.codex\agents\reviewer.toml",
   "source\project"
 )
 

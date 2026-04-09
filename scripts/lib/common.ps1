@@ -441,6 +441,13 @@ function Get-ProjectCustomFilesForRepo([string]$KitRoot, [string]$RepoPath, [str
     }
   }
 
+  $codexRuntimeFiles = @(Get-CodexRuntimeFilesForRepo -KitRoot $KitRoot -RepoPath $RepoPath -RepoName $repoLeaf)
+  foreach ($f in $codexRuntimeFiles) {
+    if (-not [string]::IsNullOrWhiteSpace([string]$f)) {
+      [void]$files.Add(([string]$f -replace '\\', '/').TrimStart('/'))
+    }
+  }
+
   $unique = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::OrdinalIgnoreCase)
   $ordered = [System.Collections.Generic.List[string]]::new()
   foreach ($f in $files) {
@@ -450,6 +457,64 @@ function Get-ProjectCustomFilesForRepo([string]$KitRoot, [string]$RepoPath, [str
   }
 
   return @($ordered)
+}
+
+function Get-CodexRuntimeFilesForRepo([string]$KitRoot, [string]$RepoPath, [string]$RepoName) {
+  $policyPath = Join-Path $KitRoot "config\codex-runtime-policy.json"
+  if (!(Test-Path -LiteralPath $policyPath -PathType Leaf)) {
+    return @()
+  }
+
+  $policy = $null
+  try {
+    $policy = Get-Content -Path $policyPath -Raw | ConvertFrom-Json
+  } catch {
+    throw "codex-runtime-policy.json invalid JSON: $policyPath"
+  }
+
+  if ($null -eq $policy) { return @() }
+
+  $enabled = $false
+  if ($null -ne $policy.PSObject.Properties['enabled_by_default']) {
+    $enabled = [bool]$policy.enabled_by_default
+  }
+
+  $repoNorm = Normalize-Repo $RepoPath
+  $repoLeaf = if ([string]::IsNullOrWhiteSpace($RepoName)) { Get-RepoName $RepoPath } else { [string]$RepoName }
+
+  foreach ($entry in @($policy.repos)) {
+    if ($null -eq $entry) { continue }
+
+    $match = $false
+    if ($entry.PSObject.Properties['repo'] -and -not [string]::IsNullOrWhiteSpace([string]$entry.repo)) {
+      $entryRepoNorm = Normalize-Repo ([string]$entry.repo)
+      if ($entryRepoNorm.Equals($repoNorm, [System.StringComparison]::OrdinalIgnoreCase)) {
+        $match = $true
+      }
+    }
+    if (-not $match -and $entry.PSObject.Properties['repoName'] -and -not [string]::IsNullOrWhiteSpace([string]$entry.repoName)) {
+      if (([string]$entry.repoName).Equals($repoLeaf, [System.StringComparison]::OrdinalIgnoreCase)) {
+        $match = $true
+      }
+    }
+    if (-not $match) { continue }
+
+    if ($entry.PSObject.Properties['enabled']) {
+      $enabled = [bool]$entry.enabled
+    }
+  }
+
+  if (-not $enabled) { return @() }
+  if ($null -eq $policy.PSObject.Properties['default_files'] -or $null -eq $policy.default_files) { return @() }
+
+  $files = [System.Collections.Generic.List[string]]::new()
+  foreach ($f in @($policy.default_files)) {
+    if (-not [string]::IsNullOrWhiteSpace([string]$f)) {
+      [void]$files.Add(([string]$f -replace '\\', '/').TrimStart('/'))
+    }
+  }
+
+  return @($files.ToArray())
 }
 
 function Get-ProjectCustomSourceForRepo([string]$KitRoot, [string]$RepoName, [string]$CustomRelativePath) {

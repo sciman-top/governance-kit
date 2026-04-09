@@ -636,6 +636,16 @@ exit 0
 
       @("E:/CODE/FakeRepo") | ConvertTo-Json -Depth 3 | Set-Content -Path (Join-Path $tmp "config\repositories.json") -Encoding UTF8
       @(@{ source = "source/global/AGENTS.md"; target = "C:/Users/sciman/.codex/AGENTS.md" }) | ConvertTo-Json -Depth 4 | Set-Content -Path (Join-Path $tmp "config\targets.json") -Encoding UTF8
+      @'
+{
+  "schema_version": "1.0",
+  "enabled_by_default": false,
+  "default_files": [".codex/config.toml"],
+  "repos": [
+    { "repoName": "FakeRepo", "enabled": true }
+  ]
+}
+'@ | Set-Content -Path (Join-Path $tmp "config\codex-runtime-policy.json") -Encoding UTF8
       @{
         default = @{ phase = "observe"; blockExpiredWaiver = $false }
         repos = @(
@@ -655,6 +665,11 @@ exit 0
       $obj.repositories | should be 1
       $obj.targets | should be 1
       $obj.rollout.default_phase | should be "observe"
+      $obj.codex_runtime.policy_found | should be $true
+      $obj.codex_runtime.enabled_repo_entries | should be 1
+      $obj.codex_runtime.codex_target_mappings | should be 1
+      $obj.codex_runtime.codex_home_target_mappings | should be 1
+      $obj.codex_runtime.codex_repo_target_mappings | should be 0
       @($obj.warnings).Count | should be 0
     } finally {
       if (Test-Path $tmp) { Remove-Item -LiteralPath $tmp -Recurse -Force }
@@ -2122,7 +2137,7 @@ exit 0
       @'
 param([switch]$AsJson)
 if ($AsJson) {
-  @{ schema_version="1.0"; repositories=1; targets=1; repos=@(); global_home_targets=1; missing_repositories=0; orphan_targets=0; rollout=$null; warnings=@() } | ConvertTo-Json -Depth 6 | Write-Output
+  @{ schema_version="1.0"; repositories=1; targets=1; repos=@(); global_home_targets=1; missing_repositories=0; orphan_targets=0; rollout=$null; codex_runtime=@{ policy_found=$false; enabled_by_default=$false; policy_repo_entries=0; enabled_repo_entries=0; codex_target_mappings=0; codex_home_target_mappings=0; codex_repo_target_mappings=0 }; warnings=@() } | ConvertTo-Json -Depth 6 | Write-Output
   exit 0
 }
 '@ | Set-Content -Path (Join-Path $tmp "scripts\status.ps1") -Encoding UTF8
@@ -2497,6 +2512,107 @@ exit 0
       $obj = $json | ConvertFrom-Json
       $obj.status | should be "OK"
       (Test-Path (Join-Path $tmp "docs\governance\reviews\2026-04-monthly-review.md")) | should be $true
+    } finally {
+      if (Test-Path $tmp) { Remove-Item -LiteralPath $tmp -Recurse -Force }
+    }
+  }
+
+  it "common Get-CodexRuntimeFilesForRepo respects policy default disabled and repo opt-in" {
+    $tmp = Join-Path $env:TEMP ("govkit-test-" + [guid]::NewGuid().ToString("N"))
+    try {
+      New-Item -ItemType Directory -Path (Join-Path $tmp "scripts\lib") -Force | Out-Null
+      New-Item -ItemType Directory -Path (Join-Path $tmp "config") -Force | Out-Null
+
+      Copy-Item -Path (Join-Path $repoRoot "scripts\lib\common.ps1") -Destination (Join-Path $tmp "scripts\lib\common.ps1") -Force
+
+      @'
+{
+  "schema_version": "1.0",
+  "enabled_by_default": false,
+  "default_files": [
+    ".codex/config.toml",
+    ".codex/agents/planner.toml"
+  ],
+  "repos": [
+    { "repoName": "RepoA", "enabled": true }
+  ]
+}
+'@ | Set-Content -Path (Join-Path $tmp "config\codex-runtime-policy.json") -Encoding UTF8
+
+      . (Join-Path $tmp "scripts\lib\common.ps1")
+      $repoA = Join-Path $tmp "RepoA"
+      $repoB = Join-Path $tmp "RepoB"
+      New-Item -ItemType Directory -Path $repoA -Force | Out-Null
+      New-Item -ItemType Directory -Path $repoB -Force | Out-Null
+
+      $filesA = @(Get-CodexRuntimeFilesForRepo -KitRoot $tmp -RepoPath $repoA -RepoName "RepoA")
+      $filesB = @(Get-CodexRuntimeFilesForRepo -KitRoot $tmp -RepoPath $repoB -RepoName "RepoB")
+
+      $filesA.Count | should be 2
+      ($filesA -contains ".codex/config.toml") | should be $true
+      $filesB.Count | should be 0
+    } finally {
+      if (Test-Path $tmp) { Remove-Item -LiteralPath $tmp -Recurse -Force }
+    }
+  }
+
+  it "set-codex-runtime-policy updates repoName entry enabled flag" {
+    $tmp = Join-Path $env:TEMP ("govkit-test-" + [guid]::NewGuid().ToString("N"))
+    try {
+      New-Item -ItemType Directory -Path (Join-Path $tmp "scripts\lib") -Force | Out-Null
+      New-Item -ItemType Directory -Path (Join-Path $tmp "scripts") -Force | Out-Null
+      New-Item -ItemType Directory -Path (Join-Path $tmp "config") -Force | Out-Null
+
+      Copy-Item -Path (Join-Path $repoRoot "scripts\lib\common.ps1") -Destination (Join-Path $tmp "scripts\lib\common.ps1") -Force
+      Copy-Item -Path (Join-Path $repoRoot "scripts\set-codex-runtime-policy.ps1") -Destination (Join-Path $tmp "scripts\set-codex-runtime-policy.ps1") -Force
+
+      @'
+{
+  "schema_version": "1.0",
+  "enabled_by_default": false,
+  "default_files": [".codex/config.toml"],
+  "repos": [
+    { "repoName": "RepoA", "enabled": false }
+  ]
+}
+'@ | Set-Content -Path (Join-Path $tmp "config\codex-runtime-policy.json") -Encoding UTF8
+
+      & powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $tmp "scripts\set-codex-runtime-policy.ps1") -RepoName RepoA -Enabled true -Mode safe | Out-Null
+      if ($LASTEXITCODE -ne 0) { throw "set-codex-runtime-policy.ps1 failed with exit code $LASTEXITCODE" }
+
+      $obj = Get-Content -Path (Join-Path $tmp "config\codex-runtime-policy.json") -Raw | ConvertFrom-Json
+      $entry = @($obj.repos | Where-Object { $_.repoName -eq "RepoA" })[0]
+      [bool]$entry.enabled | should be $true
+    } finally {
+      if (Test-Path $tmp) { Remove-Item -LiteralPath $tmp -Recurse -Force }
+    }
+  }
+
+  it "set-codex-runtime-policy adds repoName entry when missing" {
+    $tmp = Join-Path $env:TEMP ("govkit-test-" + [guid]::NewGuid().ToString("N"))
+    try {
+      New-Item -ItemType Directory -Path (Join-Path $tmp "scripts\lib") -Force | Out-Null
+      New-Item -ItemType Directory -Path (Join-Path $tmp "scripts") -Force | Out-Null
+      New-Item -ItemType Directory -Path (Join-Path $tmp "config") -Force | Out-Null
+
+      Copy-Item -Path (Join-Path $repoRoot "scripts\lib\common.ps1") -Destination (Join-Path $tmp "scripts\lib\common.ps1") -Force
+      Copy-Item -Path (Join-Path $repoRoot "scripts\set-codex-runtime-policy.ps1") -Destination (Join-Path $tmp "scripts\set-codex-runtime-policy.ps1") -Force
+
+      @'
+{
+  "schema_version": "1.0",
+  "enabled_by_default": false,
+  "default_files": [".codex/config.toml"],
+  "repos": []
+}
+'@ | Set-Content -Path (Join-Path $tmp "config\codex-runtime-policy.json") -Encoding UTF8
+
+      & powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $tmp "scripts\set-codex-runtime-policy.ps1") -RepoName RepoB -Enabled true -Mode safe | Out-Null
+      if ($LASTEXITCODE -ne 0) { throw "set-codex-runtime-policy.ps1 failed with exit code $LASTEXITCODE" }
+
+      $obj = Get-Content -Path (Join-Path $tmp "config\codex-runtime-policy.json") -Raw | ConvertFrom-Json
+      $entry = @($obj.repos | Where-Object { $_.repoName -eq "RepoB" })[0]
+      [bool]$entry.enabled | should be $true
     } finally {
       if (Test-Path $tmp) { Remove-Item -LiteralPath $tmp -Recurse -Force }
     }

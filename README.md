@@ -29,6 +29,10 @@
 - 项目级定制文件分发：通过 `config/project-custom-files.json` 管理非三规则文件
 - 真实仓门禁编排：脚本只负责编排与输出失败上下文，修复由当前 AI 会话代理接管
 - 浏览器会话基线：默认分发 `tools/browser-session/*` 到目标仓，支持固定 profile + CDP 接管
+- Codex 运行资产分发：默认分发 `docs/PLANS.md`、`.agents/skills/*`、`.agents/plugins/marketplace.json` 与内部插件骨架
+
+> 说明：`.codex/*` 仍保持“可选、按需启用”，不作为当前默认分发项，避免与本地运行态隔离策略冲突。
+> 若需启用 `.codex/*` 下发，使用 `config/codex-runtime-policy.json` 做按仓开关（默认关闭）。
 
 ## 快速开始
 
@@ -72,6 +76,7 @@ powershell -File E:\CODE\governance-kit\scripts\backflow-project-rules.ps1 -Repo
 
 - `source/global/`: 全局用户级规则源
 - `source/project/`: 项目级规则源与仓库定制分发内容
+- `source/project/_common/custom/.agents/`: 可复用的 Codex repo-scope skills 与 plugins marketplace
 - `source/template/project/`: 新仓默认项目级模板
 - `config/targets.json`: `source -> target` 分发映射
 - `config/project-rule-policy.json`: 项目级规则白名单、自治边界和阻断策略
@@ -117,6 +122,12 @@ powershell -File scripts\governance\run-recurring-review.ps1
 
 ```powershell
 powershell -File scripts\governance\run-monthly-policy-review.ps1
+```
+
+按仓启停 `.codex/*` 分发（默认关闭）：
+
+```powershell
+powershell -File scripts\set-codex-runtime-policy.ps1 -RepoName governance-kit -Enabled true -Mode safe
 ```
 
 注册 Windows 定时提醒（每周一 09:30）：

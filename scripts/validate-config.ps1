@@ -12,6 +12,8 @@ $rolloutPath = Join-Path $kitRoot "config\rule-rollout.json"
 $projectRulePolicyPath = Get-ProjectRulePolicyPath $kitRoot
 $projectCustomPath = Join-Path $kitRoot "config\project-custom-files.json"
 $clarificationPolicyPath = Join-Path $kitRoot "config\clarification-policy.json"
+$codexProfileRegistryPath = Join-Path $kitRoot "config\codex-profile-registry.json"
+$codexRuntimePolicyPath = Join-Path $kitRoot "config\codex-runtime-policy.json"
 
 if (!(Test-Path $reposPath)) { throw "repositories.json not found: $reposPath" }
 if (!(Test-Path $targetsPath)) { throw "targets.json not found: $targetsPath" }
@@ -517,6 +519,121 @@ if ($null -eq $clarificationPolicy.PSObject.Properties['scenarios'] -or $null -e
     if ($promptCount -lt 1 -or $promptCount -gt 3) {
       Write-Host ("[CFG] clarification-policy.scenarios.{0}.question_prompts count out of range: expected 1..3 non-empty values" -f $scenarioName)
       $fail++
+    }
+  }
+}
+
+if (Test-Path -LiteralPath $codexProfileRegistryPath -PathType Leaf) {
+  $codexProfileRegistry = $null
+  try {
+    $codexProfileRegistry = Get-Content -Path $codexProfileRegistryPath -Raw | ConvertFrom-Json
+  } catch {
+    Write-Host "[CFG] codex-profile-registry.json invalid JSON"
+    $fail++
+  }
+
+  if ($null -ne $codexProfileRegistry) {
+    if ($null -eq $codexProfileRegistry.PSObject.Properties['schema_version'] -or [string]::IsNullOrWhiteSpace([string]$codexProfileRegistry.schema_version)) {
+      Write-Host "[CFG] codex-profile-registry.schema_version missing"
+      $fail++
+    }
+
+    $profiles = @()
+    if ($null -ne $codexProfileRegistry.PSObject.Properties['profiles'] -and $null -ne $codexProfileRegistry.profiles) {
+      $profiles = @($codexProfileRegistry.profiles)
+    }
+
+    if ($profiles.Count -eq 0) {
+      Write-Host "[CFG] codex-profile-registry.profiles must contain at least one profile"
+      $fail++
+    } else {
+      foreach ($profile in $profiles) {
+        if ($null -eq $profile) {
+          Write-Host "[CFG] codex-profile-registry profile entry is null"
+          $fail++
+          continue
+        }
+
+        if ($null -eq $profile.PSObject.Properties['name'] -or [string]::IsNullOrWhiteSpace([string]$profile.name)) {
+          Write-Host "[CFG] codex-profile-registry profile.name missing"
+          $fail++
+        }
+
+        if ($null -eq $profile.PSObject.Properties['rendered_artifacts'] -or $profile.rendered_artifacts -isnot [System.Array] -or @($profile.rendered_artifacts).Count -eq 0) {
+          Write-Host ("[CFG] codex-profile-registry profile.rendered_artifacts invalid: profile={0}" -f [string]$profile.name)
+          $fail++
+        } else {
+          foreach ($artifact in @($profile.rendered_artifacts)) {
+            if ([string]::IsNullOrWhiteSpace([string]$artifact)) {
+              Write-Host ("[CFG] codex-profile-registry rendered_artifacts contains empty value: profile={0}" -f [string]$profile.name)
+              $fail++
+              break
+            }
+          }
+        }
+      }
+    }
+  }
+}
+
+if (Test-Path -LiteralPath $codexRuntimePolicyPath -PathType Leaf) {
+  $codexRuntimePolicy = $null
+  try {
+    $codexRuntimePolicy = Get-Content -Path $codexRuntimePolicyPath -Raw | ConvertFrom-Json
+  } catch {
+    Write-Host "[CFG] codex-runtime-policy.json invalid JSON"
+    $fail++
+  }
+
+  if ($null -ne $codexRuntimePolicy) {
+    if ($null -eq $codexRuntimePolicy.PSObject.Properties['schema_version'] -or [string]::IsNullOrWhiteSpace([string]$codexRuntimePolicy.schema_version)) {
+      Write-Host "[CFG] codex-runtime-policy.schema_version missing"
+      $fail++
+    }
+
+    if ($null -eq $codexRuntimePolicy.PSObject.Properties['enabled_by_default'] -or $codexRuntimePolicy.enabled_by_default -isnot [bool]) {
+      Write-Host "[CFG] codex-runtime-policy.enabled_by_default must be boolean"
+      $fail++
+    }
+
+    if ($null -eq $codexRuntimePolicy.PSObject.Properties['default_files'] -or $codexRuntimePolicy.default_files -isnot [System.Array] -or @($codexRuntimePolicy.default_files).Count -eq 0) {
+      Write-Host "[CFG] codex-runtime-policy.default_files must be non-empty array"
+      $fail++
+    } else {
+      foreach ($f in @($codexRuntimePolicy.default_files)) {
+        $fText = [string]$f
+        if ([string]::IsNullOrWhiteSpace($fText)) {
+          Write-Host "[CFG] codex-runtime-policy.default_files contains empty value"
+          $fail++
+          continue
+        }
+        if ([System.IO.Path]::IsPathRooted(($fText -replace '/', '\'))) {
+          Write-Host "[CFG] codex-runtime-policy.default_files must be relative path"
+          $fail++
+        }
+      }
+    }
+
+    if ($null -ne $codexRuntimePolicy.PSObject.Properties['repos'] -and $null -ne $codexRuntimePolicy.repos) {
+      foreach ($entry in @($codexRuntimePolicy.repos)) {
+        if ($null -eq $entry) {
+          Write-Host "[CFG] codex-runtime-policy.repos entry is null"
+          $fail++
+          continue
+        }
+
+        $hasRepo = $entry.PSObject.Properties['repo'] -and -not [string]::IsNullOrWhiteSpace([string]$entry.repo)
+        $hasRepoName = $entry.PSObject.Properties['repoName'] -and -not [string]::IsNullOrWhiteSpace([string]$entry.repoName)
+        if (-not $hasRepo -and -not $hasRepoName) {
+          Write-Host "[CFG] codex-runtime-policy.repos entry must contain repo or repoName"
+          $fail++
+        }
+
+        if (-not $entry.PSObject.Properties['enabled'] -or $entry.enabled -isnot [bool]) {
+          Write-Host "[CFG] codex-runtime-policy.repos.enabled must be boolean"
+          $fail++
+        }
+      }
     }
   }
 }

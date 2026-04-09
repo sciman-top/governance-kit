@@ -1,0 +1,38 @@
+{
+  "schema_version": "1.0",
+  "profiles": [
+    {
+      "name": "codex-governed-minimal",
+      "summary": "Codex-first governed profile with thin-core reusable assets.",
+      "rendered_artifacts": [
+        "docs/PLANS.md",
+        ".agents/skills/governance-refactor-safe/SKILL.md",
+        ".agents/skills/governance-reuse-analyst/SKILL.md",
+        ".agents/plugins/marketplace.json",
+        "plugins/governance-kit-internal/.codex-plugin/plugin.json"
+      ],
+      "optional_artifacts": [
+        ".codex/config.toml",
+        ".codex/agents/planner.toml",
+        ".codex/agents/reuse-analyst.toml",
+        ".codex/agents/reviewer.toml"
+      ],
+      "required_gates": [
+        "build",
+        "test",
+        "contract",
+        "hotspot"
+      ],
+      "forbidden_by_default": [
+        "default_hooks_on_windows",
+        "plugin_before_stable_local_skills"
+      ],
+      "compatibility": {
+        "adapters": [
+          "codex-native",
+          "codex-plugin"
+        ]
+      }
+    }
+  ]
+}

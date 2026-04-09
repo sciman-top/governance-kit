@@ -1,62 +1,69 @@
-﻿{
-    "default":  [
-                    "scripts/governance/run-project-governance-cycle.ps1",
-                    "scripts/governance/run-target-autopilot.ps1",
-                    "scripts/governance/check-tracked-files.ps1",
-                    "scripts/governance/check-update-triggers.ps1",
-                    "scripts/governance/run-recurring-review.ps1",
-                    "scripts/governance/run-monthly-policy-review.ps1",
-                    ".governance/tracked-files-policy.json",
-                    "tools/browser-session/start-browser-session.ps1",
-                    "tools/browser-session/start-browser-session.bat",
-                    "tools/browser-session/README.md"
-                ],
-    "repos":  [
-                  {
-                      "repoName":  "ClassroomToolkit",
-                      "files":  [
-                                    ".governance/release-profile.json",
-                                    ".github/workflows/release-package.yml",
-                                    ".github/workflows/quality-gate.yml",
-                                    "docs/runbooks/release-prevention-checklist.md",
-                                    "scripts/release/clean-release-artifacts.ps1",
-                                    "scripts/release/preflight-check.ps1",
-                                    "scripts/release/prepare-distribution.ps1",
-                                    "scripts/release/release-config.json",
-                                    "scripts/release/templates/bootstrap-runtime.ps1",
-                                    "scripts/release/templates/release-notes.txt",
-                                    "scripts/release/templates/start-standard.bat",
-                                    "scripts/release/templates/user-guide-offline.md",
-                                    "scripts/release/templates/user-guide-standard.md",
-                                    "scripts/quality/check-hotspot-line-budgets.ps1",
-                                    "scripts/quality/hotspot-line-budgets.json",
-                                    "scripts/quality/run-local-quality-gates.ps1",
-                                    "scripts/validation/run-stable-tests.ps1",
-                                    "scripts/validation/resolve-stable-profile.ps1",
-                                    "scripts/validation/stable-test-filters.json",
-                                    "scripts/validation/validate-stable-test-config.ps1",
-                                    ".github/workflows/quality-gates.yml",
-                                    "scripts/governance/check-waiver-health.ps1",
-                                    "scripts/governance/check-evidence-completeness.ps1",
-                                    "scripts/governance/run-doctor-endstate.ps1",
-                                    "scripts/governance/run-endstate-loop.ps1",
-                                    "scripts/governance/backfill-evidence-template-fields.ps1"
-                                ]
-                  },
-                  {
-                      "repoName":  "skills-manager",
-                      "files":  [
-                                    ".governance/release-profile.json",
-                                    ".github/workflows/quality-gates.yml",
-                                    "scripts/install-githooks.ps1",
-                                    "scripts/prebuild-check.ps1"
-                                ]
-                  },
-                  {
-                      "repoName":  "governance-kit",
-                      "files":  [
-                                    ".governance/release-profile.json"
-                                ]
-                  }
-              ]
+{
+  "default": [
+    "scripts/governance/run-project-governance-cycle.ps1",
+    "scripts/governance/run-target-autopilot.ps1",
+    "scripts/governance/check-tracked-files.ps1",
+    "scripts/governance/check-update-triggers.ps1",
+    "scripts/governance/run-recurring-review.ps1",
+    "scripts/governance/run-monthly-policy-review.ps1",
+    ".governance/tracked-files-policy.json",
+    "tools/browser-session/start-browser-session.ps1",
+    "tools/browser-session/start-browser-session.bat",
+    "tools/browser-session/README.md",
+    "docs/PLANS.md",
+    ".agents/skills/governance-refactor-safe/SKILL.md",
+    ".agents/skills/governance-reuse-analyst/SKILL.md",
+    ".agents/plugins/marketplace.json",
+    "plugins/governance-kit-internal/.codex-plugin/plugin.json",
+    "plugins/governance-kit-internal/skills/governance-refactor-safe/SKILL.md",
+    "plugins/governance-kit-internal/skills/governance-reuse-analyst/SKILL.md"
+  ],
+  "repos": [
+    {
+      "repoName": "ClassroomToolkit",
+      "files": [
+        ".governance/release-profile.json",
+        ".github/workflows/release-package.yml",
+        ".github/workflows/quality-gate.yml",
+        "docs/runbooks/release-prevention-checklist.md",
+        "scripts/release/clean-release-artifacts.ps1",
+        "scripts/release/preflight-check.ps1",
+        "scripts/release/prepare-distribution.ps1",
+        "scripts/release/release-config.json",
+        "scripts/release/templates/bootstrap-runtime.ps1",
+        "scripts/release/templates/release-notes.txt",
+        "scripts/release/templates/start-standard.bat",
+        "scripts/release/templates/user-guide-offline.md",
+        "scripts/release/templates/user-guide-standard.md",
+        "scripts/quality/check-hotspot-line-budgets.ps1",
+        "scripts/quality/hotspot-line-budgets.json",
+        "scripts/quality/run-local-quality-gates.ps1",
+        "scripts/validation/run-stable-tests.ps1",
+        "scripts/validation/resolve-stable-profile.ps1",
+        "scripts/validation/stable-test-filters.json",
+        "scripts/validation/validate-stable-test-config.ps1",
+        ".github/workflows/quality-gates.yml",
+        "scripts/governance/check-waiver-health.ps1",
+        "scripts/governance/check-evidence-completeness.ps1",
+        "scripts/governance/run-doctor-endstate.ps1",
+        "scripts/governance/run-endstate-loop.ps1",
+        "scripts/governance/backfill-evidence-template-fields.ps1"
+      ]
+    },
+    {
+      "repoName": "skills-manager",
+      "files": [
+        ".governance/release-profile.json",
+        ".github/workflows/quality-gates.yml",
+        "scripts/install-githooks.ps1",
+        "scripts/prebuild-check.ps1"
+      ]
+    },
+    {
+      "repoName": "governance-kit",
+      "files": [
+        ".governance/release-profile.json"
+      ]
+    }
+  ]
 }
