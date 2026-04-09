@@ -2396,6 +2396,115 @@ exit 7
     }
   }
 
+  it "common Test-FileContentEqual and hash cache stay correct after file updates" {
+    $tmp = Join-Path $env:TEMP ("govkit-test-" + [guid]::NewGuid().ToString("N"))
+    try {
+      New-Item -ItemType Directory -Path (Join-Path $tmp "scripts\lib") -Force | Out-Null
+      Copy-Item -Path (Join-Path $repoRoot "scripts\lib\common.ps1") -Destination (Join-Path $tmp "scripts\lib\common.ps1") -Force
+
+      $a = Join-Path $tmp "a.txt"
+      $b = Join-Path $tmp "b.txt"
+      $c = Join-Path $tmp "c.txt"
+      Set-Content -Path $a -Value "same-content" -Encoding UTF8
+      Set-Content -Path $b -Value "same-content" -Encoding UTF8
+      Set-Content -Path $c -Value "different-content-longer" -Encoding UTF8
+
+      . (Join-Path $tmp "scripts\lib\common.ps1")
+
+      (Test-FileContentEqual -PathA $a -PathB $b) | should be $true
+      (Test-FileContentEqual -PathA $a -PathB $c) | should be $false
+
+      $hash1 = Get-FileSha256 -Path $a
+      Start-Sleep -Milliseconds 30
+      Set-Content -Path $a -Value "same-content-updated" -Encoding UTF8
+      $hash2 = Get-FileSha256 -Path $a
+      $hash1 | should not be $hash2
+
+      $jsonPath = Join-Path $tmp "cache.json"
+      '{"value":"old"}' | Set-Content -Path $jsonPath -Encoding UTF8
+      $json1 = Read-JsonFile -Path $jsonPath -UseCache
+      '{"value":"newer-value"}' | Set-Content -Path $jsonPath -Encoding UTF8
+      $json2 = Read-JsonFile -Path $jsonPath -UseCache
+      ([string]$json1.value) | should be "old"
+      ([string]$json2.value) | should be "newer-value"
+    } finally {
+      if (Test-Path $tmp) { Remove-Item -LiteralPath $tmp -Recurse -Force }
+    }
+  }
+
+  it "common release and clarification helpers provide shared governance primitives" {
+    $tmp = Join-Path $env:TEMP ("govkit-test-" + [guid]::NewGuid().ToString("N"))
+    $repo = Join-Path $tmp "RepoA"
+    try {
+      New-Item -ItemType Directory -Path $repo -Force | Out-Null
+      New-Item -ItemType Directory -Path (Join-Path $tmp "scripts\lib") -Force | Out-Null
+      Copy-Item -Path (Join-Path $repoRoot "scripts\lib\common.ps1") -Destination (Join-Path $tmp "scripts\lib\common.ps1") -Force
+      Initialize-ClarificationTrackerFixture -TmpRoot $tmp
+      Set-MinReleaseDistributionPolicy -ConfigDir (Join-Path $tmp "config")
+
+      . (Join-Path $tmp "scripts\lib\common.ps1")
+
+      $policy = Get-ReleaseDistributionPolicy -KitRoot $tmp
+      $repoPolicy = Get-ReleaseDistributionPolicyForRepo -Policy $policy -RepoName "FakeRepo"
+      $defaultPolicy = Get-ReleaseDistributionPolicyForRepo -Policy $policy -RepoName "MissingRepo" -FallbackToDefault
+      $repoPolicy.repoName | should be "FakeRepo"
+      ([string]$defaultPolicy.packaging.default_channel) | should be "none"
+
+      $ctx = Join-Path $tmp "clarification-context.json"
+      @'
+{"clarification_scenario":"requirement"}
+'@ | Set-Content -Path $ctx -Encoding UTF8
+
+      $resolved = Resolve-EffectiveClarificationScenario -RequestedScenario "auto" -ContextFile $ctx -CurrentMode "safe"
+      ([string]$resolved.scenario) | should be "requirement"
+      ([string]$resolved.source) | should be "context_file"
+
+      $invalidRequested = Resolve-EffectiveClarificationScenario -RequestedScenario "not-a-scenario" -CurrentMode "safe"
+      ([string]$invalidRequested.scenario) | should be "bugfix"
+      ([string]$invalidRequested.source) | should be "fallback"
+
+      $trackerScript = Join-Path $tmp "scripts\governance\track-issue-state.ps1"
+      $evalState = Invoke-ClarificationTracker -TrackerScript $trackerScript -RepoPath $repo -IssueId "T-1" -Scenario "bugfix" -Mode "evaluate" -PowerShellPath "powershell"
+      ([bool]$evalState.clarification_required) | should be $false
+
+      Invoke-ClarificationTracker -TrackerScript $trackerScript -RepoPath $repo -IssueId "T-1" -Scenario "bugfix" -Mode "record" -Outcome "failure" -Reason "fail-1" -PowerShellPath "powershell" | Out-Null
+      $state2 = Invoke-ClarificationTracker -TrackerScript $trackerScript -RepoPath $repo -IssueId "T-1" -Scenario "bugfix" -Mode "record" -Outcome "failure" -Reason "fail-2" -PowerShellPath "powershell"
+      ([bool]$state2.clarification_required) | should be $true
+
+      $missingTrackerThrown = $false
+      try {
+        Invoke-ClarificationTracker -TrackerScript (Join-Path $tmp "missing-tracker.ps1") -RepoPath $repo -IssueId "T-2" -Scenario "bugfix" -Mode "evaluate" -PowerShellPath "powershell" | Out-Null
+      } catch {
+        $missingTrackerThrown = $true
+      }
+      $missingTrackerThrown | should be $true
+
+      $missingPowerShellThrown = $false
+      try {
+        Invoke-ClarificationTracker -TrackerScript $trackerScript -RepoPath $repo -IssueId "T-3" -Scenario "bugfix" -Mode "evaluate" -PowerShellPath "pwsh-definitely-missing" | Out-Null
+      } catch {
+        $missingPowerShellThrown = $true
+      }
+      $missingPowerShellThrown | should be $true
+
+      $fakeCmd = Join-Path $tmp "fake-powershell.cmd"
+      @'
+@echo {"not":"json"
+@exit /b 0
+'@ | Set-Content -Path $fakeCmd -Encoding ASCII
+
+      $invalidJsonThrown = $false
+      try {
+        Invoke-ClarificationTracker -TrackerScript $trackerScript -RepoPath $repo -IssueId "T-4" -Scenario "bugfix" -Mode "evaluate" -PowerShellPath $fakeCmd | Out-Null
+      } catch {
+        $invalidJsonThrown = $true
+      }
+      $invalidJsonThrown | should be $true
+    } finally {
+      if (Test-Path $tmp) { Remove-Item -LiteralPath $tmp -Recurse -Force }
+    }
+  }
+
   it "doctor fallback runner works when common helper is missing" {
     $tmp = Join-Path $env:TEMP ("govkit-test-" + [guid]::NewGuid().ToString("N"))
     try {

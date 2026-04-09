@@ -49,7 +49,7 @@ $customEntryExists = $false
 $customCfgChanged = $false
 if (Test-Path -LiteralPath $projectCustomPath) {
   try {
-    $customCfg = Get-Content -LiteralPath $projectCustomPath -Raw | ConvertFrom-Json
+    $customCfg = Read-JsonFile -Path $projectCustomPath -DisplayName $projectCustomPath
   } catch {
     throw "project-custom-files.json invalid JSON: $projectCustomPath"
   }

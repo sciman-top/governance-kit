@@ -61,7 +61,7 @@ $warnings = [System.Collections.Generic.List[string]]::new()
 $rolloutSummary = $null
 $codexRuntimeSummary = $null
 if (Test-Path $rolloutPath) {
-  $rollout = Get-Content -Path $rolloutPath -Raw | ConvertFrom-Json
+  $rollout = Read-JsonFile -Path $rolloutPath -DisplayName $rolloutPath
   $defaultPhase = [string]$rollout.default.phase
   $defaultBlock = [bool]$rollout.default.blockExpiredWaiver
   $rules = @($rollout.repos)
@@ -107,7 +107,7 @@ if (Test-Path $rolloutPath) {
 
 if (Test-Path -LiteralPath $codexRuntimePolicyPath -PathType Leaf) {
   try {
-    $runtimePolicy = Get-Content -Path $codexRuntimePolicyPath -Raw | ConvertFrom-Json
+    $runtimePolicy = Read-JsonFile -Path $codexRuntimePolicyPath -DisplayName $codexRuntimePolicyPath
     $enabledByDefault = if ($null -ne $runtimePolicy.PSObject.Properties['enabled_by_default']) { [bool]$runtimePolicy.enabled_by_default } else { $false }
     $policyEntries = @()
     if ($null -ne $runtimePolicy.PSObject.Properties['repos'] -and $null -ne $runtimePolicy.repos) {

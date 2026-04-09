@@ -46,7 +46,7 @@ if (-not [string]::IsNullOrWhiteSpace($RepoName)) {
   $repoNameNorm = Get-RepoName $repoNorm
 }
 
-$policy = Get-Content -Path $policyPath -Raw | ConvertFrom-Json
+$policy = Read-JsonFile -Path $policyPath -DefaultValue $null -DisplayName "codex-runtime-policy.json"
 if ($null -eq $policy) {
   throw "codex-runtime-policy.json is empty: $policyPath"
 }
@@ -116,5 +116,5 @@ if ($idx -ge 0) {
 }
 
 $policy.repos = $repos
-$policy | ConvertTo-Json -Depth 10 | Set-Content -Path $policyPath -Encoding UTF8
+$policy | ConvertTo-Json -Depth 10 | Set-Content -LiteralPath $policyPath -Encoding UTF8
 Write-Host "set-codex-runtime-policy done. mode=$Mode"

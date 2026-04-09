@@ -61,8 +61,7 @@ function Get-FullCycleRepos {
 
   if (Test-Path -LiteralPath $repositoriesPath) {
     try {
-      $repoRaw = Get-Content -Path $repositoriesPath -Raw | ConvertFrom-Json
-      $repoItems = if ($repoRaw -is [System.Array]) { @($repoRaw) } elseif ($null -eq $repoRaw) { @() } else { @($repoRaw) }
+      $repoItems = @(Read-JsonArray $repositoriesPath)
       foreach ($repoItem in $repoItems) {
         if ([string]::IsNullOrWhiteSpace([string]$repoItem)) { continue }
         $full = [System.IO.Path]::GetFullPath(([string]$repoItem -replace '/', '\'))
@@ -109,12 +108,11 @@ if (-not $SkipTargetsRefresh) {
 }
 
 try {
-  $raw = Get-Content -Path $targetsPath -Raw | ConvertFrom-Json
+  $targets = @(Read-JsonArray $targetsPath)
 } catch {
   throw "targets.json is not valid JSON: $targetsPath"
 }
 
-$targets = if ($raw -is [System.Array]) { @($raw) } elseif ($null -eq $raw) { @() } else { @($raw) }
 if ($targets.Count -eq 0) {
   throw "targets.json has no entries: $targetsPath"
 }
@@ -194,9 +192,7 @@ foreach ($item in $targets) {
   $dstExists = Test-Path $dst
   $same = $false
   if ($dstExists) {
-    $h1 = Get-FileSha256 -Path $src
-    $h2 = Get-FileSha256 -Path $dst
-    $same = $h1 -eq $h2
+    $same = Test-FileContentEqual -PathA $src -PathB $dst
   }
 
   $protectByRepo = $false

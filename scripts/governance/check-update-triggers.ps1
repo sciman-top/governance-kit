@@ -93,7 +93,11 @@ if (Test-Path -LiteralPath $commonPath -PathType Leaf) {
 $policyPath = Join-Path $kitRoot "config\update-trigger-policy.json"
 $policy = $null
 if (Test-Path -LiteralPath $policyPath -PathType Leaf) {
-  $policy = Get-Content -LiteralPath $policyPath -Raw | ConvertFrom-Json
+  try {
+    $policy = Read-JsonFile -Path $policyPath -DisplayName $policyPath
+  } catch {
+    $policy = $null
+  }
 }
 if ($null -eq $policy) {
   $policy = [pscustomobject]@{
@@ -242,8 +246,8 @@ if ($null -ne $policy.triggers.PSObject.Properties['release_distribution_policy_
     $rdPolicy = $null
     $reposList = @()
     try {
-      $rdPolicy = Get-Content -LiteralPath $releasePolicyPath -Raw | ConvertFrom-Json
-      $reposList = @((Get-Content -LiteralPath $repositoriesPath -Raw | ConvertFrom-Json))
+      $rdPolicy = Read-JsonFile -Path $releasePolicyPath -DisplayName $releasePolicyPath
+      $reposList = @(Read-JsonArray $repositoriesPath)
     } catch {
       $rdPolicy = $null
       $reposList = @()
@@ -267,7 +271,7 @@ if ($null -ne $policy.triggers.PSObject.Properties['release_distribution_policy_
         if (-not (Test-Path -LiteralPath $profilePath -PathType Leaf)) { continue }
         $profile = $null
         try {
-          $profile = Get-Content -LiteralPath $profilePath -Raw | ConvertFrom-Json
+          $profile = Read-JsonFile -Path $profilePath -DisplayName $profilePath
         } catch {
           $releasePolicyDriftCount++
           continue

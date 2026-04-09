@@ -1,8 +1,67 @@
 ﻿$ErrorActionPreference = "Stop"
 
+if (-not (Get-Variable -Name JsonFileCache -Scope Script -ErrorAction SilentlyContinue)) {
+  $script:JsonFileCache = @{}
+}
+if (-not (Get-Variable -Name FileHashCache -Scope Script -ErrorAction SilentlyContinue)) {
+  $script:FileHashCache = @{}
+}
+
+function Get-FileCacheStamp([string]$Path) {
+  $fileInfo = Get-Item -LiteralPath $Path -ErrorAction Stop
+  return ($fileInfo.Length.ToString() + ":" + $fileInfo.LastWriteTimeUtc.Ticks.ToString())
+}
+
+function Read-JsonFile {
+  param(
+    [Parameter(Mandatory = $true)]
+    [string]$Path,
+    [object]$DefaultValue = $null,
+    [switch]$UseCache,
+    [string]$DisplayName = ""
+  )
+
+  if ([string]::IsNullOrWhiteSpace($Path)) {
+    throw "Path is required for Read-JsonFile."
+  }
+  if (-not (Test-Path -LiteralPath $Path -PathType Leaf)) {
+    return $DefaultValue
+  }
+
+  $fullPath = [System.IO.Path]::GetFullPath($Path)
+  $cacheKey = $fullPath.ToLowerInvariant()
+  $stamp = Get-FileCacheStamp -Path $fullPath
+
+  if ($UseCache -and $script:JsonFileCache.ContainsKey($cacheKey)) {
+    $cached = $script:JsonFileCache[$cacheKey]
+    if ($null -ne $cached -and $cached.PSObject.Properties['stamp'] -and [string]$cached.stamp -eq $stamp) {
+      return $cached.value
+    }
+  }
+
+  $label = if ([string]::IsNullOrWhiteSpace($DisplayName)) { $fullPath } else { $DisplayName }
+  try {
+    $value = Get-Content -LiteralPath $fullPath -Raw | ConvertFrom-Json
+  } catch {
+    throw "$label invalid JSON: $fullPath"
+  }
+
+  if ($UseCache) {
+    $script:JsonFileCache[$cacheKey] = [pscustomobject]@{
+      stamp = $stamp
+      value = $value
+    }
+  }
+
+  if ($null -eq $value) {
+    return $DefaultValue
+  }
+
+  return $value
+}
+
 function Read-JsonArray([string]$Path) {
-  if (!(Test-Path $Path)) { return @() }
-  $raw = Get-Content -Path $Path -Raw | ConvertFrom-Json
+  $raw = Read-JsonFile -Path $Path -DefaultValue @() -UseCache
   if ($null -eq $raw) { return @() }
   if ($raw -is [System.Array]) { return @($raw) }
   if ($raw.PSObject -and $raw.PSObject.Properties['value']) { return @($raw.value) }
@@ -118,17 +177,39 @@ function Get-FileSha256([string]$Path) {
     throw "File not found: $Path"
   }
 
+  $fullPath = [System.IO.Path]::GetFullPath($Path)
+  $cacheKey = $fullPath.ToLowerInvariant()
+  $cacheStamp = Get-FileCacheStamp -Path $fullPath
+  if ($script:FileHashCache.ContainsKey($cacheKey)) {
+    $cached = $script:FileHashCache[$cacheKey]
+    if ($null -ne $cached -and $cached.PSObject.Properties['stamp'] -and [string]$cached.stamp -eq $cacheStamp) {
+      return [string]$cached.hash
+    }
+  }
+
   $hashCmd = Get-Command -Name "Get-FileHash" -ErrorAction SilentlyContinue
+  $hash = $null
   if ($null -ne $hashCmd) {
-    return (Get-FileHash -Path $Path -Algorithm SHA256).Hash
+    $hash = (Get-FileHash -LiteralPath $fullPath -Algorithm SHA256).Hash
+    $script:FileHashCache[$cacheKey] = [pscustomobject]@{
+      stamp = $cacheStamp
+      hash = $hash
+    }
+    return $hash
   }
 
   $stream = $null
+  $sha256 = $null
   try {
     $sha256 = [System.Security.Cryptography.SHA256]::Create()
-    $stream = [System.IO.File]::OpenRead($Path)
+    $stream = [System.IO.File]::OpenRead($fullPath)
     $bytes = $sha256.ComputeHash($stream)
-    return ([System.BitConverter]::ToString($bytes) -replace '-', '')
+    $hash = ([System.BitConverter]::ToString($bytes) -replace '-', '')
+    $script:FileHashCache[$cacheKey] = [pscustomobject]@{
+      stamp = $cacheStamp
+      hash = $hash
+    }
+    return $hash
   } finally {
     if ($null -ne $stream) {
       $stream.Dispose()
@@ -137,6 +218,23 @@ function Get-FileSha256([string]$Path) {
       $sha256.Dispose()
     }
   }
+}
+
+function Test-FileContentEqual([string]$PathA, [string]$PathB) {
+  if ([string]::IsNullOrWhiteSpace($PathA) -or [string]::IsNullOrWhiteSpace($PathB)) {
+    throw "Both file paths are required for Test-FileContentEqual."
+  }
+  if (-not (Test-Path -LiteralPath $PathA -PathType Leaf)) { return $false }
+  if (-not (Test-Path -LiteralPath $PathB -PathType Leaf)) { return $false }
+
+  $a = Get-Item -LiteralPath $PathA -ErrorAction Stop
+  $b = Get-Item -LiteralPath $PathB -ErrorAction Stop
+  if ($a.Length -ne $b.Length) { return $false }
+  if ($a.Length -eq 0) { return $true }
+
+  $hashA = Get-FileSha256 -Path $a.FullName
+  $hashB = Get-FileSha256 -Path $b.FullName
+  return $hashA -eq $hashB
 }
 
 function Normalize-Repo([string]$Path) {
@@ -229,15 +327,7 @@ function Read-ProjectRulePolicy([string]$KitRoot) {
     repos = @()
   }
 
-  if (!(Test-Path $path)) {
-    return $defaultPolicy
-  }
-
-  try {
-    $policy = Get-Content -Path $path -Raw | ConvertFrom-Json
-  } catch {
-    throw "project-rule-policy.json invalid JSON: $path"
-  }
+  $policy = Read-JsonFile -Path $path -DefaultValue $null -UseCache -DisplayName "project-rule-policy.json"
 
   if ($null -eq $policy) {
     return $defaultPolicy
@@ -312,7 +402,14 @@ function Is-RepoAllowedForProjectRules([string]$Repo, [string[]]$AllowRepos) {
 function Get-RepoAutomationPolicy([string]$KitRoot, [string]$Repo) {
   $repoNorm = Normalize-Repo $Repo
   $policy = Read-ProjectRulePolicy $KitRoot
-  $allowRepos = Read-ProjectRuleAllowRepos $KitRoot
+  $allowRepos = @()
+  if ($null -ne $policy.PSObject.Properties['allowProjectRulesForRepos'] -and $null -ne $policy.allowProjectRulesForRepos) {
+    foreach ($r in @($policy.allowProjectRulesForRepos)) {
+      if (-not [string]::IsNullOrWhiteSpace([string]$r)) {
+        $allowRepos += Normalize-Repo ([string]$r)
+      }
+    }
+  }
   $allowProjectRules = Is-RepoAllowedForProjectRules -Repo $repoNorm -AllowRepos $allowRepos
 
   $effectiveAllowAutoFix = [bool]$policy.defaults.allow_auto_fix
@@ -394,13 +491,8 @@ function Get-RepoAutomationPolicy([string]$KitRoot, [string]$Repo) {
 
 function Get-ProjectCustomFilesForRepo([string]$KitRoot, [string]$RepoPath, [string]$RepoName) {
   $configPath = Join-Path $KitRoot "config\project-custom-files.json"
-  if (!(Test-Path $configPath)) { return @() }
-
-  try {
-    $cfg = Get-Content -Path $configPath -Raw | ConvertFrom-Json
-  } catch {
-    throw "project-custom-files.json invalid JSON: $configPath"
-  }
+  $cfg = Read-JsonFile -Path $configPath -DefaultValue $null -UseCache -DisplayName "project-custom-files.json"
+  if ($null -eq $cfg) { return @() }
 
   $repoNorm = Normalize-Repo $RepoPath
   $repoLeaf = if ([string]::IsNullOrWhiteSpace($RepoName)) { Get-RepoName $RepoPath } else { $RepoName }
@@ -461,16 +553,7 @@ function Get-ProjectCustomFilesForRepo([string]$KitRoot, [string]$RepoPath, [str
 
 function Get-CodexRuntimeFilesForRepo([string]$KitRoot, [string]$RepoPath, [string]$RepoName) {
   $policyPath = Join-Path $KitRoot "config\codex-runtime-policy.json"
-  if (!(Test-Path -LiteralPath $policyPath -PathType Leaf)) {
-    return @()
-  }
-
-  $policy = $null
-  try {
-    $policy = Get-Content -Path $policyPath -Raw | ConvertFrom-Json
-  } catch {
-    throw "codex-runtime-policy.json invalid JSON: $policyPath"
-  }
+  $policy = Read-JsonFile -Path $policyPath -DefaultValue $null -UseCache -DisplayName "codex-runtime-policy.json"
 
   if ($null -eq $policy) { return @() }
 
@@ -565,6 +648,145 @@ function Parse-IsoDate([string]$Text) {
     )
   } catch {
     return $null
+  }
+}
+
+function Get-ReleaseDistributionPolicy {
+  param(
+    [Parameter(Mandatory = $true)]
+    [string]$KitRoot
+  )
+
+  $path = Join-Path $KitRoot "config\release-distribution-policy.json"
+  return Read-JsonFile -Path $path -DefaultValue $null -UseCache -DisplayName "release-distribution-policy.json"
+}
+
+function Get-ReleaseDistributionPolicyForRepo {
+  param(
+    [object]$Policy,
+    [Parameter(Mandatory = $true)]
+    [string]$RepoName,
+    [switch]$FallbackToDefault
+  )
+
+  if ($null -eq $Policy) { return $null }
+
+  if ($null -ne $Policy.PSObject.Properties['repos'] -and $null -ne $Policy.repos) {
+    $repoEntry = @($Policy.repos | Where-Object {
+      $_ -ne $null -and
+      $_.PSObject.Properties['repoName'] -and
+      ([string]$_.repoName).Equals($RepoName, [System.StringComparison]::OrdinalIgnoreCase)
+    } | Select-Object -First 1)[0]
+    if ($null -ne $repoEntry) { return $repoEntry }
+  }
+
+  if ($FallbackToDefault -and $null -ne $Policy.PSObject.Properties['default']) {
+    return $Policy.default
+  }
+
+  return $null
+}
+
+function Resolve-EffectiveClarificationScenario {
+  param(
+    [string]$RequestedScenario = "auto",
+    [string]$ContextFile = "",
+    [string]$CurrentMode = ""
+  )
+
+  $validScenarios = @("plan", "requirement", "bugfix", "acceptance")
+
+  if ($RequestedScenario -ne "auto" -and -not [string]::IsNullOrWhiteSpace($RequestedScenario) -and $validScenarios -contains $RequestedScenario) {
+    return [pscustomobject]@{
+      scenario = $RequestedScenario
+      source = "param"
+    }
+  }
+
+  if (-not [string]::IsNullOrWhiteSpace($ContextFile) -and (Test-Path -LiteralPath $ContextFile)) {
+    try {
+      $ctx = Read-JsonFile -Path $ContextFile -DisplayName "clarification context"
+      $ctxScenario = ""
+      if ($null -ne $ctx.PSObject.Properties['clarification_scenario']) {
+        $ctxScenario = [string]$ctx.clarification_scenario
+      } elseif ($null -ne $ctx.PSObject.Properties['scenario']) {
+        $ctxScenario = [string]$ctx.scenario
+      }
+      if ($validScenarios -contains $ctxScenario) {
+        return [pscustomobject]@{
+          scenario = $ctxScenario
+          source = "context_file"
+        }
+      }
+    } catch {
+      Write-Host ("[WARN] clarification context parse failed: {0}" -f $ContextFile)
+    }
+  }
+
+  if ($CurrentMode -eq "plan") {
+    return [pscustomobject]@{
+      scenario = "plan"
+      source = "mode"
+    }
+  }
+
+  return [pscustomobject]@{
+    scenario = "bugfix"
+    source = "fallback"
+  }
+}
+
+function Invoke-ClarificationTracker {
+  param(
+    [Parameter(Mandatory = $true)][string]$TrackerScript,
+    [Parameter(Mandatory = $true)][string]$RepoPath,
+    [Parameter(Mandatory = $true)][string]$IssueId,
+    [Parameter(Mandatory = $true)][string]$Scenario,
+    [Parameter(Mandatory = $true)][string]$Mode,
+    [string]$Outcome = "",
+    [string]$Reason = "",
+    [string]$PowerShellPath = ""
+  )
+
+  if ([string]::IsNullOrWhiteSpace($PowerShellPath)) {
+    $PowerShellPath = Get-CurrentPowerShellPath
+  }
+  if (-not (Test-Path -LiteralPath $TrackerScript -PathType Leaf)) {
+    throw "clarification tracker script not found: $TrackerScript"
+  }
+  if (-not (Get-Command -Name $PowerShellPath -ErrorAction SilentlyContinue)) {
+    throw "PowerShell command not found: $PowerShellPath"
+  }
+
+  $args = @(
+    "-NoProfile",
+    "-ExecutionPolicy", "Bypass",
+    "-File", $TrackerScript,
+    "-RepoPath", $RepoPath,
+    "-IssueId", $IssueId,
+    "-Scenario", $Scenario,
+    "-Mode", $Mode
+  )
+  if (-not [string]::IsNullOrWhiteSpace($Outcome)) {
+    $args += @("-Outcome", $Outcome)
+  }
+  if (-not [string]::IsNullOrWhiteSpace($Reason)) {
+    $args += @("-Reason", $Reason)
+  }
+
+  $json = & $PowerShellPath @args
+  if ($LASTEXITCODE -ne 0) {
+    throw "clarification tracker failed with exit code $LASTEXITCODE"
+  }
+  $jsonText = [string]::Join([Environment]::NewLine, @($json))
+  if ([string]::IsNullOrWhiteSpace($jsonText)) {
+    throw "clarification tracker returned empty output"
+  }
+
+  try {
+    return $jsonText | ConvertFrom-Json
+  } catch {
+    throw "clarification tracker returned invalid JSON"
   }
 }
 

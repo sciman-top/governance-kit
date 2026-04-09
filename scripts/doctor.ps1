@@ -80,7 +80,11 @@ function Get-ClarificationObservability([string]$KitRootPath) {
   }
 
   try {
-    $repos = Get-Content -LiteralPath $reposPath -Raw | ConvertFrom-Json
+    if (Get-Command -Name Read-JsonArray -ErrorAction SilentlyContinue) {
+      $repos = @(Read-JsonArray $reposPath)
+    } else {
+      $repos = @(Get-Content -LiteralPath $reposPath -Raw | ConvertFrom-Json)
+    }
   } catch {
     return [pscustomobject]@{
       trigger_count = 0
@@ -116,7 +120,11 @@ function Get-ClarificationObservability([string]$KitRootPath) {
     foreach ($file in $files) {
       $trackedFiles++
       try {
-        $state = Get-Content -LiteralPath $file.FullName -Raw | ConvertFrom-Json
+        if (Get-Command -Name Read-JsonFile -ErrorAction SilentlyContinue) {
+          $state = Read-JsonFile -Path $file.FullName -DisplayName $file.FullName
+        } else {
+          $state = Get-Content -LiteralPath $file.FullName -Raw | ConvertFrom-Json
+        }
       } catch {
         $issues.Add("invalid clarification state: $($file.FullName)") | Out-Null
         continue

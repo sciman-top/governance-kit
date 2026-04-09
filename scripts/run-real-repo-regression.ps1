@@ -22,7 +22,7 @@ if (!(Test-Path -LiteralPath $MatrixPath)) {
 }
 
 try {
-  $matrix = Get-Content -LiteralPath $MatrixPath -Raw | ConvertFrom-Json
+  $matrix = Read-JsonFile -Path $MatrixPath -DisplayName $MatrixPath
 } catch {
   throw "Regression matrix invalid JSON: $MatrixPath"
 }

@@ -25,7 +25,7 @@ if (!(Test-Path $targetsPath)) {
   throw "targets.json not found: $targetsPath"
 }
 
-$targets = Get-Content -Path $targetsPath -Raw | ConvertFrom-Json
+$targets = @(Read-JsonArray $targetsPath)
 $allowedTargets = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::OrdinalIgnoreCase)
 foreach ($t in $targets) {
   $norm = [System.IO.Path]::GetFullPath(($t.target -replace '/', '\'))

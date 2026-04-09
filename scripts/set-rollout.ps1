@@ -20,8 +20,22 @@ if (!(Test-Path $rolloutPath)) {
   throw "rule-rollout.json not found: $rolloutPath"
 }
 
+function Set-ObjectPropertyValue {
+  param(
+    [Parameter(Mandatory=$true)]$Object,
+    [Parameter(Mandatory=$true)][string]$Name,
+    [Parameter(Mandatory=$true)]$Value
+  )
+
+  if ($null -eq $Object.PSObject.Properties[$Name]) {
+    $Object | Add-Member -NotePropertyName $Name -NotePropertyValue $Value -Force
+  } else {
+    $Object.$Name = $Value
+  }
+}
+
 $repo = Normalize-Repo $RepoPath
-$rollout = Get-Content -Path $rolloutPath -Raw | ConvertFrom-Json
+$rollout = Read-JsonFile -Path $rolloutPath -DisplayName $rolloutPath
 if ($null -eq $rollout.repos) { $rollout | Add-Member -NotePropertyName repos -NotePropertyValue @() -Force }
 $repos = @($rollout.repos)
 
@@ -41,13 +55,13 @@ if ($idx -ge 0) {
   $entry = [pscustomobject]@{ repo = $repo }
 }
 
-if ($PSBoundParameters.ContainsKey("Phase")) { $entry.phase = $Phase }
+if ($PSBoundParameters.ContainsKey("Phase")) { Set-ObjectPropertyValue -Object $entry -Name "phase" -Value $Phase }
 if ($PSBoundParameters.ContainsKey("BlockExpiredWaiver")) {
   $raw = ($BlockExpiredWaiver + "").Trim().ToLowerInvariant()
   if ($raw -in @("true","1","yes","y")) {
-    $entry.blockExpiredWaiver = $true
+    Set-ObjectPropertyValue -Object $entry -Name "blockExpiredWaiver" -Value $true
   } elseif ($raw -in @("false","0","no","n")) {
-    $entry.blockExpiredWaiver = $false
+    Set-ObjectPropertyValue -Object $entry -Name "blockExpiredWaiver" -Value $false
   } else {
     throw "invalid BlockExpiredWaiver: $BlockExpiredWaiver (use true/false/1/0)"
   }
@@ -58,16 +72,16 @@ if ($PSBoundParameters.ContainsKey("PlannedEnforceDate")) {
     if ($null -eq $d) {
       throw "invalid PlannedEnforceDate: $PlannedEnforceDate"
     }
-    $entry.planned_enforce_date = $d.ToString("yyyy-MM-dd")
+    Set-ObjectPropertyValue -Object $entry -Name "planned_enforce_date" -Value $d.ToString("yyyy-MM-dd")
   } else {
-    $entry.PSObject.Properties.Remove("planned_enforce_date")
+    [void]$entry.PSObject.Properties.Remove("planned_enforce_date")
   }
 }
 if ($PSBoundParameters.ContainsKey("Note")) {
   if (-not [string]::IsNullOrWhiteSpace($Note)) {
-    $entry.note = $Note
+    Set-ObjectPropertyValue -Object $entry -Name "note" -Value $Note
   } else {
-    $entry.PSObject.Properties.Remove("note")
+    [void]$entry.PSObject.Properties.Remove("note")
   }
 }
 
@@ -91,5 +105,5 @@ if ($idx -ge 0) {
 }
 
 $rollout.repos = $repos
-$rollout | ConvertTo-Json -Depth 10 | Set-Content -Path $rolloutPath -Encoding UTF8
+$rollout | ConvertTo-Json -Depth 10 | Set-Content -LiteralPath $rolloutPath -Encoding UTF8
 Write-Host "set-rollout done. mode=$Mode"

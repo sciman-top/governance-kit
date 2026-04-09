@@ -16,7 +16,7 @@ if (!(Test-Path $rolloutPath)) {
   throw "rule-rollout.json not found: $rolloutPath"
 }
 
-$rollout = Get-Content -Path $rolloutPath -Raw | ConvertFrom-Json
+$rollout = Read-JsonFile -Path $rolloutPath -DisplayName $rolloutPath
 $defaultBlock = [bool]$rollout.default.blockExpiredWaiver
 $rules = @($rollout.repos)
 $repos = Read-JsonArray $reposPath

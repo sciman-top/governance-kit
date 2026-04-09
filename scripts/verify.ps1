@@ -24,12 +24,11 @@ if (-not $SkipConfigValidation) {
 }
 
 try {
-  $raw = Get-Content -Path $targetsPath -Raw | ConvertFrom-Json
+  $targets = @(Read-JsonArray $targetsPath)
 } catch {
   throw "targets.json is not valid JSON: $targetsPath"
 }
 
-$targets = if ($raw -is [System.Array]) { @($raw) } elseif ($null -eq $raw) { @() } else { @($raw) }
 if ($targets.Count -eq 0) {
   throw "targets.json has no entries: $targetsPath"
 }
@@ -97,9 +96,7 @@ foreach ($item in $targets) {
     continue
   }
 
-  $h1 = Get-FileSha256 -Path $src
-  $h2 = Get-FileSha256 -Path $dst
-  if ($h1 -eq $h2) {
+  if (Test-FileContentEqual -PathA $src -PathB $dst) {
     Write-Host "[OK]   $($item.source) == $dst"
     $ok++
   } else {

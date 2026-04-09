@@ -17,7 +17,7 @@ if (!(Test-Path $rolloutPath)) {
 }
 
 $repos = @(Read-JsonArray $reposPath)
-$rollout = Get-Content -Path $rolloutPath -Raw | ConvertFrom-Json
+$rollout = Read-JsonFile -Path $rolloutPath -DisplayName $rolloutPath
 $defaultPhase = [string]$rollout.default.phase
 $defaultBlock = [bool]$rollout.default.blockExpiredWaiver
 $rules = @($rollout.repos)

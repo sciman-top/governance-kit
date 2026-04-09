@@ -57,8 +57,8 @@ $baselinePath = Join-Path $kitRoot "config\governance-baseline.json"
 
 $targets = Read-JsonArray $targetsPath
 $repos = Read-JsonArray $reposPath
-$customCfg = if (Test-Path -LiteralPath $customPath) { Get-Content -LiteralPath $customPath -Raw | ConvertFrom-Json } else { $null }
-$baselineCfg = if (Test-Path -LiteralPath $baselinePath) { Get-Content -LiteralPath $baselinePath -Raw | ConvertFrom-Json } else { $null }
+$customCfg = if (Test-Path -LiteralPath $customPath) { Read-JsonFile -Path $customPath -DisplayName $customPath } else { $null }
+$baselineCfg = if (Test-Path -LiteralPath $baselinePath) { Read-JsonFile -Path $baselinePath -DisplayName $baselinePath } else { $null }
 
 $globalHomeCount = @($targets | Where-Object { ([string]$_.source).StartsWith("source/global/", [System.StringComparison]::OrdinalIgnoreCase) }).Count
 $projectRuleCount = @($targets | Where-Object { ([string]$_.source) -match '^source/project/[^/]+/(AGENTS|CLAUDE|GEMINI)\.md$' }).Count

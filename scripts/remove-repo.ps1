@@ -38,7 +38,7 @@ $projectRuleAllowUpdated = $false
 $policy = $null
 $policyFilteredAllow = @()
 if (Test-Path $projectPolicyPath) {
-  $policy = Get-Content -Path $projectPolicyPath -Raw | ConvertFrom-Json
+  $policy = Read-JsonFile -Path $projectPolicyPath -DisplayName $projectPolicyPath
   $allowRepos = if ($null -eq $policy.allowProjectRulesForRepos) { @() } else { @($policy.allowProjectRulesForRepos) }
   foreach ($allow in $allowRepos) {
     $allowNorm = Normalize-Repo ([string]$allow)
@@ -57,7 +57,7 @@ $customCfg = $null
 $customCfgReposFiltered = @()
 if (Test-Path -LiteralPath $projectCustomPath) {
   try {
-    $customCfg = Get-Content -LiteralPath $projectCustomPath -Raw | ConvertFrom-Json
+    $customCfg = Read-JsonFile -Path $projectCustomPath -DisplayName $projectCustomPath
   } catch {
     throw "project-custom-files.json invalid JSON: $projectCustomPath"
   }

@@ -25,6 +25,120 @@ if (!(Test-Path $releaseDistributionPolicyPath)) { throw "release-distribution-p
 
 $fail = 0
 
+function Read-RequiredJsonConfig {
+  param(
+    [Parameter(Mandatory = $true)][string]$Path,
+    [Parameter(Mandatory = $true)][string]$InvalidMessage
+  )
+
+  try {
+    return Read-JsonFile -Path $Path -DisplayName $Path
+  } catch {
+    throw $InvalidMessage
+  }
+}
+
+function Read-OptionalJsonConfig {
+  param(
+    [Parameter(Mandatory = $true)][string]$Path,
+    [Parameter(Mandatory = $true)][string]$InvalidNotice
+  )
+
+  try {
+    return Read-JsonFile -Path $Path -DisplayName $Path
+  } catch {
+    Write-Host $InvalidNotice
+    $script:fail++
+    return $null
+  }
+}
+
+function Validate-IntInRange {
+  param(
+    [Parameter(Mandatory = $true)]$Value,
+    [Parameter(Mandatory = $true)][int]$Min,
+    [Parameter(Mandatory = $true)][int]$Max,
+    [Parameter(Mandatory = $true)][string]$IntegerMessage,
+    [Parameter(Mandatory = $true)][string]$RangeMessage
+  )
+
+  if ($Value -isnot [int] -and $Value -isnot [long]) {
+    Write-Host $IntegerMessage
+    $script:fail++
+    return $null
+  }
+
+  $normalized = [int]$Value
+  if ($normalized -lt $Min -or $normalized -gt $Max) {
+    Write-Host $RangeMessage
+    $script:fail++
+    return $null
+  }
+
+  return $normalized
+}
+
+function Validate-BooleanValue {
+  param(
+    [Parameter(Mandatory = $true)]$Value,
+    [Parameter(Mandatory = $true)][string]$Message
+  )
+
+  if ($Value -isnot [bool]) {
+    Write-Host $Message
+    $script:fail++
+    return $false
+  }
+
+  return $true
+}
+
+function Validate-RequiredBooleanProperty {
+  param(
+    [Parameter(Mandatory = $true)]$Object,
+    [Parameter(Mandatory = $true)][string]$PropertyName,
+    [Parameter(Mandatory = $true)][string]$Message
+  )
+
+  if ($null -eq $Object.PSObject.Properties[$PropertyName]) {
+    Write-Host $Message
+    $script:fail++
+    return $false
+  }
+
+  return (Validate-BooleanValue -Value $Object.$PropertyName -Message $Message)
+}
+
+function Validate-OptionalBooleanProperty {
+  param(
+    [Parameter(Mandatory = $true)]$Object,
+    [Parameter(Mandatory = $true)][string]$PropertyName,
+    [Parameter(Mandatory = $true)][string]$Message
+  )
+
+  if ($null -eq $Object.PSObject.Properties[$PropertyName]) {
+    return $true
+  }
+
+  return (Validate-BooleanValue -Value $Object.$PropertyName -Message $Message)
+}
+
+function Validate-RequiredNonEmptyStringProperty {
+  param(
+    [Parameter(Mandatory = $true)]$Object,
+    [Parameter(Mandatory = $true)][string]$PropertyName,
+    [Parameter(Mandatory = $true)][string]$MissingMessage
+  )
+
+  if ($null -eq $Object.PSObject.Properties[$PropertyName] -or [string]::IsNullOrWhiteSpace([string]$Object.$PropertyName)) {
+    Write-Host $MissingMessage
+    $script:fail++
+    return $null
+  }
+
+  return [string]$Object.$PropertyName
+}
+
 try {
   $repos = Read-JsonArray $reposPath
 } catch {
@@ -37,36 +151,13 @@ try {
   throw "targets.json invalid JSON: $targetsPath"
 }
 
-try {
-  $rollout = Get-Content -Path $rolloutPath -Raw | ConvertFrom-Json
-} catch {
-  throw "rule-rollout.json invalid JSON: $rolloutPath"
-}
-
-try {
-  $projectRulePolicy = Get-Content -Path $projectRulePolicyPath -Raw | ConvertFrom-Json
-} catch {
-  throw "project-rule-policy.json invalid JSON: $projectRulePolicyPath"
-}
-
-try {
-  $projectCustom = Get-Content -Path $projectCustomPath -Raw | ConvertFrom-Json
-} catch {
-  throw "project-custom-files.json invalid JSON: $projectCustomPath"
-}
-
-try {
-  $releaseDistributionPolicy = Get-Content -Path $releaseDistributionPolicyPath -Raw | ConvertFrom-Json
-} catch {
-  throw "release-distribution-policy.json invalid JSON: $releaseDistributionPolicyPath"
-}
+$rollout = Read-RequiredJsonConfig -Path $rolloutPath -InvalidMessage "rule-rollout.json invalid JSON: $rolloutPath"
+$projectRulePolicy = Read-RequiredJsonConfig -Path $projectRulePolicyPath -InvalidMessage "project-rule-policy.json invalid JSON: $projectRulePolicyPath"
+$projectCustom = Read-RequiredJsonConfig -Path $projectCustomPath -InvalidMessage "project-custom-files.json invalid JSON: $projectCustomPath"
+$releaseDistributionPolicy = Read-RequiredJsonConfig -Path $releaseDistributionPolicyPath -InvalidMessage "release-distribution-policy.json invalid JSON: $releaseDistributionPolicyPath"
 
 if (Test-Path $clarificationPolicyPath) {
-  try {
-    $clarificationPolicy = Get-Content -Path $clarificationPolicyPath -Raw | ConvertFrom-Json
-  } catch {
-    throw "clarification-policy.json invalid JSON: $clarificationPolicyPath"
-  }
+  $clarificationPolicy = Read-RequiredJsonConfig -Path $clarificationPolicyPath -InvalidMessage "clarification-policy.json invalid JSON: $clarificationPolicyPath"
 } else {
   Write-Host "[CFG] clarification-policy.json not found, using compatibility defaults"
   $clarificationPolicy = [pscustomobject]@{
@@ -100,23 +191,20 @@ if (Test-Path $clarificationPolicyPath) {
 if ($null -ne $projectRulePolicy.defaults) {
   if ($null -eq $projectRulePolicy.defaults.PSObject.Properties['allow_auto_fix']) {
     # backward-compatible: missing field uses runtime default
-  } elseif ($projectRulePolicy.defaults.allow_auto_fix -isnot [bool]) {
-    Write-Host "[CFG] project-rule-policy.defaults.allow_auto_fix must be boolean"
-    $fail++
+  } else {
+    [void](Validate-BooleanValue -Value $projectRulePolicy.defaults.allow_auto_fix -Message "[CFG] project-rule-policy.defaults.allow_auto_fix must be boolean")
   }
 
   if ($null -eq $projectRulePolicy.defaults.PSObject.Properties['allow_rule_optimization']) {
     # backward-compatible: missing field uses runtime default
-  } elseif ($projectRulePolicy.defaults.allow_rule_optimization -isnot [bool]) {
-    Write-Host "[CFG] project-rule-policy.defaults.allow_rule_optimization must be boolean"
-    $fail++
+  } else {
+    [void](Validate-BooleanValue -Value $projectRulePolicy.defaults.allow_rule_optimization -Message "[CFG] project-rule-policy.defaults.allow_rule_optimization must be boolean")
   }
 
   if ($null -eq $projectRulePolicy.defaults.PSObject.Properties['allow_local_optimize_without_backflow']) {
     # backward-compatible: missing field uses runtime default
-  } elseif ($projectRulePolicy.defaults.allow_local_optimize_without_backflow -isnot [bool]) {
-    Write-Host "[CFG] project-rule-policy.defaults.allow_local_optimize_without_backflow must be boolean"
-    $fail++
+  } else {
+    [void](Validate-BooleanValue -Value $projectRulePolicy.defaults.allow_local_optimize_without_backflow -Message "[CFG] project-rule-policy.defaults.allow_local_optimize_without_backflow must be boolean")
   }
 
   if ($null -ne $projectRulePolicy.defaults.PSObject.Properties['max_autonomous_iterations']) {
@@ -140,24 +228,17 @@ if ($null -ne $projectRulePolicy.defaults) {
   }
 
   if ($null -ne $projectRulePolicy.defaults.PSObject.Properties['stop_on_irreversible_risk']) {
-    if ($projectRulePolicy.defaults.stop_on_irreversible_risk -isnot [bool]) {
-      Write-Host "[CFG] project-rule-policy.defaults.stop_on_irreversible_risk must be boolean"
-      $fail++
-    }
+    [void](Validate-BooleanValue -Value $projectRulePolicy.defaults.stop_on_irreversible_risk -Message "[CFG] project-rule-policy.defaults.stop_on_irreversible_risk must be boolean")
   }
 
   if ($null -eq $projectRulePolicy.defaults.PSObject.Properties['forbid_breaking_contract']) {
     # backward-compatible: missing field uses runtime default
-  } elseif ($projectRulePolicy.defaults.forbid_breaking_contract -isnot [bool]) {
-    Write-Host "[CFG] project-rule-policy.defaults.forbid_breaking_contract must be boolean"
-    $fail++
+  } else {
+    [void](Validate-BooleanValue -Value $projectRulePolicy.defaults.forbid_breaking_contract -Message "[CFG] project-rule-policy.defaults.forbid_breaking_contract must be boolean")
   }
 
   if ($null -ne $projectRulePolicy.defaults.PSObject.Properties['auto_commit_enabled']) {
-    if ($projectRulePolicy.defaults.auto_commit_enabled -isnot [bool]) {
-      Write-Host "[CFG] project-rule-policy.defaults.auto_commit_enabled must be boolean"
-      $fail++
-    }
+    [void](Validate-BooleanValue -Value $projectRulePolicy.defaults.auto_commit_enabled -Message "[CFG] project-rule-policy.defaults.auto_commit_enabled must be boolean")
   }
 
   if ($null -ne $projectRulePolicy.defaults.PSObject.Properties['auto_commit_on_checkpoints']) {
@@ -200,25 +281,21 @@ if ($null -ne $projectRulePolicy.defaults) {
   }
 
   if ($null -ne $projectRulePolicy.defaults.PSObject.Properties['clarification_trigger_attempt_threshold']) {
-    $threshold = $projectRulePolicy.defaults.clarification_trigger_attempt_threshold
-    if ($threshold -isnot [int] -and $threshold -isnot [long]) {
-      Write-Host "[CFG] project-rule-policy.defaults.clarification_trigger_attempt_threshold must be integer"
-      $fail++
-    } elseif ([int]$threshold -lt 1 -or [int]$threshold -gt 10) {
-      Write-Host "[CFG] project-rule-policy.defaults.clarification_trigger_attempt_threshold out of range: expected 1..10"
-      $fail++
-    }
+    [void](Validate-IntInRange `
+      -Value $projectRulePolicy.defaults.clarification_trigger_attempt_threshold `
+      -Min 1 `
+      -Max 10 `
+      -IntegerMessage "[CFG] project-rule-policy.defaults.clarification_trigger_attempt_threshold must be integer" `
+      -RangeMessage "[CFG] project-rule-policy.defaults.clarification_trigger_attempt_threshold out of range: expected 1..10")
   }
 
   if ($null -ne $projectRulePolicy.defaults.PSObject.Properties['clarification_max_questions']) {
-    $maxQuestions = $projectRulePolicy.defaults.clarification_max_questions
-    if ($maxQuestions -isnot [int] -and $maxQuestions -isnot [long]) {
-      Write-Host "[CFG] project-rule-policy.defaults.clarification_max_questions must be integer"
-      $fail++
-    } elseif ([int]$maxQuestions -lt 1 -or [int]$maxQuestions -gt 3) {
-      Write-Host "[CFG] project-rule-policy.defaults.clarification_max_questions out of range: expected 1..3"
-      $fail++
-    }
+    [void](Validate-IntInRange `
+      -Value $projectRulePolicy.defaults.clarification_max_questions `
+      -Min 1 `
+      -Max 3 `
+      -IntegerMessage "[CFG] project-rule-policy.defaults.clarification_max_questions must be integer" `
+      -RangeMessage "[CFG] project-rule-policy.defaults.clarification_max_questions out of range: expected 1..3")
   }
 }
 
@@ -317,18 +394,9 @@ foreach ($pr in $policyRepos) {
     $fail++
   }
 
-  if ($pr.PSObject.Properties['allow_auto_fix'] -and $pr.allow_auto_fix -isnot [bool]) {
-    Write-Host "[CFG] project-rule-policy.repos.allow_auto_fix must be boolean"
-    $fail++
-  }
-  if ($pr.PSObject.Properties['allow_rule_optimization'] -and $pr.allow_rule_optimization -isnot [bool]) {
-    Write-Host "[CFG] project-rule-policy.repos.allow_rule_optimization must be boolean"
-    $fail++
-  }
-  if ($pr.PSObject.Properties['allow_local_optimize_without_backflow'] -and $pr.allow_local_optimize_without_backflow -isnot [bool]) {
-    Write-Host "[CFG] project-rule-policy.repos.allow_local_optimize_without_backflow must be boolean"
-    $fail++
-  }
+  [void](Validate-OptionalBooleanProperty -Object $pr -PropertyName "allow_auto_fix" -Message "[CFG] project-rule-policy.repos.allow_auto_fix must be boolean")
+  [void](Validate-OptionalBooleanProperty -Object $pr -PropertyName "allow_rule_optimization" -Message "[CFG] project-rule-policy.repos.allow_rule_optimization must be boolean")
+  [void](Validate-OptionalBooleanProperty -Object $pr -PropertyName "allow_local_optimize_without_backflow" -Message "[CFG] project-rule-policy.repos.allow_local_optimize_without_backflow must be boolean")
   if ($pr.PSObject.Properties['max_autonomous_iterations']) {
     if ($pr.max_autonomous_iterations -isnot [int] -and $pr.max_autonomous_iterations -isnot [long]) {
       Write-Host "[CFG] project-rule-policy.repos.max_autonomous_iterations must be integer"
@@ -347,18 +415,9 @@ foreach ($pr in $policyRepos) {
       $fail++
     }
   }
-  if ($pr.PSObject.Properties['stop_on_irreversible_risk'] -and $pr.stop_on_irreversible_risk -isnot [bool]) {
-    Write-Host "[CFG] project-rule-policy.repos.stop_on_irreversible_risk must be boolean"
-    $fail++
-  }
-  if ($pr.PSObject.Properties['forbid_breaking_contract'] -and $pr.forbid_breaking_contract -isnot [bool]) {
-    Write-Host "[CFG] project-rule-policy.repos.forbid_breaking_contract must be boolean"
-    $fail++
-  }
-  if ($pr.PSObject.Properties['auto_commit_enabled'] -and $pr.auto_commit_enabled -isnot [bool]) {
-    Write-Host "[CFG] project-rule-policy.repos.auto_commit_enabled must be boolean"
-    $fail++
-  }
+  [void](Validate-OptionalBooleanProperty -Object $pr -PropertyName "stop_on_irreversible_risk" -Message "[CFG] project-rule-policy.repos.stop_on_irreversible_risk must be boolean")
+  [void](Validate-OptionalBooleanProperty -Object $pr -PropertyName "forbid_breaking_contract" -Message "[CFG] project-rule-policy.repos.forbid_breaking_contract must be boolean")
+  [void](Validate-OptionalBooleanProperty -Object $pr -PropertyName "auto_commit_enabled" -Message "[CFG] project-rule-policy.repos.auto_commit_enabled must be boolean")
   if ($pr.PSObject.Properties['auto_commit_on_checkpoints']) {
     if ($pr.auto_commit_on_checkpoints -isnot [System.Array]) {
       Write-Host "[CFG] project-rule-policy.repos.auto_commit_on_checkpoints must be array"
@@ -464,37 +523,23 @@ foreach ($rr in $rolloutRepos) {
   }
 }
 
-if ($clarificationPolicy.enabled -isnot [bool]) {
-  Write-Host "[CFG] clarification-policy.enabled must be boolean"
-  $fail++
-}
-if ($clarificationPolicy.max_clarifying_questions -isnot [int] -and $clarificationPolicy.max_clarifying_questions -isnot [long]) {
-  Write-Host "[CFG] clarification-policy.max_clarifying_questions must be integer"
-  $fail++
-} elseif ([int]$clarificationPolicy.max_clarifying_questions -lt 1 -or [int]$clarificationPolicy.max_clarifying_questions -gt 3) {
-  Write-Host "[CFG] clarification-policy.max_clarifying_questions out of range: expected 1..3"
-  $fail++
-}
-if ($clarificationPolicy.trigger_attempt_threshold -isnot [int] -and $clarificationPolicy.trigger_attempt_threshold -isnot [long]) {
-  Write-Host "[CFG] clarification-policy.trigger_attempt_threshold must be integer"
-  $fail++
-} elseif ([int]$clarificationPolicy.trigger_attempt_threshold -lt 1 -or [int]$clarificationPolicy.trigger_attempt_threshold -gt 10) {
-  Write-Host "[CFG] clarification-policy.trigger_attempt_threshold out of range: expected 1..10"
-  $fail++
-}
-if ($clarificationPolicy.trigger_on_conflict_signal -isnot [bool]) {
-  Write-Host "[CFG] clarification-policy.trigger_on_conflict_signal must be boolean"
-  $fail++
-}
-if ($clarificationPolicy.auto_resume_after_clarification -isnot [bool]) {
-  Write-Host "[CFG] clarification-policy.auto_resume_after_clarification must be boolean"
-  $fail++
-}
-if ($null -eq $clarificationPolicy.PSObject.Properties['default_scenario'] -or [string]::IsNullOrWhiteSpace([string]$clarificationPolicy.default_scenario)) {
-  Write-Host "[CFG] clarification-policy.default_scenario must be non-empty string"
-  $fail++
-} else {
-  $defaultScenario = [string]$clarificationPolicy.default_scenario
+[void](Validate-BooleanValue -Value $clarificationPolicy.enabled -Message "[CFG] clarification-policy.enabled must be boolean")
+[void](Validate-IntInRange `
+  -Value $clarificationPolicy.max_clarifying_questions `
+  -Min 1 `
+  -Max 3 `
+  -IntegerMessage "[CFG] clarification-policy.max_clarifying_questions must be integer" `
+  -RangeMessage "[CFG] clarification-policy.max_clarifying_questions out of range: expected 1..3")
+[void](Validate-IntInRange `
+  -Value $clarificationPolicy.trigger_attempt_threshold `
+  -Min 1 `
+  -Max 10 `
+  -IntegerMessage "[CFG] clarification-policy.trigger_attempt_threshold must be integer" `
+  -RangeMessage "[CFG] clarification-policy.trigger_attempt_threshold out of range: expected 1..10")
+[void](Validate-BooleanValue -Value $clarificationPolicy.trigger_on_conflict_signal -Message "[CFG] clarification-policy.trigger_on_conflict_signal must be boolean")
+[void](Validate-BooleanValue -Value $clarificationPolicy.auto_resume_after_clarification -Message "[CFG] clarification-policy.auto_resume_after_clarification must be boolean")
+$defaultScenario = Validate-RequiredNonEmptyStringProperty -Object $clarificationPolicy -PropertyName "default_scenario" -MissingMessage "[CFG] clarification-policy.default_scenario must be non-empty string"
+if ($null -ne $defaultScenario) {
   $validScenarios = @("plan", "requirement", "bugfix", "acceptance")
   if ($validScenarios -notcontains $defaultScenario) {
     Write-Host "[CFG] clarification-policy.default_scenario invalid: expected one of plan/requirement/bugfix/acceptance"
@@ -532,19 +577,10 @@ if ($null -eq $clarificationPolicy.PSObject.Properties['scenarios'] -or $null -e
 }
 
 if (Test-Path -LiteralPath $codexProfileRegistryPath -PathType Leaf) {
-  $codexProfileRegistry = $null
-  try {
-    $codexProfileRegistry = Get-Content -Path $codexProfileRegistryPath -Raw | ConvertFrom-Json
-  } catch {
-    Write-Host "[CFG] codex-profile-registry.json invalid JSON"
-    $fail++
-  }
+  $codexProfileRegistry = Read-OptionalJsonConfig -Path $codexProfileRegistryPath -InvalidNotice "[CFG] codex-profile-registry.json invalid JSON"
 
   if ($null -ne $codexProfileRegistry) {
-    if ($null -eq $codexProfileRegistry.PSObject.Properties['schema_version'] -or [string]::IsNullOrWhiteSpace([string]$codexProfileRegistry.schema_version)) {
-      Write-Host "[CFG] codex-profile-registry.schema_version missing"
-      $fail++
-    }
+    [void](Validate-RequiredNonEmptyStringProperty -Object $codexProfileRegistry -PropertyName "schema_version" -MissingMessage "[CFG] codex-profile-registry.schema_version missing")
 
     $profiles = @()
     if ($null -ne $codexProfileRegistry.PSObject.Properties['profiles'] -and $null -ne $codexProfileRegistry.profiles) {
@@ -585,24 +621,12 @@ if (Test-Path -LiteralPath $codexProfileRegistryPath -PathType Leaf) {
 }
 
 if (Test-Path -LiteralPath $codexRuntimePolicyPath -PathType Leaf) {
-  $codexRuntimePolicy = $null
-  try {
-    $codexRuntimePolicy = Get-Content -Path $codexRuntimePolicyPath -Raw | ConvertFrom-Json
-  } catch {
-    Write-Host "[CFG] codex-runtime-policy.json invalid JSON"
-    $fail++
-  }
+  $codexRuntimePolicy = Read-OptionalJsonConfig -Path $codexRuntimePolicyPath -InvalidNotice "[CFG] codex-runtime-policy.json invalid JSON"
 
   if ($null -ne $codexRuntimePolicy) {
-    if ($null -eq $codexRuntimePolicy.PSObject.Properties['schema_version'] -or [string]::IsNullOrWhiteSpace([string]$codexRuntimePolicy.schema_version)) {
-      Write-Host "[CFG] codex-runtime-policy.schema_version missing"
-      $fail++
-    }
+    [void](Validate-RequiredNonEmptyStringProperty -Object $codexRuntimePolicy -PropertyName "schema_version" -MissingMessage "[CFG] codex-runtime-policy.schema_version missing")
 
-    if ($null -eq $codexRuntimePolicy.PSObject.Properties['enabled_by_default'] -or $codexRuntimePolicy.enabled_by_default -isnot [bool]) {
-      Write-Host "[CFG] codex-runtime-policy.enabled_by_default must be boolean"
-      $fail++
-    }
+    [void](Validate-RequiredBooleanProperty -Object $codexRuntimePolicy -PropertyName "enabled_by_default" -Message "[CFG] codex-runtime-policy.enabled_by_default must be boolean")
 
     if ($null -eq $codexRuntimePolicy.PSObject.Properties['default_files'] -or $codexRuntimePolicy.default_files -isnot [System.Array] -or @($codexRuntimePolicy.default_files).Count -eq 0) {
       Write-Host "[CFG] codex-runtime-policy.default_files must be non-empty array"
@@ -637,19 +661,13 @@ if (Test-Path -LiteralPath $codexRuntimePolicyPath -PathType Leaf) {
           $fail++
         }
 
-        if (-not $entry.PSObject.Properties['enabled'] -or $entry.enabled -isnot [bool]) {
-          Write-Host "[CFG] codex-runtime-policy.repos.enabled must be boolean"
-          $fail++
-        }
+        [void](Validate-RequiredBooleanProperty -Object $entry -PropertyName "enabled" -Message "[CFG] codex-runtime-policy.repos.enabled must be boolean")
       }
     }
   }
 }
 
-if ($null -eq $releaseDistributionPolicy.PSObject.Properties['schema_version'] -or [string]::IsNullOrWhiteSpace([string]$releaseDistributionPolicy.schema_version)) {
-  Write-Host "[CFG] release-distribution-policy.schema_version missing"
-  $fail++
-}
+[void](Validate-RequiredNonEmptyStringProperty -Object $releaseDistributionPolicy -PropertyName "schema_version" -MissingMessage "[CFG] release-distribution-policy.schema_version missing")
 if ($null -eq $releaseDistributionPolicy.PSObject.Properties['default'] -or $null -eq $releaseDistributionPolicy.default) {
   Write-Host "[CFG] release-distribution-policy.default missing"
   $fail++

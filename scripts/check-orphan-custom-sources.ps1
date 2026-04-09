@@ -17,7 +17,7 @@ if (!(Test-Path -LiteralPath $customPath)) { throw "project-custom-files.json no
 if (!(Test-Path -LiteralPath $projectRoot)) { throw "source/project not found: $projectRoot" }
 
 $targets = @(Read-JsonArray $targetsPath)
-$customCfg = Get-Content -LiteralPath $customPath -Raw | ConvertFrom-Json
+$customCfg = Read-JsonFile -Path $customPath -DisplayName $customPath
 
 $mappedSourceSet = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::OrdinalIgnoreCase)
 foreach ($t in $targets) {
