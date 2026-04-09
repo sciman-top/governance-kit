@@ -670,6 +670,8 @@ exit 0
       $obj.codex_runtime.codex_target_mappings | should be 1
       $obj.codex_runtime.codex_home_target_mappings | should be 1
       $obj.codex_runtime.codex_repo_target_mappings | should be 0
+      ($obj.core_health.score -ge 0) | should be $true
+      ($obj.core_health.level -in @("GREEN","YELLOW","RED")) | should be $true
       @($obj.warnings).Count | should be 0
     } finally {
       if (Test-Path $tmp) { Remove-Item -LiteralPath $tmp -Recurse -Force }
@@ -2137,7 +2139,7 @@ exit 0
       @'
 param([switch]$AsJson)
 if ($AsJson) {
-  @{ schema_version="1.0"; repositories=1; targets=1; repos=@(); global_home_targets=1; missing_repositories=0; orphan_targets=0; rollout=$null; codex_runtime=@{ policy_found=$false; enabled_by_default=$false; policy_repo_entries=0; enabled_repo_entries=0; codex_target_mappings=0; codex_home_target_mappings=0; codex_repo_target_mappings=0 }; warnings=@() } | ConvertTo-Json -Depth 6 | Write-Output
+  @{ schema_version="1.0"; repositories=1; targets=1; repos=@(); global_home_targets=1; missing_repositories=0; orphan_targets=0; rollout=$null; codex_runtime=@{ policy_found=$false; enabled_by_default=$false; policy_repo_entries=0; enabled_repo_entries=0; codex_target_mappings=0; codex_home_target_mappings=0; codex_repo_target_mappings=0 }; core_health=@{ score=100; level="GREEN"; reasons=@() }; warnings=@() } | ConvertTo-Json -Depth 6 | Write-Output
   exit 0
 }
 '@ | Set-Content -Path (Join-Path $tmp "scripts\status.ps1") -Encoding UTF8
@@ -2512,6 +2514,58 @@ exit 0
       $obj = $json | ConvertFrom-Json
       $obj.status | should be "OK"
       (Test-Path (Join-Path $tmp "docs\governance\reviews\2026-04-monthly-review.md")) | should be $true
+    } finally {
+      if (Test-Path $tmp) { Remove-Item -LiteralPath $tmp -Recurse -Force }
+    }
+  }
+
+  it "check-update-triggers reports low-value orphan custom sources" {
+    $tmp = Join-Path $env:TEMP ("govkit-test-" + [guid]::NewGuid().ToString("N"))
+    try {
+      New-Item -ItemType Directory -Path (Join-Path $tmp "scripts\governance") -Force | Out-Null
+      New-Item -ItemType Directory -Path (Join-Path $tmp "scripts\lib") -Force | Out-Null
+      New-Item -ItemType Directory -Path (Join-Path $tmp "scripts") -Force | Out-Null
+      New-Item -ItemType Directory -Path (Join-Path $tmp "config") -Force | Out-Null
+      New-Item -ItemType Directory -Path (Join-Path $tmp "source\project\RepoA\custom") -Force | Out-Null
+      New-Item -ItemType Directory -Path (Join-Path $tmp "docs\governance") -Force | Out-Null
+
+      Copy-Item -Path (Join-Path $repoRoot "scripts\governance\check-update-triggers.ps1") -Destination (Join-Path $tmp "scripts\governance\check-update-triggers.ps1") -Force
+      Copy-Item -Path (Join-Path $repoRoot "scripts\check-orphan-custom-sources.ps1") -Destination (Join-Path $tmp "scripts\check-orphan-custom-sources.ps1") -Force
+      Copy-Item -Path (Join-Path $repoRoot "scripts\lib\common.ps1") -Destination (Join-Path $tmp "scripts\lib\common.ps1") -Force
+
+      Set-Content -Path (Join-Path $tmp "source\project\RepoA\custom\orphan.txt") -Value "x" -Encoding UTF8
+      "[]" | Set-Content -Path (Join-Path $tmp "config\targets.json") -Encoding UTF8
+      @{
+        default = @()
+        repos = @(
+          @{
+            repoName = "RepoA"
+            files = @()
+          }
+        )
+      } | ConvertTo-Json -Depth 6 | Set-Content -Path (Join-Path $tmp "config\project-custom-files.json") -Encoding UTF8
+      @{
+        schema_version = "1.0"
+        cadence = @{
+          recurring_review_days = 7
+          monthly_review_day = 1
+        }
+        triggers = @{
+          cli_version_drift = @{ enabled = $false; severity = "high" }
+          rollout_observe_overdue = @{ enabled = $false; severity = "medium" }
+          metrics_snapshot_stale = @{ enabled = $false; severity = "medium"; max_age_days = 8 }
+          waiver_expired_unrecovered = @{ enabled = $false; severity = "high" }
+          platform_na_expired = @{ enabled = $false; severity = "medium" }
+          low_value_orphan_custom_sources = @{ enabled = $true; severity = "medium" }
+        }
+      } | ConvertTo-Json -Depth 8 | Set-Content -Path (Join-Path $tmp "config\update-trigger-policy.json") -Encoding UTF8
+
+      $json = & powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $tmp "scripts\governance\check-update-triggers.ps1") -RepoRoot $tmp -AsJson
+      $LASTEXITCODE | should be 1
+      $obj = $json | ConvertFrom-Json
+      $obj.alert_count | should be 1
+      $obj.orphan_custom_source_count | should be 1
+      @($obj.alerts | Where-Object { $_.id -eq "low_value_orphan_custom_sources" }).Count | should be 1
     } finally {
       if (Test-Path $tmp) { Remove-Item -LiteralPath $tmp -Recurse -Force }
     }

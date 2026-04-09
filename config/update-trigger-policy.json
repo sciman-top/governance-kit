@@ -25,6 +25,10 @@
     "platform_na_expired": {
       "enabled": true,
       "severity": "medium"
+    },
+    "low_value_orphan_custom_sources": {
+      "enabled": false,
+      "severity": "medium"
     }
   }
 }

@@ -165,6 +165,40 @@ $result = [pscustomobject]@{
   warnings = @($warnings)
 }
 
+$healthReasons = [System.Collections.Generic.List[string]]::new()
+$healthScore = 100
+if ($missingRepos -gt 0) {
+  $healthScore -= 40
+  [void]$healthReasons.Add(("missing_repositories={0}" -f $missingRepos))
+}
+if ($orphanTargets -gt 0) {
+  $healthScore -= 20
+  [void]$healthReasons.Add(("orphan_targets={0}" -f $orphanTargets))
+}
+if (@($warnings).Count -gt 0) {
+  $healthScore -= 20
+  [void]$healthReasons.Add(("warnings={0}" -f @($warnings).Count))
+}
+if ($null -ne $rolloutSummary -and [int]$rolloutSummary.observe_overdue -gt 0) {
+  $healthScore -= 10
+  [void]$healthReasons.Add(("rollout.observe_overdue={0}" -f [int]$rolloutSummary.observe_overdue))
+}
+if ($null -ne $codexRuntimeSummary -and [bool]$codexRuntimeSummary.policy_found -and [int]$codexRuntimeSummary.enabled_repo_entries -gt 0) {
+  $expectedRepoMappings = [int]$codexRuntimeSummary.enabled_repo_entries * 4
+  if ([int]$codexRuntimeSummary.codex_repo_target_mappings -lt $expectedRepoMappings) {
+    $healthScore -= 10
+    [void]$healthReasons.Add(("codex_repo_target_mappings={0}<expected={1}" -f [int]$codexRuntimeSummary.codex_repo_target_mappings, $expectedRepoMappings))
+  }
+}
+if ($healthScore -lt 0) { $healthScore = 0 }
+$healthLevel = if ($healthScore -ge 85) { "GREEN" } elseif ($healthScore -ge 60) { "YELLOW" } else { "RED" }
+
+$result | Add-Member -NotePropertyName core_health -NotePropertyValue ([pscustomobject]@{
+  score = [int]$healthScore
+  level = $healthLevel
+  reasons = @($healthReasons)
+}) -Force
+
 if ($AsJson) {
   $result | ConvertTo-Json -Depth 8 | Write-Output
   return
@@ -179,6 +213,11 @@ foreach ($repoItem in $repoSummaries) {
 Write-Host "global-home-targets=$globalTargets"
 Write-Host "missing-repositories=$missingRepos"
 Write-Host "orphan-targets=$orphanTargets"
+Write-Host "core-health.score=$healthScore"
+Write-Host "core-health.level=$healthLevel"
+if ($healthReasons.Count -gt 0) {
+  Write-Host ("core-health.reasons={0}" -f ([string]::Join(";", @($healthReasons))))
+}
 
 if ($null -ne $rolloutSummary) {
   foreach ($w in $warnings) {

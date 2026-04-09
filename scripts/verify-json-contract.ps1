@@ -39,8 +39,9 @@ $results = [System.Collections.Generic.List[object]]::new()
 
 try {
   $statusObj = Read-StepJson -ScriptName "status.ps1"
-  Assert-HasProperties -Obj $statusObj -Names @("schema_version","repositories","targets","repos","global_home_targets","missing_repositories","orphan_targets","codex_runtime","warnings") -Label "status.ps1"
+  Assert-HasProperties -Obj $statusObj -Names @("schema_version","repositories","targets","repos","global_home_targets","missing_repositories","orphan_targets","codex_runtime","core_health","warnings") -Label "status.ps1"
   Assert-HasProperties -Obj $statusObj.codex_runtime -Names @("policy_found","enabled_by_default","policy_repo_entries","enabled_repo_entries","codex_target_mappings","codex_home_target_mappings","codex_repo_target_mappings") -Label "status.ps1.codex_runtime"
+  Assert-HasProperties -Obj $statusObj.core_health -Names @("score","level","reasons") -Label "status.ps1.core_health"
   if ([string]$statusObj.schema_version -ne $ExpectedSchemaVersion) {
     throw "status.ps1 schema_version mismatch: actual=$($statusObj.schema_version) expected=$ExpectedSchemaVersion"
   }

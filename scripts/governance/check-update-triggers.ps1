@@ -85,6 +85,7 @@ if ($null -eq $policy) {
       metrics_snapshot_stale = [pscustomobject]@{ enabled = $true; severity = "medium"; max_age_days = 8 }
       waiver_expired_unrecovered = [pscustomobject]@{ enabled = $true; severity = "high" }
       platform_na_expired = [pscustomobject]@{ enabled = $true; severity = "medium" }
+      low_value_orphan_custom_sources = [pscustomobject]@{ enabled = $false; severity = "medium" }
     }
   }
 }
@@ -207,12 +208,40 @@ if ([bool]$policy.triggers.platform_na_expired.enabled) {
   }
 }
 
+# 5) low-value orphan custom source trigger
+$orphanCustomCount = 0
+if ($null -ne $policy.triggers.PSObject.Properties['low_value_orphan_custom_sources'] -and [bool]$policy.triggers.low_value_orphan_custom_sources.enabled) {
+  $orphanScript = Join-Path $kitRoot "scripts\check-orphan-custom-sources.ps1"
+  if (Test-Path -LiteralPath $orphanScript -PathType Leaf) {
+    $orphanOut = & $psExe -NoProfile -ExecutionPolicy Bypass -File $orphanScript -AsJson 2>&1
+    $orphanExit = $LASTEXITCODE
+    $steps.Add([pscustomobject]@{ name = "orphan-custom-source-scan"; exit_code = [int]$orphanExit }) | Out-Null
+    $orphanObj = $null
+    $orphanText = [string]::Join([Environment]::NewLine, @($orphanOut))
+    if (-not [string]::IsNullOrWhiteSpace($orphanText)) {
+      try { $orphanObj = $orphanText | ConvertFrom-Json } catch { $orphanObj = $null }
+    }
+    if ($null -ne $orphanObj -and $orphanObj.PSObject.Properties.Name -contains "orphan_count") {
+      $orphanCustomCount = [int]$orphanObj.orphan_count
+    }
+    if ($orphanCustomCount -gt 0) {
+      Add-Alert -List $alerts `
+        -Id "low_value_orphan_custom_sources" `
+        -Severity ([string]$policy.triggers.low_value_orphan_custom_sources.severity) `
+        -Reason ("orphan_custom_source_count={0}" -f $orphanCustomCount) `
+        -RecommendedAction "Run scripts/check-orphan-custom-sources.ps1 and prune or map orphan custom files." `
+        -Evidence "scripts/check-orphan-custom-sources.ps1"
+    }
+  }
+}
+
 $result = [pscustomobject]@{
   schema_version = "1.0"
   generated_at = (Get-Date).ToString("yyyy-MM-dd HH:mm:ss")
   repo_root = ($repoPath -replace '\\', '/')
   status = if ($alerts.Count -eq 0) { "OK" } else { "ALERT" }
   alert_count = $alerts.Count
+  orphan_custom_source_count = [int]$orphanCustomCount
   alerts = @($alerts)
   steps = @($steps)
   policy_path = ($policyPath -replace '\\', '/')
