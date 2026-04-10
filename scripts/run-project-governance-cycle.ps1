@@ -91,8 +91,7 @@ if (-not $allowRuleOptimization -and -not $effectiveSkipOptimize) {
   $effectiveSkipOptimize = $true
 }
 
-Write-Host ("[POLICY] allow_project_rules={0} allow_rule_optimization={1} allow_local_optimize_without_backflow={2} max_autonomous_iterations={3} max_repeated_failure_per_step={4} stop_on_irreversible_risk={5} allow_auto_fix={6} forbid_breaking_contract={7}" -f `
-  $allowProjectRules, $allowRuleOptimization, $allowLocalOptimizeWithoutBackflow, $maxAutonomousIterations, $maxRepeatedFailurePerStep, $stopOnIrreversibleRisk, $allowAutoFixByPolicy, $forbidBreakingContract)
+Write-RepoAutomationPolicySummary -Policy $repoPolicy
 Write-Host ("[POLICY] auto_commit_enabled={0} auto_commit_checkpoints={1}" -f $autoCommitEnabled, (@($autoCommitOnCheckpoints) -join ","))
 
 function Get-GitStatusLines() {

@@ -85,8 +85,7 @@ if (-not (Test-Path -LiteralPath $bootstrapScript)) { throw "Missing script: $bo
 if (-not (Test-Path -LiteralPath $cycleScript)) { throw "Missing script: $cycleScript" }
 if (-not (Test-Path -LiteralPath $doctorScript)) { throw "Missing script: $doctorScript" }
 
-Write-Host ("[POLICY] allow_project_rules={0} allow_rule_optimization={1} allow_local_optimize_without_backflow={2} max_autonomous_iterations={3} max_repeated_failure_per_step={4} stop_on_irreversible_risk={5} allow_auto_fix={6} forbid_breaking_contract={7}" -f `
-  $repoPolicy.allow_project_rules, $repoPolicy.allow_rule_optimization, $repoPolicy.allow_local_optimize_without_backflow, $repoPolicy.max_autonomous_iterations, $repoPolicy.max_repeated_failure_per_step, $repoPolicy.stop_on_irreversible_risk, $repoPolicy.allow_auto_fix, $repoPolicy.forbid_breaking_contract)
+Write-RepoAutomationPolicySummary -Policy $repoPolicy
 Write-Host "[POLICY] remediation owner=outer-ai-session (script does not invoke model CLI for auto-fix)."
 Write-Host "[POLICY] if governance issue is discovered during install, repair governance-kit first and then let outer-ai-session re-run."
 

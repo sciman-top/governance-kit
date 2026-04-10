@@ -169,6 +169,25 @@ function Invoke-LoggedCommand {
   }
 }
 
+function Write-RepoAutomationPolicySummary {
+  param(
+    [Parameter(Mandatory = $true)]
+    [psobject]$Policy,
+    [string]$Prefix = "[POLICY]"
+  )
+
+  Write-Host ("{0} allow_project_rules={1} allow_rule_optimization={2} allow_local_optimize_without_backflow={3} max_autonomous_iterations={4} max_repeated_failure_per_step={5} stop_on_irreversible_risk={6} allow_auto_fix={7} forbid_breaking_contract={8}" -f `
+    $Prefix,
+    $Policy.allow_project_rules,
+    $Policy.allow_rule_optimization,
+    $Policy.allow_local_optimize_without_backflow,
+    $Policy.max_autonomous_iterations,
+    $Policy.max_repeated_failure_per_step,
+    $Policy.stop_on_irreversible_risk,
+    $Policy.allow_auto_fix,
+    $Policy.forbid_breaking_contract)
+}
+
 function Get-FileSha256([string]$Path) {
   if ([string]::IsNullOrWhiteSpace($Path)) {
     throw "Path is required for Get-FileSha256."
