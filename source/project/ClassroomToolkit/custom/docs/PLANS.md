@@ -16,7 +16,7 @@
   - 跨技术栈迁移
 
 ## Current phase
-- Phase 5 baseline complete: correctness, dedup, maintainability guardrails, performance baseline, and governance checks are in place; next batch targets large-file decomposition
+- Phase 4 in progress: large-file decomposition batches for Ink/Overlay are running with full-gate validation after each split
 
 ## Steps
 1. 先完成基线与风险台账（证据化）
