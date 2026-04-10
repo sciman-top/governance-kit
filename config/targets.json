@@ -506,5 +506,29 @@
     {
         "source":  "source/project/_common/custom/.governance/templates/evidence-minimal.md",
         "target":  "E:/CODE/governance-kit/.governance/templates/evidence-minimal.md"
+    },
+    {
+        "source":  "source/project/_common/custom/scripts/governance/check-practice-stack.ps1",
+        "target":  "E:/CODE/ClassroomToolkit/scripts/governance/check-practice-stack.ps1"
+    },
+    {
+        "source":  "source/project/_common/custom/.governance/practice-stack-policy.json",
+        "target":  "E:/CODE/ClassroomToolkit/.governance/practice-stack-policy.json"
+    },
+    {
+        "source":  "source/project/_common/custom/scripts/governance/check-practice-stack.ps1",
+        "target":  "E:/CODE/skills-manager/scripts/governance/check-practice-stack.ps1"
+    },
+    {
+        "source":  "source/project/_common/custom/.governance/practice-stack-policy.json",
+        "target":  "E:/CODE/skills-manager/.governance/practice-stack-policy.json"
+    },
+    {
+        "source":  "source/project/_common/custom/scripts/governance/check-practice-stack.ps1",
+        "target":  "E:/CODE/governance-kit/scripts/governance/check-practice-stack.ps1"
+    },
+    {
+        "source":  "source/project/_common/custom/.governance/practice-stack-policy.json",
+        "target":  "E:/CODE/governance-kit/.governance/practice-stack-policy.json"
     }
 ]

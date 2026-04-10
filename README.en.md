@@ -20,6 +20,7 @@ This repository is not only about authoring rules. It is about keeping rules, te
 - Rollout control with observe/enforce phases and waiver checks
 - Evidence and rollback support with backups, templates, and restore scripts
 - Project-specific custom file management through `config/project-custom-files.json`
+- Layered one-click distribution policy through `config/oneclick-distribution-policy.json` (`core/default/optional`)
 - Agent-first remediation: scripts orchestrate gates and emit failure context; the outer AI session performs fixes
 - Browser session baseline: `tools/browser-session/*` is distributed by default for stable profile + CDP attach workflows
 
@@ -69,6 +70,8 @@ powershell -File E:\CODE\governance-kit\scripts\backflow-project-rules.ps1 -Repo
 - `config/targets.json`: `source -> target` distribution mapping
 - `config/project-rule-policy.json`: allowlist, autonomy boundaries, and blocking policy
 - `config/project-custom-files.json`: project custom-file manifest
+- `config/oneclick-distribution-policy.json`: one-click default layer policy (`core/default/optional`)
+- `config/install-size-guard.json`: one-click entry script size guard (`warn/block`)
 - `scripts/`: install, verify, audit, backflow, rollback, and gate orchestration scripts
 - `tests/`: regression and anti-regression tests
 - `docs/change-evidence/`: change evidence

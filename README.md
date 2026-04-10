@@ -27,6 +27,7 @@
 - 规则灰度治理：支持 observe / enforce、waiver 检查和 planned date
 - 证据与回滚：所有关键操作都有备份目录、证据模板和恢复脚本
 - 项目级定制文件分发：通过 `config/project-custom-files.json` 管理非三规则文件
+- 一键分发分层策略：`config/oneclick-distribution-policy.json` 控制 `core/default/optional` 默认层
 - 真实仓门禁编排：脚本只负责编排与输出失败上下文，修复由当前 AI 会话代理接管
 - 浏览器会话基线：默认分发 `tools/browser-session/*` 到目标仓，支持固定 profile + CDP 接管
 - Codex 运行资产分发：默认分发 `docs/PLANS.md`、`.agents/skills/*`、`.agents/plugins/marketplace.json` 与内部插件骨架
@@ -82,6 +83,8 @@ powershell -File E:\CODE\governance-kit\scripts\backflow-project-rules.ps1 -Repo
 - `config/targets.json`: `source -> target` 分发映射
 - `config/project-rule-policy.json`: 项目级规则白名单、自治边界和阻断策略
 - `config/project-custom-files.json`: 项目级定制文件清单
+- `config/oneclick-distribution-policy.json`: 一键分发默认层策略（core/default/optional）
+- `config/install-size-guard.json`: 一键入口脚本体积护栏（warn/block）
 - `config/release-distribution-policy.json`: 目标仓发布形态/签名约束策略
 - `scripts/`: 安装、校验、回灌、审计、回滚、门禁编排脚本
 - `tests/`: 回归和防退化测试

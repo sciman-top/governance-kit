@@ -17,10 +17,12 @@ $mustExist = @(
   "config\governance-baseline.json",
   "config\codex-runtime-policy.json",
   "config\subagent-trigger-policy.json",
+  "config\practice-stack-policy.json",
   "config\update-trigger-policy.json",
   "config\editorconfig.base",
   ".governance\tracked-files-policy.json",
   ".governance\subagent-trigger-policy.json",
+  ".governance\practice-stack-policy.json",
   "scripts\add-repo.ps1",
   "scripts\remove-repo.ps1",
   "scripts\status.ps1",
@@ -36,6 +38,7 @@ $mustExist = @(
   "scripts\governance\run-recurring-review.ps1",
   "scripts\governance\run-monthly-policy-review.ps1",
   "scripts\governance\check-update-triggers.ps1",
+  "scripts\governance\check-practice-stack.ps1",
   "scripts\governance\check-rule-duplication.ps1",
   "scripts\governance\register-review-task.ps1",
   "scripts\governance\unregister-review-task.ps1",
@@ -89,8 +92,10 @@ $mustExist = @(
   "source\project\_common\custom\scripts\governance\run-project-governance-cycle.ps1",
   "source\project\_common\custom\scripts\governance\run-target-autopilot.ps1",
   "source\project\_common\custom\scripts\governance\check-tracked-files.ps1",
+  "source\project\_common\custom\scripts\governance\check-practice-stack.ps1",
   "source\project\_common\custom\.governance\tracked-files-policy.json",
   "source\project\_common\custom\.governance\subagent-trigger-policy.json",
+  "source\project\_common\custom\.governance\practice-stack-policy.json",
   "source\project\_common\custom\.codex\config.toml",
   "source\project\_common\custom\.codex\agents\planner.toml",
   "source\project\_common\custom\.codex\agents\reuse-analyst.toml",
@@ -260,5 +265,43 @@ if ([int]$refreshObj.target_change_count -gt 0) {
 
 $dupScript = Join-Path $root "scripts\governance\check-rule-duplication.ps1"
 Invoke-ChildScript -ScriptPath $dupScript -ScriptArgs @("-RepoRoot", $root)
+
+$sizeGuardPath = Join-Path $root "config\install-size-guard.json"
+$sizeGuard = Read-JsonFile -Path $sizeGuardPath -DefaultValue $null -UseCache -DisplayName "install-size-guard.json"
+if ($null -ne $sizeGuard) {
+  $guardMode = "warn"
+  if ($null -ne $sizeGuard.PSObject.Properties['mode'] -and -not [string]::IsNullOrWhiteSpace([string]$sizeGuard.mode)) {
+    $guardMode = ([string]$sizeGuard.mode).Trim().ToLowerInvariant()
+  }
+  if (@("warn", "block") -notcontains $guardMode) {
+    Write-Host "[CFG] install-size-guard.mode must be warn or block"
+    $metaFail++
+  } else {
+    foreach ($rule in @($sizeGuard.rules)) {
+      if ($null -eq $rule) { continue }
+      $relativePath = [string]$rule.path
+      if ([string]::IsNullOrWhiteSpace($relativePath)) { continue }
+      $maxLines = [int]$rule.max_lines
+      if ($maxLines -le 0) { continue }
+
+      $absPath = Join-Path $root ($relativePath -replace '/', '\')
+      if (-not (Test-Path -LiteralPath $absPath -PathType Leaf)) { continue }
+      $lineCount = @(Get-Content -LiteralPath $absPath).Count
+      if ($lineCount -gt $maxLines) {
+        $message = "[GUARD] script size exceeded: path=$relativePath lines=$lineCount max_lines=$maxLines"
+        if ($guardMode -eq "block") {
+          Write-Host $message
+          $metaFail++
+        } else {
+          Write-Host ("[WARN] " + $message)
+        }
+      }
+    }
+  }
+}
+
+if ($metaFail -gt 0) {
+  throw "governance-kit metadata check failed: issues=$metaFail"
+}
 
 Write-Host "governance-kit integrity OK"

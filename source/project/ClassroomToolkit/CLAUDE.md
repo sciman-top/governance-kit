@@ -2,8 +2,8 @@
 **项目**: ClassroomToolkit  
 **类型**: Windows WPF (.NET 10)  
 **适用范围**: 项目级（仓库根）  
-**版本**: 3.83  
-**最后更新**: 2026-04-06
+**版本**: 3.85  
+**最后更新**: 2026-04-10
 
 ## 1. 阅读指引（必读）
 - 本文件承接 `GlobalUser/CLAUDE.md`，仅定义本仓落地动作（WHERE/HOW）。
@@ -31,6 +31,18 @@
 ### A.4 N/A 判定优先级
 - 优先判定 `platform_na`（平台能力问题），再判定 `gate_na`（门禁步骤问题）。
 - 同一阻断仅记录一种主类型；若并发出现，主类型写根因，次类型写在 `alternative_verification`。
+
+
+
+### A.5 需求/功能/设计主动建议协议（本仓）
+- 默认模式：`lite`；每轮主动建议上限 `1-2` 条，优先一句话可执行建议，避免长解释。
+- 升级到 `standard` 的触发场景：`需求澄清`、`方案设计`、`架构选型`、`上线前评审`；升级后上限 `2-3` 条。
+- 建议主题至少覆盖其一：`风险前置`、`替代方案`、`验收口径`、`最小可行路径（MVP）`。
+- 去重规则：同一 `topic_signature` 在冷却窗口内默认不重复建议；仅在需求显著变化或用户追问时重触发。
+- 降级规则：用户明确“只执行不建议/不要扩展”时切 `silent`；仅执行主任务。
+- 执行边界：建议“可采纳可忽略”，不得改变用户主指令优先级，不得阻断当前任务。
+- 策略文件：`.governance/proactive-suggestion-policy.json`（缺失时回退模板内默认值）。
+- 建议留痕字段：`proactive_suggestion_mode(silent|lite|standard)`、`suggestion_count`、`suggestion_topics`、`topic_signature`、`dedupe_skipped`、`user_opt_out`。
 
 ## B. Claude 平台差异（项目内）
 ### B.1 加载与覆盖

@@ -1,0 +1,58 @@
+{
+  "schema_version": "1.0",
+  "default": {
+    "sdd": "required",
+    "tdd": "required",
+    "atdd_bdd": "recommended",
+    "contract_testing": "required",
+    "harness_engineering": "required",
+    "policy_as_code": "required",
+    "observability": "required",
+    "progressive_delivery": "recommended",
+    "hooks_ci_gates": "required"
+  },
+  "repos": [
+    {
+      "repoName": "ClassroomToolkit",
+      "practices": {
+        "sdd": true,
+        "tdd": true,
+        "atdd_bdd": true,
+        "contract_testing": true,
+        "harness_engineering": true,
+        "policy_as_code": true,
+        "observability": true,
+        "progressive_delivery": true,
+        "hooks_ci_gates": true
+      }
+    },
+    {
+      "repoName": "skills-manager",
+      "practices": {
+        "sdd": true,
+        "tdd": true,
+        "atdd_bdd": true,
+        "contract_testing": true,
+        "harness_engineering": true,
+        "policy_as_code": true,
+        "observability": true,
+        "progressive_delivery": true,
+        "hooks_ci_gates": true
+      }
+    },
+    {
+      "repoName": "governance-kit",
+      "practices": {
+        "sdd": true,
+        "tdd": true,
+        "atdd_bdd": true,
+        "contract_testing": true,
+        "harness_engineering": true,
+        "policy_as_code": true,
+        "observability": true,
+        "progressive_delivery": true,
+        "hooks_ci_gates": true
+      }
+    }
+  ]
+}

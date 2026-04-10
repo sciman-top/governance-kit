@@ -606,12 +606,79 @@ function Get-ProjectCustomFilesForRepo([string]$KitRoot, [string]$RepoPath, [str
 
   $files = [System.Collections.Generic.List[string]]::new()
 
-  if ($null -ne $cfg.default) {
-    foreach ($f in @($cfg.default)) {
+  $policyPath = Join-Path $KitRoot "config\oneclick-distribution-policy.json"
+  $distributionPolicy = Read-JsonFile -Path $policyPath -DefaultValue $null -UseCache -DisplayName "oneclick-distribution-policy.json"
+
+  function Add-CustomFiles([System.Collections.Generic.List[string]]$Target, [object[]]$Items) {
+    foreach ($f in @($Items)) {
       if (-not [string]::IsNullOrWhiteSpace([string]$f)) {
-        [void]$files.Add(([string]$f -replace '\\', '/').TrimStart('/'))
+        [void]$Target.Add(([string]$f -replace '\\', '/').TrimStart('/'))
       }
     }
+  }
+
+  $activeDefaultLayers = @("core", "default")
+  if ($null -ne $distributionPolicy -and $null -ne $distributionPolicy.project_custom_files) {
+    $policyProjectCustom = $distributionPolicy.project_custom_files
+    if ($null -ne $policyProjectCustom.PSObject.Properties['active_layers']) {
+      $candidateLayers = @()
+      foreach ($layer in @($policyProjectCustom.active_layers)) {
+        $layerName = ([string]$layer).Trim().ToLowerInvariant()
+        if ([string]::IsNullOrWhiteSpace($layerName)) { continue }
+        if (@("core", "default", "optional") -contains $layerName) {
+          $candidateLayers += $layerName
+        }
+      }
+      if ($candidateLayers.Count -gt 0) {
+        $activeDefaultLayers = @($candidateLayers | Select-Object -Unique)
+      }
+    }
+
+    foreach ($entry in @($policyProjectCustom.repos)) {
+      if ($null -eq $entry) { continue }
+      $match = $false
+      if ($entry.PSObject.Properties['repo'] -and -not [string]::IsNullOrWhiteSpace([string]$entry.repo)) {
+        $entryRepoNorm = Normalize-Repo ([string]$entry.repo)
+        if ($entryRepoNorm.Equals($repoNorm, [System.StringComparison]::OrdinalIgnoreCase)) {
+          $match = $true
+        }
+      }
+      if (-not $match -and $entry.PSObject.Properties['repoName'] -and -not [string]::IsNullOrWhiteSpace([string]$entry.repoName)) {
+        if (([string]$entry.repoName).Equals($repoLeaf, [System.StringComparison]::OrdinalIgnoreCase)) {
+          $match = $true
+        }
+      }
+      if (-not $match) { continue }
+
+      if ($entry.PSObject.Properties['active_layers']) {
+        $repoLayers = @()
+        foreach ($layer in @($entry.active_layers)) {
+          $layerName = ([string]$layer).Trim().ToLowerInvariant()
+          if ([string]::IsNullOrWhiteSpace($layerName)) { continue }
+          if (@("core", "default", "optional") -contains $layerName) {
+            $repoLayers += $layerName
+          }
+        }
+        if ($repoLayers.Count -gt 0) {
+          $activeDefaultLayers = @($repoLayers | Select-Object -Unique)
+        }
+      }
+    }
+  }
+
+  $loadedLayeredDefaults = $false
+  if ($null -ne $cfg.default_layers) {
+    foreach ($layer in $activeDefaultLayers) {
+      $prop = $cfg.default_layers.PSObject.Properties[$layer]
+      if ($null -ne $prop) {
+        Add-CustomFiles -Target $files -Items @($prop.Value)
+        $loadedLayeredDefaults = $true
+      }
+    }
+  }
+
+  if (-not $loadedLayeredDefaults -and $null -ne $cfg.default) {
+    Add-CustomFiles -Target $files -Items @($cfg.default)
   }
 
   if ($null -ne $cfg.repos) {
@@ -632,11 +699,7 @@ function Get-ProjectCustomFilesForRepo([string]$KitRoot, [string]$RepoPath, [str
       }
       if (-not $match) { continue }
 
-      foreach ($f in @($entry.files)) {
-        if (-not [string]::IsNullOrWhiteSpace([string]$f)) {
-          [void]$files.Add(([string]$f -replace '\\', '/').TrimStart('/'))
-        }
-      }
+      Add-CustomFiles -Target $files -Items @($entry.files)
     }
   }
 

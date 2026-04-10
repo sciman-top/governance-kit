@@ -70,6 +70,47 @@ function Set-MinReleaseDistributionPolicy {
 '@ | Set-Content -Path (Join-Path $ConfigDir "release-distribution-policy.json") -Encoding UTF8
 }
 
+function Set-MinPracticeStackPolicy {
+  param(
+    [Parameter(Mandatory = $true)]
+    [string]$ConfigDir,
+    [string]$RepoName = "FakeRepo"
+  )
+
+  @"
+{
+  "schema_version": "1.0",
+  "default": {
+    "sdd": "required",
+    "tdd": "required",
+    "atdd_bdd": "recommended",
+    "contract_testing": "required",
+    "harness_engineering": "required",
+    "policy_as_code": "required",
+    "observability": "required",
+    "progressive_delivery": "recommended",
+    "hooks_ci_gates": "required"
+  },
+  "repos": [
+    {
+      "repoName": "$RepoName",
+      "practices": {
+        "sdd": true,
+        "tdd": true,
+        "atdd_bdd": true,
+        "contract_testing": true,
+        "harness_engineering": true,
+        "policy_as_code": true,
+        "observability": true,
+        "progressive_delivery": true,
+        "hooks_ci_gates": true
+      }
+    }
+  ]
+}
+"@ | Set-Content -Path (Join-Path $ConfigDir "practice-stack-policy.json") -Encoding UTF8
+}
+
 function Set-StubScript {
   param(
     [Parameter(Mandatory = $true)]
@@ -77,6 +118,11 @@ function Set-StubScript {
     [string]$Message = "ok",
     [int]$ExitCode = 0
   )
+
+  $parent = Split-Path -Parent $Path
+  if (-not [string]::IsNullOrWhiteSpace($parent)) {
+    New-Item -ItemType Directory -Path $parent -Force | Out-Null
+  }
 
   @"
 param()
@@ -344,6 +390,7 @@ exit 0
       } | ConvertTo-Json -Depth 6 | Set-Content -Path (Join-Path $tmp "config\project-custom-files.json") -Encoding UTF8
       Set-MinProjectRulePolicy -ConfigDir (Join-Path $tmp "config") -RepoPath "E:/CODE/FakeRepo"
       Set-MinReleaseDistributionPolicy -ConfigDir (Join-Path $tmp "config")
+      Set-MinPracticeStackPolicy -ConfigDir (Join-Path $tmp "config") -RepoName "FakeRepo"
       @(@{ source = "source/global/AGENTS.md"; target = "C:/Users/sciman/.codex/AGENTS.md" }) | ConvertTo-Json -Depth 4 | Set-Content -Path (Join-Path $tmp "config\targets.json") -Encoding UTF8
       @{
         default = @{ phase = "observe"; blockExpiredWaiver = $false }
@@ -388,6 +435,7 @@ exit 0
       } | ConvertTo-Json -Depth 6 | Set-Content -Path (Join-Path $tmp "config\project-custom-files.json") -Encoding UTF8
       Set-MinProjectRulePolicy -ConfigDir (Join-Path $tmp "config") -RepoPath "E:/CODE/FakeRepo"
       Set-MinReleaseDistributionPolicy -ConfigDir (Join-Path $tmp "config")
+      Set-MinPracticeStackPolicy -ConfigDir (Join-Path $tmp "config") -RepoName "FakeRepo"
       @(@{ source = "source/global/AGENTS.md"; target = "C:/Users/sciman/.codex/AGENTS.md" }) | ConvertTo-Json -Depth 4 | Set-Content -Path (Join-Path $tmp "config\targets.json") -Encoding UTF8
       @{
         default = @{ phase = "observe"; blockExpiredWaiver = $false }
@@ -440,6 +488,7 @@ exit 0
         repos = @(@{ repoName = "FakeRepo"; files = @() })
       } | ConvertTo-Json -Depth 6 | Set-Content -Path (Join-Path $tmp "config\project-custom-files.json") -Encoding UTF8
       Set-MinReleaseDistributionPolicy -ConfigDir (Join-Path $tmp "config")
+      Set-MinPracticeStackPolicy -ConfigDir (Join-Path $tmp "config") -RepoName "FakeRepo"
 
       $output = & powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $tmp "scripts\validate-config.ps1") 2>&1 | Out-String
       $LASTEXITCODE | should be 1
@@ -485,6 +534,7 @@ exit 0
         repos = @(@{ repoName = "FakeRepo"; files = @() })
       } | ConvertTo-Json -Depth 6 | Set-Content -Path (Join-Path $tmp "config\project-custom-files.json") -Encoding UTF8
       Set-MinReleaseDistributionPolicy -ConfigDir (Join-Path $tmp "config")
+      Set-MinPracticeStackPolicy -ConfigDir (Join-Path $tmp "config") -RepoName "FakeRepo"
 
       $output = & powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $tmp "scripts\validate-config.ps1") 2>&1 | Out-String
       $LASTEXITCODE | should be 1
@@ -527,6 +577,7 @@ exit 0
       } | ConvertTo-Json -Depth 6 | Set-Content -Path (Join-Path $tmp "config\project-custom-files.json") -Encoding UTF8
       Set-MinProjectRulePolicy -ConfigDir (Join-Path $tmp "config") -RepoPath "E:/CODE/FakeRepo"
       Set-MinReleaseDistributionPolicy -ConfigDir (Join-Path $tmp "config")
+      Set-MinPracticeStackPolicy -ConfigDir (Join-Path $tmp "config") -RepoName "FakeRepo"
       @{
         default = @{ phase = "observe"; blockExpiredWaiver = $false }
         repos = @(
@@ -588,6 +639,7 @@ exit 0
       Set-StubScript -Path (Join-Path $tmp "scripts\check-release-profile-coverage.ps1")
       Set-StubScript -Path (Join-Path $tmp "scripts\verify.ps1") -Message "boom" -ExitCode 1
       Set-StubScript -Path (Join-Path $tmp "scripts\check-waivers.ps1")
+      Set-StubScript -Path (Join-Path $tmp "scripts\governance\check-practice-stack.ps1")
       Set-StubScript -Path (Join-Path $tmp "scripts\status.ps1")
       Set-StubScript -Path (Join-Path $tmp "scripts\rollout-status.ps1")
 
@@ -612,6 +664,7 @@ exit 0
       Set-StubScript -Path (Join-Path $tmp "scripts\check-release-profile-coverage.ps1")
       Set-RequireSkipValidationVerifyScript -Path (Join-Path $tmp "scripts\verify.ps1")
       Set-StubScript -Path (Join-Path $tmp "scripts\check-waivers.ps1")
+      Set-StubScript -Path (Join-Path $tmp "scripts\governance\check-practice-stack.ps1")
       Set-StubScript -Path (Join-Path $tmp "scripts\status.ps1")
       Set-StubScript -Path (Join-Path $tmp "scripts\rollout-status.ps1")
 
@@ -635,6 +688,7 @@ exit 0
       Set-StubScript -Path (Join-Path $tmp "scripts\check-release-profile-coverage.ps1")
       Set-StubScript -Path (Join-Path $tmp "scripts\verify.ps1") -Message "boom" -ExitCode 1
       Set-StubScript -Path (Join-Path $tmp "scripts\check-waivers.ps1")
+      Set-StubScript -Path (Join-Path $tmp "scripts\governance\check-practice-stack.ps1")
       Set-StubScript -Path (Join-Path $tmp "scripts\status.ps1")
       Set-StubScript -Path (Join-Path $tmp "scripts\rollout-status.ps1")
 
@@ -659,6 +713,7 @@ exit 0
       Set-StubScript -Path (Join-Path $tmp "scripts\check-release-profile-coverage.ps1")
       Set-RequireSkipValidationVerifyScript -Path (Join-Path $tmp "scripts\verify.ps1")
       Set-StubScript -Path (Join-Path $tmp "scripts\check-waivers.ps1")
+      Set-StubScript -Path (Join-Path $tmp "scripts\governance\check-practice-stack.ps1")
       Set-StubScript -Path (Join-Path $tmp "scripts\status.ps1")
       Set-StubScript -Path (Join-Path $tmp "scripts\rollout-status.ps1")
 
@@ -2531,6 +2586,7 @@ exit 7
       Copy-Item -Path (Join-Path $repoRoot "scripts\lib\common.ps1") -Destination (Join-Path $tmp "scripts\lib\common.ps1") -Force
       Initialize-ClarificationTrackerFixture -TmpRoot $tmp
       Set-MinReleaseDistributionPolicy -ConfigDir (Join-Path $tmp "config")
+      Set-MinPracticeStackPolicy -ConfigDir (Join-Path $tmp "config") -RepoName "FakeRepo"
 
       . (Join-Path $tmp "scripts\lib\common.ps1")
 
@@ -2631,6 +2687,13 @@ param()
 Write-Host "Waiver check done. files=0 expired=0 blocked=0"
 exit 0
 '@ | Set-Content -Path (Join-Path $tmp "scripts\check-waivers.ps1") -Encoding UTF8
+
+      New-Item -ItemType Directory -Path (Join-Path $tmp "scripts\governance") -Force | Out-Null
+      @'
+param()
+Write-Host "practice stack ok"
+exit 0
+'@ | Set-Content -Path (Join-Path $tmp "scripts\governance\check-practice-stack.ps1") -Encoding UTF8
 
       @'
 param()
@@ -3303,5 +3366,107 @@ if ($AsJson) {
       if (Test-Path $tmp) { Remove-Item -LiteralPath $tmp -Recurse -Force }
     }
   }
+
+  it "check-practice-stack script exists and emits json summary" {
+    $tmp = Join-Path $env:TEMP ("govkit-test-" + [guid]::NewGuid().ToString("N"))
+    try {
+      New-Item -ItemType Directory -Path (Join-Path $tmp "scripts\lib") -Force | Out-Null
+      New-Item -ItemType Directory -Path (Join-Path $tmp "scripts\governance") -Force | Out-Null
+      New-Item -ItemType Directory -Path (Join-Path $tmp "config") -Force | Out-Null
+      New-Item -ItemType Directory -Path (Join-Path $tmp "RepoA") -Force | Out-Null
+
+      Copy-Item -Path (Join-Path $repoRoot "scripts\governance\check-practice-stack.ps1") -Destination (Join-Path $tmp "scripts\governance\check-practice-stack.ps1") -Force
+      Copy-Item -Path (Join-Path $repoRoot "scripts\lib\common.ps1") -Destination (Join-Path $tmp "scripts\lib\common.ps1") -Force
+
+      @((Join-Path $tmp "RepoA") -replace '\\','/') | ConvertTo-Json | Set-Content -Path (Join-Path $tmp "config\repositories.json") -Encoding UTF8
+      @'
+{
+  "schema_version": "1.0",
+  "default": {
+    "sdd": "required",
+    "tdd": "required",
+    "atdd_bdd": "recommended",
+    "contract_testing": "required",
+    "harness_engineering": "required",
+    "policy_as_code": "required",
+    "observability": "required",
+    "progressive_delivery": "recommended",
+    "hooks_ci_gates": "required"
+  },
+  "repos": []
 }
+'@ | Set-Content -Path (Join-Path $tmp "config\practice-stack-policy.json") -Encoding UTF8
+
+      $json = & powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $tmp "scripts\governance\check-practice-stack.ps1") -RepoRoot $tmp -AsJson
+      if ($LASTEXITCODE -ne 0) { throw "check-practice-stack.ps1 failed with exit code $LASTEXITCODE" }
+      $obj = $json | ConvertFrom-Json
+      [string]$obj.status | should be "PASS"
+      [int]$obj.summary.repo_count | should be 1
+      [int]$obj.summary.alert_count | should be 0
+      [int]$obj.summary.average_score | should be 100
+    } finally {
+      if (Test-Path $tmp) { Remove-Item -LiteralPath $tmp -Recurse -Force }
+    }
+  }
+
+  it "check-practice-stack reports missing required practices" {
+    $tmp = Join-Path $env:TEMP ("govkit-test-" + [guid]::NewGuid().ToString("N"))
+    try {
+      New-Item -ItemType Directory -Path (Join-Path $tmp "scripts\lib") -Force | Out-Null
+      New-Item -ItemType Directory -Path (Join-Path $tmp "scripts\governance") -Force | Out-Null
+      New-Item -ItemType Directory -Path (Join-Path $tmp "config") -Force | Out-Null
+      New-Item -ItemType Directory -Path (Join-Path $tmp "RepoA") -Force | Out-Null
+
+      Copy-Item -Path (Join-Path $repoRoot "scripts\governance\check-practice-stack.ps1") -Destination (Join-Path $tmp "scripts\governance\check-practice-stack.ps1") -Force
+      Copy-Item -Path (Join-Path $repoRoot "scripts\lib\common.ps1") -Destination (Join-Path $tmp "scripts\lib\common.ps1") -Force
+
+      @((Join-Path $tmp "RepoA") -replace '\\','/') | ConvertTo-Json | Set-Content -Path (Join-Path $tmp "config\repositories.json") -Encoding UTF8
+      @'
+{
+  "schema_version": "1.0",
+  "default": {
+    "sdd": "required",
+    "tdd": "required",
+    "atdd_bdd": "recommended",
+    "contract_testing": "required",
+    "harness_engineering": "required",
+    "policy_as_code": "required",
+    "observability": "required",
+    "progressive_delivery": "recommended",
+    "hooks_ci_gates": "required"
+  },
+  "repos": [
+    {
+      "repoName": "RepoA",
+      "practices": {
+        "sdd": false,
+        "tdd": false,
+        "atdd_bdd": false,
+        "contract_testing": true,
+        "harness_engineering": false,
+        "policy_as_code": true,
+        "observability": false,
+        "progressive_delivery": false,
+        "hooks_ci_gates": true
+      }
+    }
+  ]
+}
+'@ | Set-Content -Path (Join-Path $tmp "config\practice-stack-policy.json") -Encoding UTF8
+
+      $json = & powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $tmp "scripts\governance\check-practice-stack.ps1") -RepoRoot $tmp -AsJson
+      if ($LASTEXITCODE -ne 0) { throw "check-practice-stack.ps1 failed with exit code $LASTEXITCODE" }
+      $obj = $json | ConvertFrom-Json
+      [string]$obj.status | should be "WARN"
+      [int]$obj.summary.repo_count | should be 1
+      ([int]$obj.summary.alert_count -ge 1) | should be $true
+      ([int]$obj.summary.average_score -lt 100) | should be $true
+    } finally {
+      if (Test-Path $tmp) { Remove-Item -LiteralPath $tmp -Recurse -Force }
+    }
+  }
+}
+
+
+
 

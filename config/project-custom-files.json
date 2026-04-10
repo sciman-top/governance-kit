@@ -1,9 +1,43 @@
 {
+  "default_layers": {
+    "core": [
+      "scripts/governance/run-project-governance-cycle.ps1",
+      "scripts/governance/run-target-autopilot.ps1",
+      "scripts/governance/check-tracked-files.ps1",
+      "scripts/governance/check-update-triggers.ps1",
+      "scripts/governance/check-practice-stack.ps1",
+      "scripts/governance/run-recurring-review.ps1",
+      "scripts/governance/run-monthly-policy-review.ps1",
+      ".governance/tracked-files-policy.json",
+      ".governance/subagent-trigger-policy.json",
+      ".governance/proactive-suggestion-policy.json",
+      ".governance/token-saver-policy.json",
+      ".governance/practice-stack-policy.json"
+    ],
+    "default": [
+      "tools/browser-session/start-browser-session.ps1",
+      "tools/browser-session/start-browser-session.bat",
+      "tools/browser-session/README.md",
+      "docs/PLANS.md",
+      ".agents/skills/governance-refactor-safe/SKILL.md",
+      ".agents/skills/governance-reuse-analyst/SKILL.md",
+      ".agents/plugins/marketplace.json",
+      "plugins/governance-kit-internal/.codex-plugin/plugin.json",
+      "plugins/governance-kit-internal/skills/governance-refactor-safe/SKILL.md",
+      "plugins/governance-kit-internal/skills/governance-reuse-analyst/SKILL.md",
+      ".governance/templates/task-snapshot-minimal.md",
+      ".governance/templates/lite-response.md",
+      ".governance/templates/clarification-trigger.md",
+      ".governance/templates/evidence-minimal.md"
+    ],
+    "optional": []
+  },
   "default": [
     "scripts/governance/run-project-governance-cycle.ps1",
     "scripts/governance/run-target-autopilot.ps1",
     "scripts/governance/check-tracked-files.ps1",
     "scripts/governance/check-update-triggers.ps1",
+    "scripts/governance/check-practice-stack.ps1",
     "scripts/governance/run-recurring-review.ps1",
     "scripts/governance/run-monthly-policy-review.ps1",
     ".governance/tracked-files-policy.json",
@@ -20,6 +54,7 @@
     "plugins/governance-kit-internal/skills/governance-reuse-analyst/SKILL.md",
     ".governance/proactive-suggestion-policy.json",
     ".governance/token-saver-policy.json",
+    ".governance/practice-stack-policy.json",
     ".governance/templates/task-snapshot-minimal.md",
     ".governance/templates/lite-response.md",
     ".governance/templates/clarification-trigger.md",

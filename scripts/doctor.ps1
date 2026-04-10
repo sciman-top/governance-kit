@@ -154,6 +154,7 @@ $steps = @(
   [pscustomobject]@{ name = "release-profile-coverage"; script = (Join-Path $PSScriptRoot 'check-release-profile-coverage.ps1'); args = @() },
   [pscustomobject]@{ name = "verify-targets"; script = (Join-Path $PSScriptRoot 'verify.ps1'); args = @('-SkipConfigValidation') },
   [pscustomobject]@{ name = "waiver-check"; script = (Join-Path $PSScriptRoot 'check-waivers.ps1'); args = @() },
+  [pscustomobject]@{ name = "practice-stack"; script = (Join-Path $PSScriptRoot 'governance\check-practice-stack.ps1'); args = @("-RepoRoot", $kitRoot) },
   [pscustomobject]@{ name = "status"; script = (Join-Path $PSScriptRoot 'status.ps1'); args = @() },
   [pscustomobject]@{ name = "rollout-status"; script = (Join-Path $PSScriptRoot 'rollout-status.ps1'); args = @() }
 )

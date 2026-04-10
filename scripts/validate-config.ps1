@@ -11,7 +11,9 @@ $targetsPath = Join-Path $kitRoot "config\targets.json"
 $rolloutPath = Join-Path $kitRoot "config\rule-rollout.json"
 $projectRulePolicyPath = Get-ProjectRulePolicyPath $kitRoot
 $projectCustomPath = Join-Path $kitRoot "config\project-custom-files.json"
+$oneclickDistributionPolicyPath = Join-Path $kitRoot "config\oneclick-distribution-policy.json"
 $releaseDistributionPolicyPath = Join-Path $kitRoot "config\release-distribution-policy.json"
+$practiceStackPolicyPath = Join-Path $kitRoot "config\practice-stack-policy.json"
 $clarificationPolicyPath = Join-Path $kitRoot "config\clarification-policy.json"
 $codexProfileRegistryPath = Join-Path $kitRoot "config\codex-profile-registry.json"
 $codexRuntimePolicyPath = Join-Path $kitRoot "config\codex-runtime-policy.json"
@@ -22,6 +24,7 @@ if (!(Test-Path $rolloutPath)) { throw "rule-rollout.json not found: $rolloutPat
 if (!(Test-Path $projectRulePolicyPath)) { throw "project-rule-policy.json not found: $projectRulePolicyPath" }
 if (!(Test-Path $projectCustomPath)) { throw "project-custom-files.json not found: $projectCustomPath" }
 if (!(Test-Path $releaseDistributionPolicyPath)) { throw "release-distribution-policy.json not found: $releaseDistributionPolicyPath" }
+if (!(Test-Path $practiceStackPolicyPath)) { throw "practice-stack-policy.json not found: $practiceStackPolicyPath" }
 
 $fail = 0
 
@@ -170,7 +173,9 @@ try {
 $rollout = Read-RequiredJsonConfig -Path $rolloutPath -InvalidMessage "rule-rollout.json invalid JSON: $rolloutPath"
 $projectRulePolicy = Read-RequiredJsonConfig -Path $projectRulePolicyPath -InvalidMessage "project-rule-policy.json invalid JSON: $projectRulePolicyPath"
 $projectCustom = Read-RequiredJsonConfig -Path $projectCustomPath -InvalidMessage "project-custom-files.json invalid JSON: $projectCustomPath"
+$oneclickDistributionPolicy = Read-OptionalJsonConfig -Path $oneclickDistributionPolicyPath -InvalidNotice "[CFG] oneclick-distribution-policy.json invalid JSON: $oneclickDistributionPolicyPath"
 $releaseDistributionPolicy = Read-RequiredJsonConfig -Path $releaseDistributionPolicyPath -InvalidMessage "release-distribution-policy.json invalid JSON: $releaseDistributionPolicyPath"
+$practiceStackPolicy = Read-RequiredJsonConfig -Path $practiceStackPolicyPath -InvalidMessage "practice-stack-policy.json invalid JSON: $practiceStackPolicyPath"
 
 if (Test-Path $clarificationPolicyPath) {
   $clarificationPolicy = Read-RequiredJsonConfig -Path $clarificationPolicyPath -InvalidMessage "clarification-policy.json invalid JSON: $clarificationPolicyPath"
@@ -342,6 +347,67 @@ foreach ($r in $repos) {
 }
 
 $customRepos = if ($null -eq $projectCustom.repos) { @() } else { @($projectCustom.repos) }
+$allowedCustomLayers = @("core", "default", "optional")
+function Validate-CustomLayerList {
+  param(
+    [Parameter(Mandatory = $true)]$Value,
+    [Parameter(Mandatory = $true)][string]$MessagePrefix
+  )
+
+  if ($Value -isnot [System.Array]) {
+    Write-Host ("{0} must be array" -f $MessagePrefix)
+    $script:fail++
+    return @()
+  }
+
+  $layers = [System.Collections.Generic.List[string]]::new()
+  foreach ($layer in @($Value)) {
+    $name = ([string]$layer).Trim().ToLowerInvariant()
+    if ([string]::IsNullOrWhiteSpace($name)) {
+      Write-Host ("{0} contains empty layer name" -f $MessagePrefix)
+      $script:fail++
+      continue
+    }
+    if ($allowedCustomLayers -notcontains $name) {
+      Write-Host ("{0} contains invalid layer '{1}' (expected core/default/optional)" -f $MessagePrefix, $name)
+      $script:fail++
+      continue
+    }
+    if (-not $layers.Contains($name)) {
+      [void]$layers.Add($name)
+    }
+  }
+
+  return @($layers.ToArray())
+}
+
+if ($null -ne $projectCustom.default_layers) {
+  foreach ($layerName in $allowedCustomLayers) {
+    $prop = $projectCustom.default_layers.PSObject.Properties[$layerName]
+    if ($null -eq $prop) { continue }
+    if ($prop.Value -isnot [System.Array]) {
+      Write-Host ("[CFG] project-custom.default_layers.{0} must be array" -f $layerName)
+      $fail++
+    }
+  }
+}
+
+if ($null -ne $oneclickDistributionPolicy -and $null -ne $oneclickDistributionPolicy.project_custom_files) {
+  $pcfPolicy = $oneclickDistributionPolicy.project_custom_files
+  if ($null -ne $pcfPolicy.PSObject.Properties['active_layers']) {
+    [void](Validate-CustomLayerList -Value $pcfPolicy.active_layers -MessagePrefix "[CFG] oneclick-distribution-policy.project_custom_files.active_layers")
+  }
+  foreach ($entry in @($pcfPolicy.repos)) {
+    if ($null -eq $entry) {
+      Write-Host "[CFG] oneclick-distribution-policy.project_custom_files.repos entry is null"
+      $fail++
+      continue
+    }
+    if ($null -eq $entry.PSObject.Properties['active_layers']) { continue }
+    [void](Validate-CustomLayerList -Value $entry.active_layers -MessagePrefix "[CFG] oneclick-distribution-policy.project_custom_files.repos.active_layers")
+  }
+}
+
 $seenCustomRepo = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::OrdinalIgnoreCase)
 foreach ($entry in $customRepos) {
   if ($null -eq $entry) {
@@ -708,6 +774,93 @@ if (Test-Path -LiteralPath $codexRuntimePolicyPath -PathType Leaf) {
 
         [void](Validate-RequiredBooleanProperty -Object $entry -PropertyName "enabled" -Message "[CFG] codex-runtime-policy.repos.enabled must be boolean")
       }
+    }
+  }
+}
+
+[void](Validate-RequiredNonEmptyStringProperty -Object $practiceStackPolicy -PropertyName "schema_version" -MissingMessage "[CFG] practice-stack-policy.schema_version missing")
+if ($null -eq $practiceStackPolicy.PSObject.Properties['default'] -or $null -eq $practiceStackPolicy.default) {
+  Write-Host "[CFG] practice-stack-policy.default missing"
+  $fail++
+}
+if ($null -eq $practiceStackPolicy.PSObject.Properties['repos'] -or $practiceStackPolicy.repos -isnot [System.Array]) {
+  Write-Host "[CFG] practice-stack-policy.repos must be array"
+  $fail++
+}
+
+$practiceKeys = @(
+  "sdd",
+  "tdd",
+  "atdd_bdd",
+  "contract_testing",
+  "harness_engineering",
+  "policy_as_code",
+  "observability",
+  "progressive_delivery",
+  "hooks_ci_gates"
+)
+$practiceLevels = @("required", "recommended", "optional")
+if ($null -ne $practiceStackPolicy.default) {
+  foreach ($k in $practiceKeys) {
+    if ($null -eq $practiceStackPolicy.default.PSObject.Properties[$k]) {
+      Write-Host ("[CFG] practice-stack-policy.default.{0} missing" -f $k)
+      $fail++
+      continue
+    }
+    $level = [string]$practiceStackPolicy.default.$k
+    if ($practiceLevels -notcontains $level) {
+      Write-Host ("[CFG] practice-stack-policy.default.{0} invalid: expected required/recommended/optional" -f $k)
+      $fail++
+    }
+  }
+}
+
+$seenPracticeRepo = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::OrdinalIgnoreCase)
+foreach ($entry in @($practiceStackPolicy.repos)) {
+  if ($null -eq $entry) {
+    Write-Host "[CFG] practice-stack-policy.repos contains null entry"
+    $fail++
+    continue
+  }
+
+  $rpName = [string]$entry.repoName
+  if ([string]::IsNullOrWhiteSpace($rpName)) {
+    Write-Host "[CFG] practice-stack-policy.repos.repoName missing"
+    $fail++
+    continue
+  }
+  if (-not $seenPracticeRepo.Add($rpName)) {
+    Write-Host ("[CFG] practice-stack-policy duplicate repoName: {0}" -f $rpName)
+    $fail++
+  }
+
+  $repoNameMatched = $false
+  foreach ($repoNorm in $seenRepo) {
+    if ((Split-Path -Leaf $repoNorm).Equals($rpName, [System.StringComparison]::OrdinalIgnoreCase)) {
+      $repoNameMatched = $true
+      break
+    }
+  }
+  if (-not $repoNameMatched) {
+    Write-Host ("[CFG] practice-stack-policy repoName not in repositories.json: {0}" -f $rpName)
+    $fail++
+  }
+
+  if ($null -eq $entry.PSObject.Properties['practices'] -or $null -eq $entry.practices) {
+    Write-Host ("[CFG] practice-stack-policy.repos.practices missing: repoName={0}" -f $rpName)
+    $fail++
+    continue
+  }
+
+  foreach ($k in $practiceKeys) {
+    if ($null -eq $entry.practices.PSObject.Properties[$k]) {
+      Write-Host ("[CFG] practice-stack-policy.repos.practices.{0} missing: repoName={1}" -f $k, $rpName)
+      $fail++
+      continue
+    }
+    if ($entry.practices.$k -isnot [bool]) {
+      Write-Host ("[CFG] practice-stack-policy.repos.practices.{0} must be boolean: repoName={1}" -f $k, $rpName)
+      $fail++
     }
   }
 }

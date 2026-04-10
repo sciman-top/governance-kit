@@ -1,0 +1,13 @@
+{
+  "mode": "warn",
+  "rules": [
+    {
+      "path": "scripts/install-full-stack.ps1",
+      "max_lines": 500
+    },
+    {
+      "path": "scripts/install.ps1",
+      "max_lines": 420
+    }
+  ]
+}
