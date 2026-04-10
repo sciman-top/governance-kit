@@ -159,6 +159,11 @@
 - 周检入口：`scripts/governance/run-recurring-review.ps1`，内置更新触发检查并输出告警计数。
 - 月检入口：`scripts/governance/run-monthly-policy-review.ps1`，将更新触发告警写入月报。
 - 建议告警优先级：`cli_version_drift -> waiver_expired_unrecovered -> rollout_observe_overdue -> metrics_snapshot_stale -> platform_na_expired`。
+### C.16 子代理并行触发矩阵（本仓）
+- 策略源：`config/subagent-trigger-policy.json`；分发落点：目标仓 `.governance/subagent-trigger-policy.json`。
+- 判定模型：`hard_guard + score`；先执行硬约束，再依据评分阈值输出并行建议与 `max_parallel_agents`。
+- 证据字段：`spawn_parallel_subagents`、`max_parallel_agents`、`decision_score`、`reason_codes`、`hard_guard_hits`、`signals`、`policy_path`。
+- 执行边界：`scripts/governance/run-target-autopilot.ps1` 仅输出建议与 JSON 证据；并行子代理创建由外层 AI 会话执行。
 ## D. 维护校验清单（项目级）
 - 仅落地本仓事实，不复述全局规则正文。
 - 与全局职责互补，不重叠、不缺失。

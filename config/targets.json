@@ -124,11 +124,11 @@
         "target":  "E:/CODE/ClassroomToolkit/scripts/governance/run-target-autopilot.ps1"
     },
     {
-        "source":  "source/project/_common/custom/scripts/governance/run-project-governance-cycle.ps1",
+        "source":  "source/project/skills-manager/custom/scripts/governance/run-project-governance-cycle.ps1",
         "target":  "E:/CODE/skills-manager/scripts/governance/run-project-governance-cycle.ps1"
     },
     {
-        "source":  "source/project/_common/custom/scripts/governance/run-target-autopilot.ps1",
+        "source":  "source/project/skills-manager/custom/scripts/governance/run-target-autopilot.ps1",
         "target":  "E:/CODE/skills-manager/scripts/governance/run-target-autopilot.ps1"
     },
     {
@@ -164,15 +164,15 @@
         "target":  "E:/CODE/governance-kit/tools/browser-session/README.md"
     },
     {
-        "source":  "source/project/_common/custom/tools/browser-session/start-browser-session.ps1",
+        "source":  "source/project/skills-manager/custom/tools/browser-session/start-browser-session.ps1",
         "target":  "E:/CODE/skills-manager/tools/browser-session/start-browser-session.ps1"
     },
     {
-        "source":  "source/project/_common/custom/tools/browser-session/start-browser-session.bat",
+        "source":  "source/project/skills-manager/custom/tools/browser-session/start-browser-session.bat",
         "target":  "E:/CODE/skills-manager/tools/browser-session/start-browser-session.bat"
     },
     {
-        "source":  "source/project/_common/custom/tools/browser-session/README.md",
+        "source":  "source/project/skills-manager/custom/tools/browser-session/README.md",
         "target":  "E:/CODE/skills-manager/tools/browser-session/README.md"
     },
     {
@@ -236,7 +236,7 @@
         "target":  "E:/CODE/ClassroomToolkit/scripts/governance/check-tracked-files.ps1"
     },
     {
-        "source":  "source/project/_common/custom/scripts/governance/check-tracked-files.ps1",
+        "source":  "source/project/skills-manager/custom/scripts/governance/check-tracked-files.ps1",
         "target":  "E:/CODE/skills-manager/scripts/governance/check-tracked-files.ps1"
     },
     {
@@ -248,7 +248,7 @@
         "target":  "E:/CODE/ClassroomToolkit/.governance/tracked-files-policy.json"
     },
     {
-        "source":  "source/project/_common/custom/.governance/tracked-files-policy.json",
+        "source":  "source/project/skills-manager/custom/.governance/tracked-files-policy.json",
         "target":  "E:/CODE/skills-manager/.governance/tracked-files-policy.json"
     },
     {
@@ -268,15 +268,15 @@
         "target":  "E:/CODE/ClassroomToolkit/scripts/governance/run-monthly-policy-review.ps1"
     },
     {
-        "source":  "source/project/_common/custom/scripts/governance/check-update-triggers.ps1",
+        "source":  "source/project/skills-manager/custom/scripts/governance/check-update-triggers.ps1",
         "target":  "E:/CODE/skills-manager/scripts/governance/check-update-triggers.ps1"
     },
     {
-        "source":  "source/project/_common/custom/scripts/governance/run-recurring-review.ps1",
+        "source":  "source/project/skills-manager/custom/scripts/governance/run-recurring-review.ps1",
         "target":  "E:/CODE/skills-manager/scripts/governance/run-recurring-review.ps1"
     },
     {
-        "source":  "source/project/_common/custom/scripts/governance/run-monthly-policy-review.ps1",
+        "source":  "source/project/skills-manager/custom/scripts/governance/run-monthly-policy-review.ps1",
         "target":  "E:/CODE/skills-manager/scripts/governance/run-monthly-policy-review.ps1"
     },
     {
@@ -324,27 +324,27 @@
         "target":  "E:/CODE/skills-manager/docs/PLANS.md"
     },
     {
-        "source":  "source/project/_common/custom/.agents/skills/governance-refactor-safe/SKILL.md",
+        "source":  "source/project/skills-manager/custom/.agents/skills/governance-refactor-safe/SKILL.md",
         "target":  "E:/CODE/skills-manager/.agents/skills/governance-refactor-safe/SKILL.md"
     },
     {
-        "source":  "source/project/_common/custom/.agents/skills/governance-reuse-analyst/SKILL.md",
+        "source":  "source/project/skills-manager/custom/.agents/skills/governance-reuse-analyst/SKILL.md",
         "target":  "E:/CODE/skills-manager/.agents/skills/governance-reuse-analyst/SKILL.md"
     },
     {
-        "source":  "source/project/_common/custom/.agents/plugins/marketplace.json",
+        "source":  "source/project/skills-manager/custom/.agents/plugins/marketplace.json",
         "target":  "E:/CODE/skills-manager/.agents/plugins/marketplace.json"
     },
     {
-        "source":  "source/project/_common/custom/plugins/governance-kit-internal/.codex-plugin/plugin.json",
+        "source":  "source/project/skills-manager/custom/plugins/governance-kit-internal/.codex-plugin/plugin.json",
         "target":  "E:/CODE/skills-manager/plugins/governance-kit-internal/.codex-plugin/plugin.json"
     },
     {
-        "source":  "source/project/_common/custom/plugins/governance-kit-internal/skills/governance-refactor-safe/SKILL.md",
+        "source":  "source/project/skills-manager/custom/plugins/governance-kit-internal/skills/governance-refactor-safe/SKILL.md",
         "target":  "E:/CODE/skills-manager/plugins/governance-kit-internal/skills/governance-refactor-safe/SKILL.md"
     },
     {
-        "source":  "source/project/_common/custom/plugins/governance-kit-internal/skills/governance-reuse-analyst/SKILL.md",
+        "source":  "source/project/skills-manager/custom/plugins/governance-kit-internal/skills/governance-reuse-analyst/SKILL.md",
         "target":  "E:/CODE/skills-manager/plugins/governance-kit-internal/skills/governance-reuse-analyst/SKILL.md"
     },
     {
@@ -408,19 +408,31 @@
         "target":  "E:/CODE/ClassroomToolkit/.codex/agents/reviewer.toml"
     },
     {
-        "source":  "source/project/_common/custom/.codex/config.toml",
+        "source":  "source/project/skills-manager/custom/.codex/config.toml",
         "target":  "E:/CODE/skills-manager/.codex/config.toml"
     },
     {
-        "source":  "source/project/_common/custom/.codex/agents/planner.toml",
+        "source":  "source/project/skills-manager/custom/.codex/agents/planner.toml",
         "target":  "E:/CODE/skills-manager/.codex/agents/planner.toml"
     },
     {
-        "source":  "source/project/_common/custom/.codex/agents/reuse-analyst.toml",
+        "source":  "source/project/skills-manager/custom/.codex/agents/reuse-analyst.toml",
         "target":  "E:/CODE/skills-manager/.codex/agents/reuse-analyst.toml"
     },
     {
-        "source":  "source/project/_common/custom/.codex/agents/reviewer.toml",
+        "source":  "source/project/skills-manager/custom/.codex/agents/reviewer.toml",
         "target":  "E:/CODE/skills-manager/.codex/agents/reviewer.toml"
+    },
+    {
+        "source":  "source/project/_common/custom/.governance/subagent-trigger-policy.json",
+        "target":  "E:/CODE/ClassroomToolkit/.governance/subagent-trigger-policy.json"
+    },
+    {
+        "source":  "source/project/_common/custom/.governance/subagent-trigger-policy.json",
+        "target":  "E:/CODE/skills-manager/.governance/subagent-trigger-policy.json"
+    },
+    {
+        "source":  "source/project/_common/custom/.governance/subagent-trigger-policy.json",
+        "target":  "E:/CODE/governance-kit/.governance/subagent-trigger-policy.json"
     }
 ]

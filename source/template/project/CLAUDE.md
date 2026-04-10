@@ -68,6 +68,11 @@
 - 发现治理链路（规则/脚本/配置）问题时，先修 governance-kit source of truth，再执行目标仓命令。
 - 修复后按固定顺序复验：`build -> test -> contract/invariant -> hotspot`，通过后再继续分发、提交或推送。
 - 禁止带着已知治理问题继续执行发布动作。
+### C.6 子代理并行触发矩阵（默认）
+- 策略文件：`.governance/subagent-trigger-policy.json`（缺失时回退到 governance-kit 内置默认策略）。
+- 判定模型：`hard_guard + score`；先过硬约束（显式并行意图/可证明写集互斥/非高风险/非关键路径阻塞），再按分数阈值决定 `spawn`。
+- 证据字段最少包含：`spawn_parallel_subagents`、`max_parallel_agents`、`decision_score`、`reason_codes`、`hard_guard_hits`、`policy_path`。
+- 执行边界：仓内脚本只输出“并行建议与证据”；真正 `spawn` 仍由外层 AI 会话执行，不在脚本中调用模型 CLI 套娃。
 ## D. 维护清单
 - 保持 `1 / A / B / C / D` 结构。
 - A/C/D 三文件同构，仅 B 允许平台差异。

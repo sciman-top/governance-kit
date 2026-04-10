@@ -16,6 +16,13 @@
 发布后验证(指标/阈值/窗口)=
 数据变更治理(迁移/回填/回滚)=
 回滚动作=
+subagent_decision_mode=
+spawn_parallel_subagents=
+max_parallel_agents=
+decision_score=
+reason_codes=
+hard_guard_hits=
+policy_path=
 
 learning_points_3=
 reusable_checklist=

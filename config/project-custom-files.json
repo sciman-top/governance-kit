@@ -7,6 +7,7 @@
     "scripts/governance/run-recurring-review.ps1",
     "scripts/governance/run-monthly-policy-review.ps1",
     ".governance/tracked-files-policy.json",
+    ".governance/subagent-trigger-policy.json",
     "tools/browser-session/start-browser-session.ps1",
     "tools/browser-session/start-browser-session.bat",
     "tools/browser-session/README.md",
