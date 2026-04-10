@@ -434,5 +434,77 @@
     {
         "source":  "source/project/_common/custom/.governance/subagent-trigger-policy.json",
         "target":  "E:/CODE/governance-kit/.governance/subagent-trigger-policy.json"
+    },
+    {
+        "source":  "source/project/_common/custom/.governance/proactive-suggestion-policy.json",
+        "target":  "E:/CODE/ClassroomToolkit/.governance/proactive-suggestion-policy.json"
+    },
+    {
+        "source":  "source/project/_common/custom/.governance/proactive-suggestion-policy.json",
+        "target":  "E:/CODE/skills-manager/.governance/proactive-suggestion-policy.json"
+    },
+    {
+        "source":  "source/project/_common/custom/.governance/proactive-suggestion-policy.json",
+        "target":  "E:/CODE/governance-kit/.governance/proactive-suggestion-policy.json"
+    },
+    {
+        "source":  "source/project/_common/custom/.governance/token-saver-policy.json",
+        "target":  "E:/CODE/ClassroomToolkit/.governance/token-saver-policy.json"
+    },
+    {
+        "source":  "source/project/_common/custom/.governance/templates/task-snapshot-minimal.md",
+        "target":  "E:/CODE/ClassroomToolkit/.governance/templates/task-snapshot-minimal.md"
+    },
+    {
+        "source":  "source/project/_common/custom/.governance/templates/lite-response.md",
+        "target":  "E:/CODE/ClassroomToolkit/.governance/templates/lite-response.md"
+    },
+    {
+        "source":  "source/project/_common/custom/.governance/templates/clarification-trigger.md",
+        "target":  "E:/CODE/ClassroomToolkit/.governance/templates/clarification-trigger.md"
+    },
+    {
+        "source":  "source/project/_common/custom/.governance/templates/evidence-minimal.md",
+        "target":  "E:/CODE/ClassroomToolkit/.governance/templates/evidence-minimal.md"
+    },
+    {
+        "source":  "source/project/_common/custom/.governance/token-saver-policy.json",
+        "target":  "E:/CODE/skills-manager/.governance/token-saver-policy.json"
+    },
+    {
+        "source":  "source/project/_common/custom/.governance/templates/task-snapshot-minimal.md",
+        "target":  "E:/CODE/skills-manager/.governance/templates/task-snapshot-minimal.md"
+    },
+    {
+        "source":  "source/project/_common/custom/.governance/templates/lite-response.md",
+        "target":  "E:/CODE/skills-manager/.governance/templates/lite-response.md"
+    },
+    {
+        "source":  "source/project/_common/custom/.governance/templates/clarification-trigger.md",
+        "target":  "E:/CODE/skills-manager/.governance/templates/clarification-trigger.md"
+    },
+    {
+        "source":  "source/project/_common/custom/.governance/templates/evidence-minimal.md",
+        "target":  "E:/CODE/skills-manager/.governance/templates/evidence-minimal.md"
+    },
+    {
+        "source":  "source/project/_common/custom/.governance/token-saver-policy.json",
+        "target":  "E:/CODE/governance-kit/.governance/token-saver-policy.json"
+    },
+    {
+        "source":  "source/project/_common/custom/.governance/templates/task-snapshot-minimal.md",
+        "target":  "E:/CODE/governance-kit/.governance/templates/task-snapshot-minimal.md"
+    },
+    {
+        "source":  "source/project/_common/custom/.governance/templates/lite-response.md",
+        "target":  "E:/CODE/governance-kit/.governance/templates/lite-response.md"
+    },
+    {
+        "source":  "source/project/_common/custom/.governance/templates/clarification-trigger.md",
+        "target":  "E:/CODE/governance-kit/.governance/templates/clarification-trigger.md"
+    },
+    {
+        "source":  "source/project/_common/custom/.governance/templates/evidence-minimal.md",
+        "target":  "E:/CODE/governance-kit/.governance/templates/evidence-minimal.md"
     }
 ]

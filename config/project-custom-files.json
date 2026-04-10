@@ -17,7 +17,13 @@
     ".agents/plugins/marketplace.json",
     "plugins/governance-kit-internal/.codex-plugin/plugin.json",
     "plugins/governance-kit-internal/skills/governance-refactor-safe/SKILL.md",
-    "plugins/governance-kit-internal/skills/governance-reuse-analyst/SKILL.md"
+    "plugins/governance-kit-internal/skills/governance-reuse-analyst/SKILL.md",
+    ".governance/proactive-suggestion-policy.json",
+    ".governance/token-saver-policy.json",
+    ".governance/templates/task-snapshot-minimal.md",
+    ".governance/templates/lite-response.md",
+    ".governance/templates/clarification-trigger.md",
+    ".governance/templates/evidence-minimal.md"
   ],
   "repos": [
     {
