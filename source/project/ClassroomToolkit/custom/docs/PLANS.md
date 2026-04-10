@@ -16,7 +16,7 @@
   - 跨技术栈迁移
 
 ## Current phase
-- Phase 0: Baseline Evidence & Risk Inventory
+- Phase 5 baseline complete: correctness, dedup, maintainability guardrails, performance baseline, and governance checks are in place; next batch targets large-file decomposition
 
 ## Steps
 1. 先完成基线与风险台账（证据化）

@@ -54,6 +54,7 @@
     {
       "repoName": "skills-manager",
       "files": [
+        "docs/PLANS.md",
         ".governance/release-profile.json",
         ".github/workflows/quality-gates.yml",
         "scripts/install-githooks.ps1",
