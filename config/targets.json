@@ -530,5 +530,29 @@
     {
         "source":  "source/project/_common/custom/.governance/practice-stack-policy.json",
         "target":  "E:/CODE/governance-kit/.governance/practice-stack-policy.json"
+    },
+    {
+        "source":  "source/project/_common/custom/scripts/governance/check-external-baselines.ps1",
+        "target":  "E:/CODE/ClassroomToolkit/scripts/governance/check-external-baselines.ps1"
+    },
+    {
+        "source":  "source/project/_common/custom/.governance/external-baseline-policy.json",
+        "target":  "E:/CODE/ClassroomToolkit/.governance/external-baseline-policy.json"
+    },
+    {
+        "source":  "source/project/_common/custom/scripts/governance/check-external-baselines.ps1",
+        "target":  "E:/CODE/skills-manager/scripts/governance/check-external-baselines.ps1"
+    },
+    {
+        "source":  "source/project/_common/custom/.governance/external-baseline-policy.json",
+        "target":  "E:/CODE/skills-manager/.governance/external-baseline-policy.json"
+    },
+    {
+        "source":  "source/project/_common/custom/scripts/governance/check-external-baselines.ps1",
+        "target":  "E:/CODE/governance-kit/scripts/governance/check-external-baselines.ps1"
+    },
+    {
+        "source":  "source/project/_common/custom/.governance/external-baseline-policy.json",
+        "target":  "E:/CODE/governance-kit/.governance/external-baseline-policy.json"
     }
 ]

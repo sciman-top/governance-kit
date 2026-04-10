@@ -1,0 +1,29 @@
+规则ID=practice-stack-advisory-extension
+规则版本=1.0
+兼容窗口(观察期/强制期)=observe
+影响模块=config, source/project/_common/custom, scripts/governance, docs/governance
+当前落点=E:/CODE/governance-kit/config/practice-stack-policy.json
+目标归宿=将 ssdf/slsa/sbom/scorecard 纳入 practice-stack，先 advisory 后 enforce
+迁移批次=2026-04-11 batch-2
+风险等级=low
+是否豁免(Waiver)=no
+豁免责任人=
+豁免到期=
+豁免回收计划=
+执行命令=powershell -File scripts/install.ps1 -Mode safe; powershell -File scripts/governance/check-practice-stack.ps1 -RepoRoot . -AsJson; powershell -File scripts/doctor.ps1 -AsJson
+验证证据=practice-stack.status=ADVISORY; alert_count=12; average_score=80; 三仓均缺失 recommended: ssdf/slsa/sbom/scorecard；doctor.health=GREEN
+供应链安全扫描=gate_na（本次为策略/脚本文档调整，未引入构建产物）
+发布后验证(指标/阈值/窗口)=观察窗口内跟踪 practice_stack_ssdf_enabled_rate/practice_stack_slsa_enabled_rate/practice_stack_sbom_enabled_rate/practice_stack_scorecard_enabled_rate
+数据变更治理(迁移/回填/回滚)=N/A（无数据结构迁移）
+回滚动作=回退以下文件并重跑四段门禁：config/practice-stack-policy.json、source/project/_common/custom/.governance/practice-stack-policy.json、source/project/_common/custom/scripts/governance/check-practice-stack.ps1、docs/governance/metrics-template.md
+subagent_decision_mode=not_applicable
+spawn_parallel_subagents=false
+max_parallel_agents=0
+decision_score=0
+reason_codes=policy_extension_advisory
+hard_guard_hits=none
+policy_path=config/subagent-trigger-policy.json
+
+learning_points_3=1) source-of-truth 在 source/project/_common/custom，先改 source 再 install 才能稳定生效;2) practice-stack 脚本需兼容 Hashtable 与 PSCustomObject 属性读取;3) advisory 模式可暴露差距且不阻断门禁
+reusable_checklist=1) 加字段;2) 同步 source 与分发副本;3) install safe;4) check-practice-stack AsJson 验证 ADVISORY;5) doctor 保持 GREEN
+open_questions=1) 第一个升级到 required 的外部基线项选哪个（建议 sbom）;2) scorecard 扫描入口放 nightly 还是 monthly;3) SSDF 映射文档是否拆为独立 checklist

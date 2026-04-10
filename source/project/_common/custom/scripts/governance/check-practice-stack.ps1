@@ -34,8 +34,45 @@ $practiceOrder = @(
   "policy_as_code",
   "observability",
   "progressive_delivery",
-  "hooks_ci_gates"
+  "hooks_ci_gates",
+  "ssdf",
+  "slsa",
+  "sbom",
+  "scorecard"
 )
+
+function Test-PropertyExists {
+  param(
+    [object]$Obj,
+    [string]$Name
+  )
+
+  if ($null -eq $Obj -or [string]::IsNullOrWhiteSpace($Name)) {
+    return $false
+  }
+  if ($Obj -is [System.Collections.IDictionary]) {
+    return $Obj.Contains($Name)
+  }
+  if ($null -ne $Obj.PSObject -and $null -ne $Obj.PSObject.Properties[$Name]) {
+    return $true
+  }
+  return $false
+}
+
+function Get-PropertyValue {
+  param(
+    [object]$Obj,
+    [string]$Name
+  )
+
+  if (-not (Test-PropertyExists -Obj $Obj -Name $Name)) {
+    return $null
+  }
+  if ($Obj -is [System.Collections.IDictionary]) {
+    return $Obj[$Name]
+  }
+  return $Obj.$Name
+}
 
 function Get-LevelWeight {
   param([string]$Level)
@@ -71,7 +108,7 @@ foreach ($repoItem in @($repos)) {
   if ([string]::IsNullOrWhiteSpace($repoText)) { continue }
   $repoName = Split-Path -Leaf $repoText
   $repoPolicy = Get-RepoPracticeEntry -RepoEntries $repoEntries -RepoName $repoName
-  $repoPractices = if ($null -ne $repoPolicy -and $null -ne $repoPolicy.PSObject.Properties['practices']) { $repoPolicy.practices } else { $null }
+  $repoPractices = Get-PropertyValue -Obj $repoPolicy -Name "practices"
 
   $totalWeight = 0
   $gotWeight = 0
@@ -80,16 +117,16 @@ foreach ($repoItem in @($repos)) {
 
   foreach ($practice in $practiceOrder) {
     $defaultLevel = "optional"
-    if ($null -ne $policy.default -and $null -ne $policy.default.PSObject.Properties[$practice]) {
-      $defaultLevel = [string]$policy.default.$practice
+    if (Test-PropertyExists -Obj $policy.default -Name $practice) {
+      $defaultLevel = [string](Get-PropertyValue -Obj $policy.default -Name $practice)
     }
 
     $weight = Get-LevelWeight -Level $defaultLevel
     $totalWeight += $weight
 
     $enabled = $true
-    if ($null -ne $repoPractices -and $null -ne $repoPractices.PSObject.Properties[$practice]) {
-      $raw = $repoPractices.$practice
+    if (Test-PropertyExists -Obj $repoPractices -Name $practice) {
+      $raw = Get-PropertyValue -Obj $repoPractices -Name $practice
       if ($raw -is [bool]) {
         $enabled = [bool]$raw
       } else {

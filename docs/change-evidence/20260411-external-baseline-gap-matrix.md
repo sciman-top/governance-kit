@@ -1,0 +1,29 @@
+规则ID=external-baseline-gap-matrix
+规则版本=1.0-draft
+兼容窗口(观察期/强制期)=observe -> enforce（试点）
+影响模块=docs/governance, docs/change-evidence
+当前落点=E:/CODE/governance-kit/docs/governance/external-baseline-gap-matrix.md
+目标归宿=将外部基线映射为本仓与目标仓可执行迁移清单
+迁移批次=2026-04-11 batch-1
+风险等级=low
+是否豁免(Waiver)=no
+豁免责任人=
+豁免到期=
+豁免回收计划=
+执行命令=Get-ChildItem docs/governance; rg --files docs/governance; powershell -File scripts/governance/check-practice-stack.ps1 -RepoRoot . -AsJson; powershell -File scripts/doctor.ps1 -AsJson
+验证证据=practice-stack:PASS(avg=100,repo=3); doctor:GREEN; verify-targets:133/133 OK（来自 doctor 聚合输出）
+供应链安全扫描=N/A（本次仅文档落地，不涉及构建产物）
+发布后验证(指标/阈值/窗口)=N/A（文档变更）
+数据变更治理(迁移/回填/回滚)=N/A（无结构化数据变更）
+回滚动作=删除新增文档并恢复到变更前提交
+subagent_decision_mode=not_applicable
+spawn_parallel_subagents=false
+max_parallel_agents=0
+decision_score=0
+reason_codes=doc_only
+hard_guard_hits=none
+policy_path=config/subagent-trigger-policy.json
+
+learning_points_3=1) 现有 practice-stack 治理已具备扩展基线承载能力;2) observe 阶段应优先降低误报后再 enforce;3) 多仓一致分发是推进基线升级的核心杠杆
+reusable_checklist=1) 定义外部基线->本仓动作映射;2) 先 advisory 后 enforce;3) 保留 gate_na 到期字段并定期回收
+open_questions=1) Scorecard 扫描选 nightly 还是 per-PR;2) SBOM 统一选 CycloneDX 还是 SPDX 先行;3) enforce 试点优先仓是否固定为 governance-kit

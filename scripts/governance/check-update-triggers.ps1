@@ -57,10 +57,13 @@ function Add-Alert {
 
 function Normalize-StringArray {
   param([object]$Value)
-  if ($null -eq $Value -or $Value -isnot [System.Array]) {
+  if ($null -eq $Value) {
     return ,([object[]]@())
   }
-  return ,([object[]]@($Value | ForEach-Object { [string]$_ } | Where-Object { -not [string]::IsNullOrWhiteSpace($_) } | Sort-Object -Unique))
+  if ($Value -is [System.Array]) {
+    return ,([object[]]@($Value | ForEach-Object { [string]$_ } | Where-Object { -not [string]::IsNullOrWhiteSpace($_) } | Sort-Object -Unique))
+  }
+  return ,([object[]]@([string]$Value))
 }
 
 function Test-StringArraySetEqual {

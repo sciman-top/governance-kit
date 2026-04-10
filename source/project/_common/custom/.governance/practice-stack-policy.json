@@ -9,6 +9,10 @@
     "policy_as_code": "required",
     "observability": "required",
     "progressive_delivery": "recommended",
-    "hooks_ci_gates": "required"
+    "hooks_ci_gates": "required",
+    "ssdf": "recommended",
+    "slsa": "recommended",
+    "sbom": "recommended",
+    "scorecard": "recommended"
   }
 }

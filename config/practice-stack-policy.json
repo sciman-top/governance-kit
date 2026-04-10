@@ -9,7 +9,11 @@
     "policy_as_code": "required",
     "observability": "required",
     "progressive_delivery": "recommended",
-    "hooks_ci_gates": "required"
+    "hooks_ci_gates": "required",
+    "ssdf": "recommended",
+    "slsa": "recommended",
+    "sbom": "recommended",
+    "scorecard": "recommended"
   },
   "repos": [
     {
@@ -23,7 +27,11 @@
         "policy_as_code": true,
         "observability": true,
         "progressive_delivery": true,
-        "hooks_ci_gates": true
+        "hooks_ci_gates": true,
+        "ssdf": false,
+        "slsa": false,
+        "sbom": false,
+        "scorecard": false
       }
     },
     {
@@ -37,7 +45,11 @@
         "policy_as_code": true,
         "observability": true,
         "progressive_delivery": true,
-        "hooks_ci_gates": true
+        "hooks_ci_gates": true,
+        "ssdf": false,
+        "slsa": false,
+        "sbom": false,
+        "scorecard": false
       }
     },
     {
@@ -51,7 +63,11 @@
         "policy_as_code": true,
         "observability": true,
         "progressive_delivery": true,
-        "hooks_ci_gates": true
+        "hooks_ci_gates": true,
+        "ssdf": false,
+        "slsa": false,
+        "sbom": false,
+        "scorecard": false
       }
     }
   ]

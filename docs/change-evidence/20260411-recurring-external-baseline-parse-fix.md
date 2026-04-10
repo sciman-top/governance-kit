@@ -1,0 +1,29 @@
+规则ID=recurring-external-baseline-parse-fix
+规则版本=1.0
+兼容窗口(观察期/强制期)=observe
+影响模块=scripts/governance, source/project/_common/custom/scripts/governance, source/project/*/custom/scripts/governance
+当前落点=E:/CODE/governance-kit/scripts/governance/run-recurring-review.ps1
+目标归宿=external baseline 字段在 recurring/monthly 中稳定输出，不因文本模式而 PARSE_ERROR
+迁移批次=2026-04-11 batch-3
+风险等级=low
+是否豁免(Waiver)=no
+豁免责任人=
+豁免到期=
+豁免回收计划=
+执行命令=powershell -File scripts/install.ps1 -Mode safe; powershell -File scripts/doctor.ps1 -AsJson; powershell -File scripts/governance/run-recurring-review.ps1 -AsJson; powershell -File scripts/governance/run-monthly-policy-review.ps1 -AsJson
+验证证据=doctor.health=GREEN; recurring.summary.external_baseline_status=ADVISORY; recurring.summary.external_baseline_advisory_count=4; monthly.status=ALERT(remaining alert: update triggers alert count=2, detail: cli_version_drift + release_distribution_policy_drift)
+供应链安全扫描=gate_na（治理脚本解析增强，未引入新依赖）
+发布后验证(指标/阈值/窗口)=连续 2 个周检周期 external_baseline_status 不再出现 PARSE_ERROR
+数据变更治理(迁移/回填/回滚)=N/A（无数据结构迁移）
+回滚动作=回退 run-recurring-review.ps1 相关改动并重跑四段门禁
+subagent_decision_mode=not_applicable
+spawn_parallel_subagents=false
+max_parallel_agents=0
+decision_score=0
+reason_codes=parse_fallback_hardening
+hard_guard_hits=none
+policy_path=config/subagent-trigger-policy.json
+
+learning_points_3=1) 子脚本参数传递在不同调用链下可能退化为文本模式；2) recurring 聚合器应对 JSON 与键值文本双栈兼容；3) 修复后必须 install 回灌到目标仓避免 verify-targets 红灯
+reusable_checklist=1) 先复现实测输出;2) JSON优先解析;3) 文本键值回退;4) 同步 source/targets;5) 复跑 build->test->contract/invariant->hotspot
+open_questions=1) 是否将 check-update-triggers 失败分层为 WARN/FAIL 两档以减少 monthly 噪声

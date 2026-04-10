@@ -1,0 +1,29 @@
+规则ID=update-trigger-array-normalization-fix
+规则版本=1.0
+兼容窗口(观察期/强制期)=observe
+影响模块=scripts/governance/check-update-triggers.ps1, scripts/governance/run-recurring-review.ps1, source/project/*/custom/scripts/governance
+当前落点=E:/CODE/governance-kit/scripts/governance/check-update-triggers.ps1
+目标归宿=消除 release_distribution_policy_drift 的单元素数组误报；保留真实 cli_version_drift 告警
+迁移批次=2026-04-11 batch-4
+风险等级=low
+是否豁免(Waiver)=no
+豁免责任人=
+豁免到期=
+豁免回收计划=
+执行命令=powershell -File scripts/suggest-release-profile.ps1 -RepoPath <repo> -OutputPath source/project/<repo>/custom/.governance/release-profile.json -WriteFile -AsJson; powershell -File scripts/install.ps1 -Mode safe; powershell -File scripts/governance/check-update-triggers.ps1 -AsJson; powershell -File scripts/governance/run-recurring-review.ps1 -AsJson
+验证证据=check-update-triggers.alert_count: 2 -> 1; release_distribution_policy_drift_count: 2 -> 0; recurring.alerts=update triggers alert count=1; remaining only cli_version_drift
+供应链安全扫描=gate_na（脚本逻辑修正，无新增依赖）
+发布后验证(指标/阈值/窗口)=连续两个周期 release_distribution_policy_drift_count 维持 0
+数据变更治理(迁移/回填/回滚)=N/A（无结构化数据迁移）
+回滚动作=回退 check-update-triggers/release-profile 回写改动并重跑四段门禁
+subagent_decision_mode=not_applicable
+spawn_parallel_subagents=false
+max_parallel_agents=0
+decision_score=0
+reason_codes=false_positive_elimination
+hard_guard_hits=none
+policy_path=config/subagent-trigger-policy.json
+
+learning_points_3=1) 单元素 JSON 数组在 PowerShell 里可能退化为标量；2) 触发脚本需做标量/数组统一归一化；3) update-trigger 告警应区分“代码可修复”与“环境可修复”
+reusable_checklist=1) 复现告警;2) 确认是误报还是真实漂移;3) 修归一化函数;4) install 分发;5) recurring/monthly复验
+open_questions=1) 是否将 cli_version_drift 下沉为 platform_na 并允许到期回收而非阻断 monthly
