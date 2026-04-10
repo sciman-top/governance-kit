@@ -176,7 +176,7 @@ function Write-RepoAutomationPolicySummary {
     [string]$Prefix = "[POLICY]"
   )
 
-  Write-Host ("{0} allow_project_rules={1} allow_rule_optimization={2} allow_local_optimize_without_backflow={3} max_autonomous_iterations={4} max_repeated_failure_per_step={5} stop_on_irreversible_risk={6} allow_auto_fix={7} forbid_breaking_contract={8}" -f `
+  Write-Host ("{0} allow_project_rules={1} allow_rule_optimization={2} allow_local_optimize_without_backflow={3} max_autonomous_iterations={4} max_repeated_failure_per_step={5} stop_on_irreversible_risk={6} allow_auto_fix={7} forbid_breaking_contract={8} enable_no_progress_guard={9} max_no_progress_iterations={10} token_budget_mode={11}" -f `
     $Prefix,
     $Policy.allow_project_rules,
     $Policy.allow_rule_optimization,
@@ -185,7 +185,10 @@ function Write-RepoAutomationPolicySummary {
     $Policy.max_repeated_failure_per_step,
     $Policy.stop_on_irreversible_risk,
     $Policy.allow_auto_fix,
-    $Policy.forbid_breaking_contract)
+    $Policy.forbid_breaking_contract,
+    $Policy.enable_no_progress_guard,
+    $Policy.max_no_progress_iterations,
+    $Policy.token_budget_mode)
 }
 
 function Get-FileSha256([string]$Path) {
@@ -236,6 +239,64 @@ function Get-FileSha256([string]$Path) {
     if ($null -ne $sha256) {
       $sha256.Dispose()
     }
+  }
+}
+
+function Get-CommandLogSignature {
+  param([string]$LogPath)
+
+  if ([string]::IsNullOrWhiteSpace($LogPath) -or -not (Test-Path -LiteralPath $LogPath -PathType Leaf)) {
+    return "log:none"
+  }
+
+  $raw = ""
+  try {
+    $raw = Get-Content -LiteralPath $LogPath -Raw -ErrorAction Stop
+  } catch {
+    return "log:read-error"
+  }
+
+  if ([string]::IsNullOrWhiteSpace($raw)) {
+    return "log:empty"
+  }
+
+  $lines = @(
+    $raw -split "`r?`n" |
+    ForEach-Object { ([string]$_).Trim() } |
+    Where-Object { -not [string]::IsNullOrWhiteSpace($_) } |
+    Select-Object -First 12
+  )
+  if ($lines.Count -eq 0) {
+    return "log:empty-lines"
+  }
+
+  $text = [string]::Join(" | ", $lines)
+  $bytes = [System.Text.Encoding]::UTF8.GetBytes($text)
+  $sha = [System.Security.Cryptography.SHA256]::Create()
+  try {
+    $hash = $sha.ComputeHash($bytes)
+    return "loghash:" + ([System.BitConverter]::ToString($hash).Replace("-", "").ToLowerInvariant())
+  } finally {
+    $sha.Dispose()
+  }
+}
+
+function New-CommandFailureSignature {
+  param(
+    [Parameter(Mandatory = $true)][string]$StepName,
+    [Parameter(Mandatory = $true)][string]$CommandText,
+    [Parameter(Mandatory = $true)][string]$LogPath
+  )
+
+  $logSignature = Get-CommandLogSignature -LogPath $LogPath
+  $payload = ("step={0}|cmd={1}|{2}" -f $StepName, $CommandText, $logSignature)
+  $bytes = [System.Text.Encoding]::UTF8.GetBytes($payload)
+  $sha = [System.Security.Cryptography.SHA256]::Create()
+  try {
+    $hash = $sha.ComputeHash($bytes)
+    return ([System.BitConverter]::ToString($hash).Replace("-", "").ToLowerInvariant())
+  } finally {
+    $sha.Dispose()
   }
 }
 
@@ -337,6 +398,9 @@ function Read-ProjectRulePolicy([string]$KitRoot) {
       allow_local_optimize_without_backflow = $false
       max_autonomous_iterations = 3
       max_repeated_failure_per_step = 2
+      enable_no_progress_guard = $true
+      max_no_progress_iterations = 2
+      token_budget_mode = "lite"
       stop_on_irreversible_risk = $true
       forbid_breaking_contract = $true
       auto_commit_enabled = $false
@@ -372,6 +436,15 @@ function Read-ProjectRulePolicy([string]$KitRoot) {
   }
   if ($null -eq $policy.defaults.PSObject.Properties['max_repeated_failure_per_step']) {
     $policy.defaults | Add-Member -NotePropertyName max_repeated_failure_per_step -NotePropertyValue 2
+  }
+  if ($null -eq $policy.defaults.PSObject.Properties['enable_no_progress_guard']) {
+    $policy.defaults | Add-Member -NotePropertyName enable_no_progress_guard -NotePropertyValue $true
+  }
+  if ($null -eq $policy.defaults.PSObject.Properties['max_no_progress_iterations']) {
+    $policy.defaults | Add-Member -NotePropertyName max_no_progress_iterations -NotePropertyValue 2
+  }
+  if ($null -eq $policy.defaults.PSObject.Properties['token_budget_mode']) {
+    $policy.defaults | Add-Member -NotePropertyName token_budget_mode -NotePropertyValue "lite"
   }
   if ($null -eq $policy.defaults.PSObject.Properties['stop_on_irreversible_risk']) {
     $policy.defaults | Add-Member -NotePropertyName stop_on_irreversible_risk -NotePropertyValue $true
@@ -436,6 +509,9 @@ function Get-RepoAutomationPolicy([string]$KitRoot, [string]$Repo) {
   $effectiveAllowLocalOptimizeWithoutBackflow = [bool]$policy.defaults.allow_local_optimize_without_backflow
   $effectiveMaxAutonomousIterations = [int]$policy.defaults.max_autonomous_iterations
   $effectiveMaxRepeatedFailurePerStep = [int]$policy.defaults.max_repeated_failure_per_step
+  $effectiveEnableNoProgressGuard = [bool]$policy.defaults.enable_no_progress_guard
+  $effectiveMaxNoProgressIterations = [int]$policy.defaults.max_no_progress_iterations
+  $effectiveTokenBudgetMode = [string]$policy.defaults.token_budget_mode
   $effectiveStopOnIrreversibleRisk = [bool]$policy.defaults.stop_on_irreversible_risk
   $effectiveForbidBreakingContract = [bool]$policy.defaults.forbid_breaking_contract
   $effectiveAutoCommitEnabled = [bool]$policy.defaults.auto_commit_enabled
@@ -475,6 +551,15 @@ function Get-RepoAutomationPolicy([string]$KitRoot, [string]$Repo) {
     if ($entry.PSObject.Properties['max_repeated_failure_per_step']) {
       $effectiveMaxRepeatedFailurePerStep = [int]$entry.max_repeated_failure_per_step
     }
+    if ($entry.PSObject.Properties['enable_no_progress_guard']) {
+      $effectiveEnableNoProgressGuard = [bool]$entry.enable_no_progress_guard
+    }
+    if ($entry.PSObject.Properties['max_no_progress_iterations']) {
+      $effectiveMaxNoProgressIterations = [int]$entry.max_no_progress_iterations
+    }
+    if ($entry.PSObject.Properties['token_budget_mode']) {
+      $effectiveTokenBudgetMode = [string]$entry.token_budget_mode
+    }
     if ($entry.PSObject.Properties['stop_on_irreversible_risk']) {
       $effectiveStopOnIrreversibleRisk = [bool]$entry.stop_on_irreversible_risk
     }
@@ -500,6 +585,9 @@ function Get-RepoAutomationPolicy([string]$KitRoot, [string]$Repo) {
     allow_local_optimize_without_backflow = [bool]$effectiveAllowLocalOptimizeWithoutBackflow
     max_autonomous_iterations = [int]$effectiveMaxAutonomousIterations
     max_repeated_failure_per_step = [int]$effectiveMaxRepeatedFailurePerStep
+    enable_no_progress_guard = [bool]$effectiveEnableNoProgressGuard
+    max_no_progress_iterations = [int]$effectiveMaxNoProgressIterations
+    token_budget_mode = [string]$effectiveTokenBudgetMode
     stop_on_irreversible_risk = [bool]$effectiveStopOnIrreversibleRisk
     forbid_breaking_contract = [bool]$effectiveForbidBreakingContract
     auto_commit_enabled = [bool]$effectiveAutoCommitEnabled

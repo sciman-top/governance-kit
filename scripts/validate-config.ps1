@@ -139,6 +139,22 @@ function Validate-RequiredNonEmptyStringProperty {
   return [string]$Object.$PropertyName
 }
 
+function Validate-TokenBudgetModeValue {
+  param(
+    [Parameter(Mandatory = $true)][string]$Value,
+    [Parameter(Mandatory = $true)][string]$MessagePrefix
+  )
+
+  $allowed = @("lite", "standard", "deep")
+  if ($allowed -notcontains $Value) {
+    Write-Host ("{0} invalid: expected one of lite/standard/deep" -f $MessagePrefix)
+    $script:fail++
+    return $false
+  }
+
+  return $true
+}
+
 try {
   $repos = Read-JsonArray $reposPath
 } catch {
@@ -225,6 +241,23 @@ if ($null -ne $projectRulePolicy.defaults) {
       Write-Host "[CFG] project-rule-policy.defaults.max_repeated_failure_per_step out of range: expected 1..20"
       $fail++
     }
+  }
+
+  if ($null -ne $projectRulePolicy.defaults.PSObject.Properties['enable_no_progress_guard']) {
+    [void](Validate-BooleanValue -Value $projectRulePolicy.defaults.enable_no_progress_guard -Message "[CFG] project-rule-policy.defaults.enable_no_progress_guard must be boolean")
+  }
+
+  if ($null -ne $projectRulePolicy.defaults.PSObject.Properties['max_no_progress_iterations']) {
+    [void](Validate-IntInRange `
+      -Value $projectRulePolicy.defaults.max_no_progress_iterations `
+      -Min 1 `
+      -Max 20 `
+      -IntegerMessage "[CFG] project-rule-policy.defaults.max_no_progress_iterations must be integer" `
+      -RangeMessage "[CFG] project-rule-policy.defaults.max_no_progress_iterations out of range: expected 1..20")
+  }
+
+  if ($null -ne $projectRulePolicy.defaults.PSObject.Properties['token_budget_mode']) {
+    [void](Validate-TokenBudgetModeValue -Value ([string]$projectRulePolicy.defaults.token_budget_mode) -MessagePrefix "[CFG] project-rule-policy.defaults.token_budget_mode")
   }
 
   if ($null -ne $projectRulePolicy.defaults.PSObject.Properties['stop_on_irreversible_risk']) {
@@ -414,6 +447,18 @@ foreach ($pr in $policyRepos) {
       Write-Host "[CFG] project-rule-policy.repos.max_repeated_failure_per_step out of range: expected 1..20"
       $fail++
     }
+  }
+  [void](Validate-OptionalBooleanProperty -Object $pr -PropertyName "enable_no_progress_guard" -Message "[CFG] project-rule-policy.repos.enable_no_progress_guard must be boolean")
+  if ($pr.PSObject.Properties['max_no_progress_iterations']) {
+    [void](Validate-IntInRange `
+      -Value $pr.max_no_progress_iterations `
+      -Min 1 `
+      -Max 20 `
+      -IntegerMessage "[CFG] project-rule-policy.repos.max_no_progress_iterations must be integer" `
+      -RangeMessage "[CFG] project-rule-policy.repos.max_no_progress_iterations out of range: expected 1..20")
+  }
+  if ($pr.PSObject.Properties['token_budget_mode']) {
+    [void](Validate-TokenBudgetModeValue -Value ([string]$pr.token_budget_mode) -MessagePrefix "[CFG] project-rule-policy.repos.token_budget_mode")
   }
   [void](Validate-OptionalBooleanProperty -Object $pr -PropertyName "stop_on_irreversible_risk" -Message "[CFG] project-rule-policy.repos.stop_on_irreversible_risk must be boolean")
   [void](Validate-OptionalBooleanProperty -Object $pr -PropertyName "forbid_breaking_contract" -Message "[CFG] project-rule-policy.repos.forbid_breaking_contract must be boolean")

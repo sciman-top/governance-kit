@@ -32,8 +32,12 @@ $kitPolicy = $null
 $kitAllowAutoFix = $true
 $effectiveMaxCycles = 1
 $effectiveMaxRepeatedFailurePerStep = 1
+$enableNoProgressGuard = $true
+$effectiveMaxNoProgressIterations = 2
+$tokenBudgetMode = "lite"
 $stopOnIrreversibleRisk = $true
 $failureCounts = [System.Collections.Generic.Dictionary[string, int]]::new([System.StringComparer]::OrdinalIgnoreCase)
+$failureSignatureCounts = [System.Collections.Generic.Dictionary[string, int]]::new([System.StringComparer]::OrdinalIgnoreCase)
 
 function Invoke-GovernanceGateChain {
   $steps = @(
@@ -112,7 +116,8 @@ function Write-FailureContextAndThrow {
     [Parameter(Mandatory = $true)][string]$RetryCommand,
     [Parameter(Mandatory = $true)][object]$PolicySnapshot,
     [Parameter(Mandatory = $true)][string]$StopReason,
-    [Parameter(Mandatory = $true)][string]$FailureMessage
+    [Parameter(Mandatory = $true)][string]$FailureMessage,
+    [string]$FailureSignature = ""
   )
 
   $context = [pscustomobject]@{
@@ -132,8 +137,12 @@ function Write-FailureContextAndThrow {
     autonomous_limits = [pscustomobject]@{
       max_autonomous_iterations = $effectiveMaxCycles
       max_repeated_failure_per_step = $effectiveMaxRepeatedFailurePerStep
+      enable_no_progress_guard = $enableNoProgressGuard
+      max_no_progress_iterations = $effectiveMaxNoProgressIterations
+      token_budget_mode = $tokenBudgetMode
       stop_on_irreversible_risk = $stopOnIrreversibleRisk
     }
+    failure_signature = $FailureSignature
     failure_message = $FailureMessage
   }
   Write-Host "[BLOCK] governance execution stopped by policy boundary; fix governance-kit first when the issue belongs to governance flow, then let outer AI session re-run."
@@ -147,6 +156,12 @@ $kitAllowAutoFix = [bool]$kitPolicy.allow_auto_fix
 $policyMaxCycles = [Math]::Max(1, [int]$kitPolicy.max_autonomous_iterations)
 $effectiveMaxCycles = [Math]::Min([Math]::Max(1, [int]$MaxCycles), $policyMaxCycles)
 $effectiveMaxRepeatedFailurePerStep = [Math]::Max(1, [int]$kitPolicy.max_repeated_failure_per_step)
+$enableNoProgressGuard = [bool]$kitPolicy.enable_no_progress_guard
+$effectiveMaxNoProgressIterations = [Math]::Max(1, [int]$kitPolicy.max_no_progress_iterations)
+$tokenBudgetMode = [string]$kitPolicy.token_budget_mode
+if ([string]::IsNullOrWhiteSpace($tokenBudgetMode)) {
+  $tokenBudgetMode = "lite"
+}
 $stopOnIrreversibleRisk = [bool]$kitPolicy.stop_on_irreversible_risk
 if ($PSBoundParameters.ContainsKey("CodexCommand") -or $PSBoundParameters.ContainsKey("MaxKitFixAttempts") -or $PSBoundParameters.ContainsKey("MaxTargetFixAttempts")) {
   Write-Host "[DEPRECATED] in-script auto remediation options are ignored (-CodexCommand/-MaxKitFixAttempts/-MaxTargetFixAttempts)."
@@ -174,6 +189,9 @@ try {
   Write-Host "policy.kit.allow_local_optimize_without_backflow=$($kitPolicy.allow_local_optimize_without_backflow)"
   Write-Host "policy.kit.max_autonomous_iterations=$policyMaxCycles"
   Write-Host "policy.kit.max_repeated_failure_per_step=$effectiveMaxRepeatedFailurePerStep"
+  Write-Host "policy.kit.enable_no_progress_guard=$enableNoProgressGuard"
+  Write-Host "policy.kit.max_no_progress_iterations=$effectiveMaxNoProgressIterations"
+  Write-Host "policy.kit.token_budget_mode=$tokenBudgetMode"
   Write-Host "policy.kit.stop_on_irreversible_risk=$stopOnIrreversibleRisk"
   if ($effectiveMaxCycles -lt $MaxCycles) {
     Write-Host "[LIMIT] requested MaxCycles=$MaxCycles capped to policy max_autonomous_iterations=$effectiveMaxCycles"
@@ -184,6 +202,9 @@ try {
     Write-Host "planned_order=build.verify-kit -> test.optimization -> contract.validate-config -> contract.verify -> hotspot.doctor"
     Write-Host "planned_limits.max_autonomous_iterations=$effectiveMaxCycles"
     Write-Host "planned_limits.max_repeated_failure_per_step=$effectiveMaxRepeatedFailurePerStep"
+    Write-Host "planned_limits.enable_no_progress_guard=$enableNoProgressGuard"
+    Write-Host "planned_limits.max_no_progress_iterations=$effectiveMaxNoProgressIterations"
+    Write-Host "planned_limits.token_budget_mode=$tokenBudgetMode"
     Write-Host "planned_limits.stop_on_irreversible_risk=$stopOnIrreversibleRisk"
     if ($RunTargetCycle.IsPresent) {
       Write-Host "target_cycle=run-project-governance-cycle($TargetRepoPath)"
@@ -202,28 +223,48 @@ try {
       $failureCounts[$stepName] = $failureCounts[$stepName] + 1
       $count = $failureCounts[$stepName]
       $retryCmd = New-SafeAutopilotRetryCommand -RepoPathText $repoPath -MaxCyclesValue $effectiveMaxCycles
+      $failureSignature = New-CommandFailureSignature -StepName $stepName -CommandText $retryCmd -LogPath $chain.log_path
       $policySnapshot = [pscustomobject]@{
         allow_auto_fix = $kitAllowAutoFix
         allow_rule_optimization = [bool]$kitPolicy.allow_rule_optimization
         allow_local_optimize_without_backflow = [bool]$kitPolicy.allow_local_optimize_without_backflow
         max_autonomous_iterations = $effectiveMaxCycles
         max_repeated_failure_per_step = $effectiveMaxRepeatedFailurePerStep
+        enable_no_progress_guard = $enableNoProgressGuard
+        max_no_progress_iterations = $effectiveMaxNoProgressIterations
+        token_budget_mode = $tokenBudgetMode
         stop_on_irreversible_risk = $stopOnIrreversibleRisk
       }
 
+      if ($enableNoProgressGuard) {
+        if (-not $failureSignatureCounts.ContainsKey($failureSignature)) {
+          $failureSignatureCounts[$failureSignature] = 0
+        }
+        $failureSignatureCounts[$failureSignature] = $failureSignatureCounts[$failureSignature] + 1
+        $signatureCount = $failureSignatureCounts[$failureSignature]
+        if ($signatureCount -ge $effectiveMaxNoProgressIterations) {
+          Write-FailureContextAndThrow -FailedStep $stepName -ExitCode 1 -LogPath $chain.log_path -Command $retryCmd -RetryCommand $retryCmd -PolicySnapshot $policySnapshot -StopReason "NO_PROGRESS_SIGNATURE_LIMIT" -FailureMessage "governance gate chain no-progress signature reached boundary. step=$stepName signature=$failureSignature count=$signatureCount/$effectiveMaxNoProgressIterations log=$($chain.log_path)" -FailureSignature $failureSignature
+        }
+      }
+
       if ($stopOnIrreversibleRisk -and (Is-IrreversibleRiskBoundary -FailedStep $stepName)) {
-        Write-FailureContextAndThrow -FailedStep $stepName -ExitCode 1 -LogPath $chain.log_path -Command $retryCmd -RetryCommand $retryCmd -PolicySnapshot $policySnapshot -StopReason "IRREVERSIBLE_RISK_BOUNDARY" -FailureMessage "governance gate chain failed at irreversible boundary. step=$stepName log=$($chain.log_path)"
+        Write-FailureContextAndThrow -FailedStep $stepName -ExitCode 1 -LogPath $chain.log_path -Command $retryCmd -RetryCommand $retryCmd -PolicySnapshot $policySnapshot -StopReason "IRREVERSIBLE_RISK_BOUNDARY" -FailureMessage "governance gate chain failed at irreversible boundary. step=$stepName log=$($chain.log_path)" -FailureSignature $failureSignature
       }
 
       if ($count -lt $effectiveMaxRepeatedFailurePerStep) {
-        Write-Host "[AUTO-RETRY] failed_step=$stepName attempt=$count/$effectiveMaxRepeatedFailurePerStep policy=repeat-failure-boundary"
+        if ($tokenBudgetMode -eq "lite") {
+          Write-Host "[AUTO-RETRY] failed_step=$stepName attempt=$count/$effectiveMaxRepeatedFailurePerStep policy=repeat-failure-boundary mode=lite"
+        } else {
+          Write-Host "[AUTO-RETRY] failed_step=$stepName attempt=$count/$effectiveMaxRepeatedFailurePerStep policy=repeat-failure-boundary signature=$failureSignature"
+        }
         continue
       }
 
-      Write-FailureContextAndThrow -FailedStep $stepName -ExitCode 1 -LogPath $chain.log_path -Command $retryCmd -RetryCommand $retryCmd -PolicySnapshot $policySnapshot -StopReason "REPEATED_FAILURE_LIMIT" -FailureMessage "governance gate chain failed. step=$stepName failures=$count/$effectiveMaxRepeatedFailurePerStep log=$($chain.log_path)"
+      Write-FailureContextAndThrow -FailedStep $stepName -ExitCode 1 -LogPath $chain.log_path -Command $retryCmd -RetryCommand $retryCmd -PolicySnapshot $policySnapshot -StopReason "REPEATED_FAILURE_LIMIT" -FailureMessage "governance gate chain failed. step=$stepName failures=$count/$effectiveMaxRepeatedFailurePerStep log=$($chain.log_path)" -FailureSignature $failureSignature
     }
 
     $failureCounts.Clear()
+    $failureSignatureCounts.Clear()
 
     if ($RunTargetCycle.IsPresent) {
       $targetResolved = Resolve-Path -LiteralPath $TargetRepoPath -ErrorAction SilentlyContinue
@@ -252,6 +293,9 @@ try {
           allow_local_optimize_without_backflow = [bool]$targetPolicy.allow_local_optimize_without_backflow
           max_autonomous_iterations = [int]$targetPolicy.max_autonomous_iterations
           max_repeated_failure_per_step = [int]$targetPolicy.max_repeated_failure_per_step
+          enable_no_progress_guard = [bool]$targetPolicy.enable_no_progress_guard
+          max_no_progress_iterations = [int]$targetPolicy.max_no_progress_iterations
+          token_budget_mode = [string]$targetPolicy.token_budget_mode
           stop_on_irreversible_risk = [bool]$targetPolicy.stop_on_irreversible_risk
         }
         if ($targetCount -lt $effectiveMaxRepeatedFailurePerStep) {
