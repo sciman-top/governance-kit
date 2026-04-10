@@ -2396,6 +2396,51 @@ exit 7
     }
   }
 
+  it "add-repo prefers repo-scoped custom source when available" {
+    $tmp = Join-Path $env:TEMP ("govkit-test-" + [guid]::NewGuid().ToString("N"))
+    $repo = Join-Path $tmp "ScopedCustomRepo"
+    try {
+      New-Item -ItemType Directory -Path (Join-Path $tmp "scripts\lib") -Force | Out-Null
+      New-Item -ItemType Directory -Path (Join-Path $tmp "scripts") -Force | Out-Null
+      New-Item -ItemType Directory -Path (Join-Path $tmp "config") -Force | Out-Null
+      New-Item -ItemType Directory -Path (Join-Path $tmp "source\project\ScopedCustomRepo\custom\docs") -Force | Out-Null
+      New-Item -ItemType Directory -Path (Join-Path $tmp "source\project\_common\custom\docs") -Force | Out-Null
+      New-Item -ItemType Directory -Path (Join-Path $tmp "source\project\ScopedCustomRepo") -Force | Out-Null
+      New-Item -ItemType Directory -Path $repo -Force | Out-Null
+
+      Copy-Item -Path (Join-Path $repoRoot "scripts\add-repo.ps1") -Destination (Join-Path $tmp "scripts\add-repo.ps1") -Force
+      Copy-Item -Path (Join-Path $repoRoot "scripts\lib\common.ps1") -Destination (Join-Path $tmp "scripts\lib\common.ps1") -Force
+
+      Set-MinProjectRulePolicy -ConfigDir (Join-Path $tmp "config") -RepoPath $repo
+      @() | ConvertTo-Json -Depth 3 | Set-Content -Path (Join-Path $tmp "config\repositories.json") -Encoding UTF8
+      @() | ConvertTo-Json -Depth 3 | Set-Content -Path (Join-Path $tmp "config\targets.json") -Encoding UTF8
+      @{
+        default = @("docs/PLANS.md")
+        repos = @(
+          @{
+            repoName = "ScopedCustomRepo"
+            files = @("docs/PLANS.md")
+          }
+        )
+      } | ConvertTo-Json -Depth 6 | Set-Content -Path (Join-Path $tmp "config\project-custom-files.json") -Encoding UTF8
+
+      Set-Content -Path (Join-Path $tmp "source\project\ScopedCustomRepo\AGENTS.md") -Value "scoped" -Encoding UTF8
+      Set-Content -Path (Join-Path $tmp "source\project\ScopedCustomRepo\CLAUDE.md") -Value "scoped" -Encoding UTF8
+      Set-Content -Path (Join-Path $tmp "source\project\ScopedCustomRepo\GEMINI.md") -Value "scoped" -Encoding UTF8
+      Set-Content -Path (Join-Path $tmp "source\project\ScopedCustomRepo\custom\docs\PLANS.md") -Value "repo-scoped-plans" -Encoding UTF8
+      Set-Content -Path (Join-Path $tmp "source\project\_common\custom\docs\PLANS.md") -Value "common-plans" -Encoding UTF8
+
+      & powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $tmp "scripts\add-repo.ps1") -RepoPath $repo -Mode safe | Out-Null
+      if ($LASTEXITCODE -ne 0) { throw "add-repo.ps1 failed with exit code $LASTEXITCODE" }
+
+      $targets = Get-Content -Raw (Join-Path $tmp "config\targets.json") | ConvertFrom-Json
+      (@($targets | Where-Object { $_.source -eq "source/project/ScopedCustomRepo/custom/docs/PLANS.md" })).Count | should be 1
+      (@($targets | Where-Object { $_.source -eq "source/project/_common/custom/docs/PLANS.md" -and $_.target -eq "$(($repo -replace '\\','/'))/docs/PLANS.md" })).Count | should be 0
+    } finally {
+      if (Test-Path $tmp) { Remove-Item -LiteralPath $tmp -Recurse -Force }
+    }
+  }
+
   it "common Test-FileContentEqual and hash cache stay correct after file updates" {
     $tmp = Join-Path $env:TEMP ("govkit-test-" + [guid]::NewGuid().ToString("N"))
     try {

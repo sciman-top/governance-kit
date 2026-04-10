@@ -292,7 +292,7 @@
         "target":  "E:/CODE/governance-kit/scripts/governance/run-monthly-policy-review.ps1"
     },
     {
-        "source":  "source/project/_common/custom/docs/PLANS.md",
+        "source":  "source/project/ClassroomToolkit/custom/docs/PLANS.md",
         "target":  "E:/CODE/ClassroomToolkit/docs/PLANS.md"
     },
     {

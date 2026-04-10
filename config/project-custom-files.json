@@ -22,6 +22,7 @@
     {
       "repoName": "ClassroomToolkit",
       "files": [
+        "docs/PLANS.md",
         ".governance/release-profile.json",
         ".github/workflows/release-package.yml",
         ".github/workflows/quality-gate.yml",
