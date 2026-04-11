@@ -67,6 +67,26 @@ function Run-Step([string]$Name, [string]$ScriptPath, [string[]]$ScriptArgs = @(
   }
 }
 
+function Parse-JsonFromText([string]$RawText) {
+  if ([string]::IsNullOrWhiteSpace($RawText)) {
+    return $null
+  }
+  try {
+    return ($RawText | ConvertFrom-Json)
+  } catch {
+    $start = $RawText.IndexOf("{")
+    $end = $RawText.LastIndexOf("}")
+    if ($start -ge 0 -and $end -ge $start) {
+      try {
+        return ($RawText.Substring($start, $end - $start + 1) | ConvertFrom-Json)
+      } catch {
+        return $null
+      }
+    }
+  }
+  return $null
+}
+
 function Get-ClarificationObservability([string]$KitRootPath) {
   $reposPath = Join-Path $KitRootPath "config\repositories.json"
   if (-not (Test-Path -LiteralPath $reposPath)) {
@@ -157,6 +177,7 @@ $steps = @(
   [pscustomobject]@{ name = "growth-readiness-report"; script = (Join-Path $PSScriptRoot 'governance\report-growth-readiness.ps1'); args = @(); required = $false },
   [pscustomobject]@{ name = "waiver-check"; script = (Join-Path $PSScriptRoot 'check-waivers.ps1'); args = @(); required = $false },
   [pscustomobject]@{ name = "practice-stack"; script = (Join-Path $PSScriptRoot 'governance\check-practice-stack.ps1'); args = @("-RepoRoot", $kitRoot); required = $false },
+  [pscustomobject]@{ name = "external-baselines"; script = (Join-Path $PSScriptRoot 'governance\check-external-baselines.ps1'); args = @("-RepoRoot", $kitRoot, "-AsJson"); required = $false },
   [pscustomobject]@{ name = "status"; script = (Join-Path $PSScriptRoot 'status.ps1'); args = @(); required = $false },
   [pscustomobject]@{ name = "rollout-status"; script = (Join-Path $PSScriptRoot 'rollout-status.ps1'); args = @(); required = $false }
 )
@@ -205,6 +226,28 @@ foreach ($item in $steps) {
 $ok = $failedSteps.Count -eq 0
 $health = if ($ok) { "GREEN" } else { "RED" }
 $clarification = Get-ClarificationObservability -KitRootPath $kitRoot
+$externalBaselineStatus = "N/A"
+$externalBaselineAdvisoryCount = -1
+$externalBaselineWarnCount = -1
+if (Test-Path -LiteralPath (Join-Path $PSScriptRoot 'governance\check-external-baselines.ps1') -PathType Leaf) {
+  try {
+    $externalProbeRaw = Invoke-ChildScriptCapture -ScriptPath (Join-Path $PSScriptRoot 'governance\check-external-baselines.ps1') -ScriptArgs @("-RepoRoot", $kitRoot, "-AsJson")
+    $externalObj = Parse-JsonFromText -RawText (($externalProbeRaw | Out-String).TrimEnd())
+    if ($null -ne $externalObj) {
+      if ($null -ne $externalObj.PSObject.Properties["status"]) {
+        $externalBaselineStatus = [string]$externalObj.status
+      }
+      if ($null -ne $externalObj.summary -and $null -ne $externalObj.summary.PSObject.Properties["advisory_count"]) {
+        $externalBaselineAdvisoryCount = [int]$externalObj.summary.advisory_count
+      }
+      if ($null -ne $externalObj.summary -and $null -ne $externalObj.summary.PSObject.Properties["warn_count"]) {
+        $externalBaselineWarnCount = [int]$externalObj.summary.warn_count
+      }
+    }
+  } catch {
+    $externalBaselineStatus = "PROBE_FAILED"
+  }
+}
 
 if ($AsJson) {
   $jsonResult = [pscustomobject]@{
@@ -214,6 +257,11 @@ if ($AsJson) {
     failed_steps = @($failedSteps)
     skipped_steps = @($skippedSteps)
     clarification = $clarification
+    external_baselines = [pscustomobject]@{
+      status = $externalBaselineStatus
+      advisory_count = $externalBaselineAdvisoryCount
+      warn_count = $externalBaselineWarnCount
+    }
     steps = @($stepResults)
   }
   $jsonResult | ConvertTo-Json -Depth 8 | Write-Output
@@ -225,6 +273,9 @@ Write-Host ("clarification_trigger_count=" + $clarification.trigger_count)
 Write-Host ("clarification_open_items=" + $clarification.open_items)
 Write-Host ("clarification_tracked_repos=" + $clarification.tracked_repos)
 Write-Host ("clarification_tracked_files=" + $clarification.tracked_files)
+Write-Host ("external_baseline_status=" + $externalBaselineStatus)
+Write-Host ("external_baseline_advisory_count=" + $externalBaselineAdvisoryCount)
+Write-Host ("external_baseline_warn_count=" + $externalBaselineWarnCount)
 if ($ok) {
   Write-Host "HEALTH=GREEN"
   exit 0

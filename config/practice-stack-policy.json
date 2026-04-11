@@ -10,10 +10,10 @@
     "observability": "required",
     "progressive_delivery": "recommended",
     "hooks_ci_gates": "required",
-    "ssdf": "recommended",
-    "slsa": "recommended",
-    "sbom": "recommended",
-    "scorecard": "recommended"
+    "ssdf": "required",
+    "slsa": "required",
+    "sbom": "required",
+    "scorecard": "required"
   },
   "repos": [
     {
@@ -28,10 +28,10 @@
         "observability": true,
         "progressive_delivery": true,
         "hooks_ci_gates": true,
-        "ssdf": false,
-        "slsa": false,
-        "sbom": false,
-        "scorecard": false
+        "ssdf": true,
+        "slsa": true,
+        "sbom": true,
+        "scorecard": true
       }
     },
     {
@@ -46,10 +46,10 @@
         "observability": true,
         "progressive_delivery": true,
         "hooks_ci_gates": true,
-        "ssdf": false,
-        "slsa": false,
-        "sbom": false,
-        "scorecard": false
+        "ssdf": true,
+        "slsa": true,
+        "sbom": true,
+        "scorecard": true
       }
     },
     {
@@ -64,10 +64,10 @@
         "observability": true,
         "progressive_delivery": true,
         "hooks_ci_gates": true,
-        "ssdf": false,
-        "slsa": false,
-        "sbom": false,
-        "scorecard": false
+        "ssdf": true,
+        "slsa": true,
+        "sbom": true,
+        "scorecard": true
       }
     }
   ]

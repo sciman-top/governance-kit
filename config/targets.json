@@ -794,5 +794,101 @@
     {
         "source":  "source/project/_common/custom/docs/governance/skill-trigger-eval-runbook.md",
         "target":  "E:/CODE/governance-kit/docs/governance/skill-trigger-eval-runbook.md"
+    },
+    {
+        "source":  "source/project/_common/custom/scripts/quality/run-supply-chain-checks.ps1",
+        "target":  "E:/CODE/ClassroomToolkit/scripts/quality/run-supply-chain-checks.ps1"
+    },
+    {
+        "source":  "source/project/_common/custom/.github/workflows/sbom.yml",
+        "target":  "E:/CODE/ClassroomToolkit/.github/workflows/sbom.yml"
+    },
+    {
+        "source":  "source/project/_common/custom/.github/workflows/scorecard.yml",
+        "target":  "E:/CODE/ClassroomToolkit/.github/workflows/scorecard.yml"
+    },
+    {
+        "source":  "source/project/_common/custom/docs/governance/sbom-policy.md",
+        "target":  "E:/CODE/ClassroomToolkit/docs/governance/sbom-policy.md"
+    },
+    {
+        "source":  "source/project/_common/custom/docs/governance/scorecard-policy.md",
+        "target":  "E:/CODE/ClassroomToolkit/docs/governance/scorecard-policy.md"
+    },
+    {
+        "source":  "source/project/_common/custom/scripts/quality/run-supply-chain-checks.ps1",
+        "target":  "E:/CODE/skills-manager/scripts/quality/run-supply-chain-checks.ps1"
+    },
+    {
+        "source":  "source/project/_common/custom/.github/workflows/sbom.yml",
+        "target":  "E:/CODE/skills-manager/.github/workflows/sbom.yml"
+    },
+    {
+        "source":  "source/project/_common/custom/.github/workflows/scorecard.yml",
+        "target":  "E:/CODE/skills-manager/.github/workflows/scorecard.yml"
+    },
+    {
+        "source":  "source/project/_common/custom/docs/governance/sbom-policy.md",
+        "target":  "E:/CODE/skills-manager/docs/governance/sbom-policy.md"
+    },
+    {
+        "source":  "source/project/_common/custom/docs/governance/scorecard-policy.md",
+        "target":  "E:/CODE/skills-manager/docs/governance/scorecard-policy.md"
+    },
+    {
+        "source":  "source/project/_common/custom/scripts/quality/run-supply-chain-checks.ps1",
+        "target":  "E:/CODE/governance-kit/scripts/quality/run-supply-chain-checks.ps1"
+    },
+    {
+        "source":  "source/project/_common/custom/.github/workflows/sbom.yml",
+        "target":  "E:/CODE/governance-kit/.github/workflows/sbom.yml"
+    },
+    {
+        "source":  "source/project/_common/custom/.github/workflows/scorecard.yml",
+        "target":  "E:/CODE/governance-kit/.github/workflows/scorecard.yml"
+    },
+    {
+        "source":  "source/project/_common/custom/docs/governance/sbom-policy.md",
+        "target":  "E:/CODE/governance-kit/docs/governance/sbom-policy.md"
+    },
+    {
+        "source":  "source/project/_common/custom/docs/governance/scorecard-policy.md",
+        "target":  "E:/CODE/governance-kit/docs/governance/scorecard-policy.md"
+    },
+    {
+        "source":  "source/project/_common/custom/.github/workflows/slsa.yml",
+        "target":  "E:/CODE/ClassroomToolkit/.github/workflows/slsa.yml"
+    },
+    {
+        "source":  "source/project/_common/custom/docs/governance/ssdf-mapping.md",
+        "target":  "E:/CODE/ClassroomToolkit/docs/governance/ssdf-mapping.md"
+    },
+    {
+        "source":  "source/project/_common/custom/docs/governance/slsa-target-level.md",
+        "target":  "E:/CODE/ClassroomToolkit/docs/governance/slsa-target-level.md"
+    },
+    {
+        "source":  "source/project/_common/custom/.github/workflows/slsa.yml",
+        "target":  "E:/CODE/skills-manager/.github/workflows/slsa.yml"
+    },
+    {
+        "source":  "source/project/_common/custom/docs/governance/ssdf-mapping.md",
+        "target":  "E:/CODE/skills-manager/docs/governance/ssdf-mapping.md"
+    },
+    {
+        "source":  "source/project/_common/custom/docs/governance/slsa-target-level.md",
+        "target":  "E:/CODE/skills-manager/docs/governance/slsa-target-level.md"
+    },
+    {
+        "source":  "source/project/_common/custom/.github/workflows/slsa.yml",
+        "target":  "E:/CODE/governance-kit/.github/workflows/slsa.yml"
+    },
+    {
+        "source":  "source/project/_common/custom/docs/governance/ssdf-mapping.md",
+        "target":  "E:/CODE/governance-kit/docs/governance/ssdf-mapping.md"
+    },
+    {
+        "source":  "source/project/_common/custom/docs/governance/slsa-target-level.md",
+        "target":  "E:/CODE/governance-kit/docs/governance/slsa-target-level.md"
     }
 ]
