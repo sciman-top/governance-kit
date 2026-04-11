@@ -13,5 +13,11 @@
   "collapse_suffix_pattern": "^(.*-\\d{8})-[a-z]$",
   "exclude_signature_patterns": [
     "(?i)^autopilot-utf8-smoke"
-  ]
+  ],
+  "summary_relative_path": ".governance/skill-candidates/last-promotion-summary.json",
+  "write_summary_file": true,
+  "require_user_ack": true,
+  "optimize_existing_without_ack": true,
+  "user_ack_env_var": "SKILL_PROMOTION_ACK",
+  "user_ack_expected_value": "YES"
 }

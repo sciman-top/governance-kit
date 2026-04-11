@@ -24,7 +24,7 @@ function ConvertTo-Slug([string]$Text) {
   if ([string]::IsNullOrWhiteSpace($Text)) { return "candidate" }
   $slug = ($Text.ToLowerInvariant() -replace '[^a-z0-9]+', '-').Trim('-')
   if ([string]::IsNullOrWhiteSpace($slug)) { return "candidate" }
-  if ($slug.Length -gt 48) { $slug = $slug.Substring(0, 48).Trim('-') }
+  if ($slug.Length -gt 24) { $slug = $slug.Substring(0, 24).Trim('-') }
   if ([string]::IsNullOrWhiteSpace($slug)) { return "candidate" }
   return $slug
 }
@@ -99,7 +99,8 @@ function New-DefaultPolicy {
     )
     summary_relative_path = ".governance/skill-candidates/last-promotion-summary.json"
     write_summary_file = $true
-    require_user_ack = $false
+    require_user_ack = $true
+    optimize_existing_without_ack = $true
     user_ack_env_var = "SKILL_PROMOTION_ACK"
     user_ack_expected_value = "YES"
   }
@@ -199,9 +200,11 @@ function Merge-RegistryByFamily([psobject]$Registry, [string]$CollapsePattern, [
       if (-not [string]::IsNullOrWhiteSpace($repoText)) { $bucket.repos.Add($repoText) | Out-Null }
     }
     $bucket.signature_variants.Add($rawSig.Trim().ToLowerInvariant()) | Out-Null
-    foreach ($v in @($item.signature_variants)) {
-      $vv = [string]$v
-      if (-not [string]::IsNullOrWhiteSpace($vv)) { $bucket.signature_variants.Add($vv.Trim().ToLowerInvariant()) | Out-Null }
+    if ($null -ne $item.PSObject.Properties['signature_variants']) {
+      foreach ($v in @($item.signature_variants)) {
+        $vv = [string]$v
+        if (-not [string]::IsNullOrWhiteSpace($vv)) { $bucket.signature_variants.Add($vv.Trim().ToLowerInvariant()) | Out-Null }
+      }
     }
     $candidate = ""
     try { $candidate = ([datetime]$item.promoted_at).ToString("o") } catch { $candidate = [string]$item.promoted_at }
@@ -315,6 +318,8 @@ $policyTemplatePath = Join-Path ($kitRoot -replace '/', '\') "source\project\_co
 $policy = New-DefaultPolicy
 $policy = Merge-Policy -Base $policy -Candidate (Load-JsonObject $policyTemplatePath)
 $policy = Merge-Policy -Base $policy -Candidate (Load-JsonObject $policyPath)
+$collapsePattern = [string]$policy.collapse_suffix_pattern
+$excludePatterns = @($policy.exclude_signature_patterns)
 
 if (-not [bool]$policy.enabled) {
   $disabled = [pscustomobject]@{
@@ -341,6 +346,7 @@ if ($Diagnostics) {
 
 $registryPath = Join-Path ($kitRoot -replace '/', '\') (($policy.registry_relative_path -replace '/', '\'))
 $registry = Load-Registry $registryPath
+$registry = Merge-RegistryByFamily -Registry $registry -CollapsePattern $collapsePattern -ExcludePatterns $excludePatterns
 $promotedLookup = Get-PromotedLookup $registry
 
 $now = Get-Date
@@ -348,8 +354,14 @@ $windowStart = $now.AddDays(-1 * [int]$policy.window_days)
 $cooldownDays = [int]$policy.cooldown_days
 $maxPromotions = [Math]::Max(1, [int]$policy.max_promotions_per_run)
 $threshold = [Math]::Max(1, [int]$policy.threshold_count)
-$collapsePattern = [string]$policy.collapse_suffix_pattern
-$excludePatterns = @($policy.exclude_signature_patterns)
+$requireAck = [bool]$policy.require_user_ack
+$ackEnvVar = [string]$policy.user_ack_env_var
+$ackExpected = [string]$policy.user_ack_expected_value
+$ackValue = ""
+if (-not [string]::IsNullOrWhiteSpace($ackEnvVar)) {
+  try { $ackValue = [string][System.Environment]::GetEnvironmentVariable($ackEnvVar) } catch { $ackValue = "" }
+}
+$ackSatisfied = (-not $requireAck) -or (([string]$ackValue).Trim().ToUpperInvariant() -eq ([string]$ackExpected).Trim().ToUpperInvariant())
 
 $groupMap = @{}
 $eventCount = 0
@@ -397,35 +409,144 @@ if ($Diagnostics) {
   Write-Host ("skill_promotion.scanned_event_count={0}" -f $eventCount)
 }
 
-$eligible = New-Object System.Collections.Generic.List[object]
+$optimizeWithoutAck = $true
+if ($null -ne $policy.PSObject.Properties['optimize_existing_without_ack']) {
+  $optimizeWithoutAck = [bool]$policy.optimize_existing_without_ack
+}
+
+$actionable = New-Object System.Collections.Generic.List[object]
 foreach ($key in $groupMap.Keys) {
   $item = $groupMap[$key]
   if ([int]$item.count -lt $threshold) { continue }
+  $family = [string]$item.issue_signature
+  $canonical = Get-CanonicalSkillName $family
 
-  if ($promotedLookup.ContainsKey($key)) {
-    $lastPromoted = $null
-    try { $lastPromoted = [datetime]$promotedLookup[$key].promoted_at } catch { $lastPromoted = $null }
-    if ($null -ne $lastPromoted -and $cooldownDays -gt 0 -and $lastPromoted -gt $now.AddDays(-1 * $cooldownDays)) {
-      continue
+  if (-not $promotedLookup.ContainsKey($key)) {
+    $actionable.Add([pscustomobject]@{
+      action = "create"
+      reason_codes = @("new_family_threshold_met")
+      issue_signature = $family
+      skill_name = $canonical
+      count = [int]$item.count
+      latest_event = $item.latest_event
+      repos = @($item.repos | Sort-Object)
+      raw_signatures = @($item.raw_signatures | Sort-Object)
+    }) | Out-Null
+    continue
+  }
+
+  $existing = $promotedLookup[$key]
+  $lastPromoted = $null
+  try { $lastPromoted = [datetime]$existing.promoted_at } catch { $lastPromoted = $null }
+  if ($null -ne $lastPromoted -and $cooldownDays -gt 0 -and $lastPromoted -gt $now.AddDays(-1 * $cooldownDays)) {
+    # cooldown only blocks create; existing family goes through optimize diff checks
+  }
+
+  $prevHit = 0
+  try { $prevHit = [int]$existing.hit_count } catch { $prevHit = 0 }
+  $prevVariants = New-Object System.Collections.Generic.HashSet[string]([System.StringComparer]::OrdinalIgnoreCase)
+  $existingSig = [string]$existing.issue_signature
+  if (-not [string]::IsNullOrWhiteSpace($existingSig)) { $prevVariants.Add($existingSig.Trim().ToLowerInvariant()) | Out-Null }
+  if ($null -ne $existing.PSObject.Properties['signature_variants']) {
+    foreach ($v in @($existing.signature_variants)) {
+      $vv = [string]$v
+      if (-not [string]::IsNullOrWhiteSpace($vv)) { $prevVariants.Add($vv.Trim().ToLowerInvariant()) | Out-Null }
     }
   }
-  $eligible.Add($item) | Out-Null
+  $newVariants = @()
+  foreach ($cur in @($item.raw_signatures | Sort-Object)) {
+    $cv = [string]$cur
+    if ([string]::IsNullOrWhiteSpace($cv)) { continue }
+    $norm = $cv.Trim().ToLowerInvariant()
+    if (-not $prevVariants.Contains($norm)) { $newVariants += $norm }
+  }
+  $countIncreased = ([int]$item.count -gt $prevHit)
+  if ($newVariants.Count -gt 0 -or $countIncreased) {
+    $reasons = New-Object System.Collections.Generic.List[string]
+    if ($newVariants.Count -gt 0) { $reasons.Add("new_signature_variant") | Out-Null }
+    if ($countIncreased) { $reasons.Add("hit_count_increased") | Out-Null }
+    $actionable.Add([pscustomobject]@{
+      action = "optimize"
+      reason_codes = @($reasons)
+      issue_signature = $family
+      skill_name = $canonical
+      count = [int]$item.count
+      latest_event = $item.latest_event
+      repos = @($item.repos | Sort-Object)
+      raw_signatures = @($item.raw_signatures | Sort-Object)
+    }) | Out-Null
+  }
 }
 
-$selected = @($eligible | Sort-Object -Property @{Expression="count";Descending=$true}, @{Expression="latest_event";Descending=$true} | Select-Object -First $maxPromotions)
+$selected = @($actionable | Sort-Object -Property @{Expression="count";Descending=$true}, @{Expression="latest_event";Descending=$true} | Select-Object -First $maxPromotions)
 
 $skillsRoot = Resolve-NormalizedPath $policy.skills_root
 $overridesRoot = Join-Path ($skillsRoot -replace '/', '\') (($policy.overrides_relative_path -replace '/', '\'))
+$summaryPath = Join-Path ($skillsRoot -replace '/', '\') (($policy.summary_relative_path -replace '/', '\'))
 if (-not (Test-Path -LiteralPath $overridesRoot -PathType Container)) {
   New-Item -ItemType Directory -Force -Path $overridesRoot | Out-Null
 }
 
+$plannedPromotions = @($selected | ForEach-Object {
+  [pscustomobject]@{
+    action = [string]$_.action
+    reason_codes = @($_.reason_codes)
+    issue_signature = [string]$_.issue_signature
+    skill_name = [string]$_.skill_name
+    hit_count = [int]$_.count
+    signature_variants = @($_.raw_signatures | Sort-Object)
+  }
+})
+
+if (-not $AsJson) {
+  Write-Host ("[PLAN] planned_promotions={0}" -f $plannedPromotions.Count)
+  foreach ($pp in @($plannedPromotions)) {
+    Write-Host ("[PLAN] action={0} signature={1} -> {2} (hits={3})" -f $pp.action, $pp.issue_signature, $pp.skill_name, $pp.hit_count)
+  }
+}
+
+$selectedCreates = @($selected | Where-Object { ([string]$_.action) -eq "create" })
+$selectedOptimizations = @($selected | Where-Object { ([string]$_.action) -eq "optimize" })
+$pendingAckCreates = @()
+$selectedToApply = @($selected)
+if (-not $ackSatisfied -and $selectedCreates.Count -gt 0) {
+  $pendingAckCreates = @($selectedCreates)
+  if ($optimizeWithoutAck) {
+    $selectedToApply = @($selectedOptimizations)
+  } else {
+    $selectedToApply = @()
+  }
+}
+
+if (-not $ackSatisfied -and $selectedCreates.Count -gt 0 -and $selectedToApply.Count -eq 0) {
+  $ackResult = [ordered]@{
+    schema_version = "1.0"
+    status = "awaiting_user_ack"
+    policy_path = ($policyPath -replace '\\', '/')
+    require_user_ack = $true
+    user_ack_env_var = $ackEnvVar
+    user_ack_expected_value = $ackExpected
+    user_ack_received_value = $ackValue
+    selected_signature_count = [int]$selected.Count
+    promoted_count = 0
+    created_count = 0
+    optimized_count = 0
+    planned_promotions = $plannedPromotions
+    blocked_create_count = [int]$selectedCreates.Count
+    apply_without_ack_count = 0
+  }
+  if ([bool]$policy.write_summary_file) {
+    Ensure-ParentDirectory $summaryPath
+    $ackResult | ConvertTo-Json -Depth 10 | Set-Content -LiteralPath $summaryPath -Encoding utf8
+  }
+  if ($AsJson) { $ackResult | ConvertTo-Json -Depth 10 | Write-Output } else { Write-Host "[BLOCK] awaiting user ack for skill creation" }
+  exit 0
+}
+
 $promotedItems = New-Object System.Collections.Generic.List[object]
-foreach ($item in @($selected)) {
+foreach ($item in @($selectedToApply)) {
   $signature = [string]$item.issue_signature
-  $slug = ConvertTo-Slug $signature
-  $hash8 = Get-SignatureHash8 $signature
-  $skillName = "custom-auto-$slug-$hash8"
+  $skillName = [string]$item.skill_name
   $skillDir = Join-Path $overridesRoot $skillName
   $skillFile = Join-Path $skillDir "SKILL.md"
   if (-not (Test-Path -LiteralPath $skillDir -PathType Container)) {
@@ -437,6 +558,7 @@ foreach ($item in @($selected)) {
   Set-Content -LiteralPath $skillFile -Encoding utf8 -Value $skillContent
 
   $registryRecord = [pscustomobject]@{
+    action = [string]$item.action
     issue_signature = $signature
     skill_name = $skillName
     promoted_at = $now.ToString("o")
@@ -461,6 +583,38 @@ foreach ($item in @($selected)) {
   $promotedItems.Add($registryRecord) | Out-Null
 }
 
+foreach ($entry in @($registry.promoted)) {
+  if ($null -eq $entry) { continue }
+  $family = Get-SignatureFamily -Signature ([string]$entry.issue_signature) -CollapsePattern $collapsePattern
+  if ([string]::IsNullOrWhiteSpace($family)) { continue }
+  $entry.issue_signature = $family
+  $entry.skill_name = Get-CanonicalSkillName $family
+}
+$registry = Merge-RegistryByFamily -Registry $registry -CollapsePattern $collapsePattern -ExcludePatterns $excludePatterns
+
+$cleanupRemoved = New-Object System.Collections.Generic.List[string]
+$registryFamilies = @{}
+foreach ($entry in @($registry.promoted)) {
+  $registryFamilies[[string]$entry.issue_signature] = [string]$entry.skill_name
+}
+foreach ($dir in @(Get-ChildItem -LiteralPath $overridesRoot -Directory -ErrorAction SilentlyContinue | Where-Object { $_.Name -like "custom-auto-*" })) {
+  $name = [string]$dir.Name
+  $skillFile = Join-Path $dir.FullName "SKILL.md"
+  $skillFamily = Get-SkillSignatureFromSkillFile -SkillFile $skillFile -CollapsePattern $collapsePattern -ExcludePatterns $excludePatterns
+  $remove = $false
+  if ([string]::IsNullOrWhiteSpace($skillFamily)) {
+    if ($name -match "(?i)^custom-auto-autopilot-utf8-smoke") { $remove = $true }
+  } else {
+    $canonical = Get-CanonicalSkillName $skillFamily
+    if ($name -ne $canonical) { $remove = $true }
+    elseif ($registryFamilies.ContainsKey($skillFamily) -and $registryFamilies[$skillFamily] -ne $name) { $remove = $true }
+  }
+  if ($remove) {
+    Remove-Item -LiteralPath $dir.FullName -Recurse -Force
+    $cleanupRemoved.Add(($dir.FullName -replace '\\', '/')) | Out-Null
+  }
+}
+
 Save-Registry -PathText $registryPath -Registry $registry
 
 $gatesRan = $false
@@ -476,30 +630,60 @@ try {
   $eventWindowStartText = [string]$windowStart
 }
 $promotedArray = @($promotedItems | ForEach-Object { $_ })
+$createAppliedCount = @($promotedItems | Where-Object { ([string]$_.action) -eq "create" }).Count
+$optimizeAppliedCount = @($promotedItems | Where-Object { ([string]$_.action) -eq "optimize" }).Count
+$blockedCreateCount = @($pendingAckCreates).Count
+$applyWithoutAckCount = 0
+if ($blockedCreateCount -gt 0) {
+  $applyWithoutAckCount = @($selectedToApply | Where-Object { ([string]$_.action) -eq "optimize" }).Count
+}
+$runStatus = if ($blockedCreateCount -gt 0) { "awaiting_user_ack" } else { "ok" }
 
 $result = [ordered]@{
   schema_version = "1.0"
-  status = "ok"
+  status = $runStatus
   policy_path = ($policyPath -replace '\\', '/')
   event_window_start = $eventWindowStartText
   threshold_count = [int]$threshold
   scanned_event_count = [int]$eventCount
   grouped_signature_count = [int]$groupMap.Count
-  eligible_signature_count = [int]$eligible.Count
+  eligible_signature_count = [int]$actionable.Count
   selected_signature_count = [int]$selected.Count
   promoted_count = [int]$promotedItems.Count
+  created_count = [int]$createAppliedCount
+  optimized_count = [int]$optimizeAppliedCount
+  blocked_create_count = [int]$blockedCreateCount
+  apply_without_ack_count = [int]$applyWithoutAckCount
+  cleanup_removed_count = [int]$cleanupRemoved.Count
   gates_ran = [bool]$gatesRan
+  require_user_ack = [bool]$requireAck
+  user_ack_satisfied = [bool]$ackSatisfied
+  user_ack_env_var = $ackEnvVar
   skills_root = [string]$skillsRoot
   overrides_root = ($overridesRoot -replace '\\', '/')
+  planned_promotions = $plannedPromotions
   promoted = $promotedArray
+  cleanup_removed = @($cleanupRemoved)
+}
+
+if ([bool]$policy.write_summary_file) {
+  Ensure-ParentDirectory $summaryPath
+  $result | ConvertTo-Json -Depth 12 | Set-Content -LiteralPath $summaryPath -Encoding utf8
 }
 
 if ($AsJson) {
   $result | ConvertTo-Json -Depth 10 | Write-Output
 } else {
   Write-Host ("skill_promotion.promoted_count={0}" -f $promotedItems.Count)
+  Write-Host ("skill_promotion.created_count={0}" -f $createAppliedCount)
+  Write-Host ("skill_promotion.optimized_count={0}" -f $optimizeAppliedCount)
+  Write-Host ("skill_promotion.blocked_create_count={0}" -f $blockedCreateCount)
+  Write-Host ("skill_promotion.cleanup_removed_count={0}" -f $cleanupRemoved.Count)
   Write-Host ("skill_promotion.gates_ran={0}" -f $gatesRan)
   foreach ($p in @($promotedItems)) {
-    Write-Host ("[PROMOTED] signature={0} skill={1} hit_count={2}" -f $p.issue_signature, $p.skill_name, $p.hit_count)
+    Write-Host ("[APPLIED] action={0} signature={1} skill={2} hit_count={3}" -f $p.action, $p.issue_signature, $p.skill_name, $p.hit_count)
+  }
+  foreach ($c in @($cleanupRemoved)) {
+    Write-Host ("[CLEANUP] removed={0}" -f $c)
   }
 }
