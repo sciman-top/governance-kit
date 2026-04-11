@@ -1871,6 +1871,7 @@ exit 0
       Set-StubScript -Path (Join-Path $tmp "scripts\verify-kit.ps1")
       Set-StubScript -Path (Join-Path $tmp "tests\governance-kit.optimization.tests.ps1")
       Set-StubScript -Path (Join-Path $tmp "scripts\validate-config.ps1")
+      Set-StubScript -Path (Join-Path $tmp "scripts\governance\check-boundary-classification.ps1")
       Set-StubScript -Path (Join-Path $tmp "scripts\verify.ps1")
       Set-StubScript -Path (Join-Path $tmp "scripts\doctor.ps1")
 
@@ -1914,6 +1915,7 @@ exit 0
       Set-StubScript -Path (Join-Path $tmp "scripts\verify-kit.ps1") -Message "fail" -ExitCode 1
       Set-StubScript -Path (Join-Path $tmp "tests\governance-kit.optimization.tests.ps1")
       Set-StubScript -Path (Join-Path $tmp "scripts\validate-config.ps1")
+      Set-StubScript -Path (Join-Path $tmp "scripts\governance\check-boundary-classification.ps1")
       Set-StubScript -Path (Join-Path $tmp "scripts\verify.ps1")
       Set-StubScript -Path (Join-Path $tmp "scripts\doctor.ps1")
 
@@ -1958,6 +1960,7 @@ exit 0
       Set-StubScript -Path (Join-Path $tmp "scripts\verify-kit.ps1") -Message "fail" -ExitCode 1
       Set-StubScript -Path (Join-Path $tmp "tests\governance-kit.optimization.tests.ps1")
       Set-StubScript -Path (Join-Path $tmp "scripts\validate-config.ps1")
+      Set-StubScript -Path (Join-Path $tmp "scripts\governance\check-boundary-classification.ps1")
       Set-StubScript -Path (Join-Path $tmp "scripts\verify.ps1")
       Set-StubScript -Path (Join-Path $tmp "scripts\doctor.ps1")
 
@@ -1997,6 +2000,7 @@ exit 0
       Set-StubScript -Path (Join-Path $tmp "scripts\verify-kit.ps1")
       Set-StubScript -Path (Join-Path $tmp "tests\governance-kit.optimization.tests.ps1")
       Set-StubScript -Path (Join-Path $tmp "scripts\validate-config.ps1") -Message "fail" -ExitCode 1
+      Set-StubScript -Path (Join-Path $tmp "scripts\governance\check-boundary-classification.ps1")
       Set-StubScript -Path (Join-Path $tmp "scripts\verify.ps1")
       Set-StubScript -Path (Join-Path $tmp "scripts\doctor.ps1")
 

@@ -171,6 +171,7 @@ function Get-ClarificationObservability([string]$KitRootPath) {
 $steps = @(
   [pscustomobject]@{ name = "verify-kit"; script = (Join-Path $PSScriptRoot 'verify-kit.ps1'); args = @(); required = $false },
   [pscustomobject]@{ name = "validate-config"; script = (Join-Path $PSScriptRoot 'validate-config.ps1'); args = @(); required = $false },
+  [pscustomobject]@{ name = "boundary-classification"; script = (Join-Path $PSScriptRoot 'governance\check-boundary-classification.ps1'); args = @(); required = $false },
   [pscustomobject]@{ name = "release-profile-coverage"; script = (Join-Path $PSScriptRoot 'check-release-profile-coverage.ps1'); args = @(); required = $false },
   [pscustomobject]@{ name = "verify-targets"; script = (Join-Path $PSScriptRoot 'verify.ps1'); args = @('-SkipConfigValidation'); required = $false },
   [pscustomobject]@{ name = "anti-bloat-budgets"; script = (Join-Path $PSScriptRoot 'governance\check-anti-bloat-budgets.ps1'); args = @("-RepoRoot", $kitRoot); required = $true },

@@ -27,6 +27,7 @@ $reposPath = Join-Path $kitRoot "config\repositories.json"
 $targetsPath = Join-Path $kitRoot "config\targets.json"
 $projectCustomPath = Join-Path $kitRoot "config\project-custom-files.json"
 $repoName = Split-Path -Leaf $repo
+$boundaryReviewTemplate = "docs/governance/boundary-review-template.zh-CN.md"
 
 $reposRaw = Read-JsonArray $reposPath
 $repos = [System.Collections.Generic.List[string]]::new()
@@ -194,6 +195,7 @@ foreach ($d in @($desired)) {
 }
 
 if ($Mode -eq "plan") {
+  Write-Host "[INFO] boundary review template: $boundaryReviewTemplate"
   if (-not $allowProjectRules) {
     Write-Host "[PLAN] project rules disabled for repo: $repo"
     if ($removedDisallowed -gt 0) {
@@ -225,6 +227,7 @@ if ($customCfgChanged) {
   $customCfg | ConvertTo-Json -Depth 8 | Set-Content -LiteralPath $projectCustomPath -Encoding UTF8
   Write-Host "[UPDATED] project-custom-files.json"
 }
+Write-Host "[INFO] boundary review template: $boundaryReviewTemplate"
 Write-Host "Done. added_targets=$added updated_targets=$updated removed_disallowed_targets=$removedDisallowed mode=$Mode"
 } finally {
   Release-ScriptLock -LockHandle $scriptLock

@@ -44,6 +44,7 @@ function Invoke-GovernanceGateChain {
     [pscustomobject]@{ name = "build.verify-kit"; workdir = $repoPath; action = { & $psExe -NoProfile -ExecutionPolicy Bypass -File (Join-Path $repoPath "scripts/verify-kit.ps1") } },
     [pscustomobject]@{ name = "test.optimization"; workdir = $repoPath; action = { & $psExe -NoProfile -ExecutionPolicy Bypass -File (Join-Path $repoPath "tests/governance-kit.optimization.tests.ps1") } },
     [pscustomobject]@{ name = "contract.validate-config"; workdir = $repoPath; action = { & $psExe -NoProfile -ExecutionPolicy Bypass -File (Join-Path $repoPath "scripts/validate-config.ps1") } },
+    [pscustomobject]@{ name = "contract.boundary-classification"; workdir = $repoPath; action = { & $psExe -NoProfile -ExecutionPolicy Bypass -File (Join-Path $repoPath "scripts/governance/check-boundary-classification.ps1") } },
     [pscustomobject]@{ name = "contract.verify"; workdir = $repoPath; action = { & $psExe -NoProfile -ExecutionPolicy Bypass -File (Join-Path $repoPath "scripts/verify.ps1") } },
     [pscustomobject]@{ name = "hotspot.doctor"; workdir = $repoPath; action = { & $psExe -NoProfile -ExecutionPolicy Bypass -File (Join-Path $repoPath "scripts/doctor.ps1") } }
   )
@@ -172,6 +173,7 @@ Write-Host "[POLICY] when governance issue is found, fix governance-kit first, t
 if (-not (Test-Path -LiteralPath (Join-Path $repoPath "scripts/verify-kit.ps1"))) { throw "Missing scripts/verify-kit.ps1" }
 if (-not (Test-Path -LiteralPath (Join-Path $repoPath "tests/governance-kit.optimization.tests.ps1"))) { throw "Missing tests/governance-kit.optimization.tests.ps1" }
 if (-not (Test-Path -LiteralPath (Join-Path $repoPath "scripts/validate-config.ps1"))) { throw "Missing scripts/validate-config.ps1" }
+if (-not (Test-Path -LiteralPath (Join-Path $repoPath "scripts/governance/check-boundary-classification.ps1"))) { throw "Missing scripts/governance/check-boundary-classification.ps1" }
 if (-not (Test-Path -LiteralPath (Join-Path $repoPath "scripts/verify.ps1"))) { throw "Missing scripts/verify.ps1" }
 if (-not (Test-Path -LiteralPath (Join-Path $repoPath "scripts/doctor.ps1"))) { throw "Missing scripts/doctor.ps1" }
 
@@ -199,7 +201,7 @@ try {
 
   if ($DryRun) {
     Write-Host "dry_run=true"
-    Write-Host "planned_order=build.verify-kit -> test.optimization -> contract.validate-config -> contract.verify -> hotspot.doctor"
+    Write-Host "planned_order=build.verify-kit -> test.optimization -> contract.validate-config -> contract.boundary-classification -> contract.verify -> hotspot.doctor"
     Write-Host "planned_limits.max_autonomous_iterations=$effectiveMaxCycles"
     Write-Host "planned_limits.max_repeated_failure_per_step=$effectiveMaxRepeatedFailurePerStep"
     Write-Host "planned_limits.enable_no_progress_guard=$enableNoProgressGuard"

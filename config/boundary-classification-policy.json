@@ -1,0 +1,101 @@
+{
+  "schema_version": "1.0",
+  "decision_order": [
+    "repo_dependency_first",
+    "global_user_only_for_repo_agnostic",
+    "shared_template_is_source_only"
+  ],
+  "classification_principles": {
+    "global_user": "Only for repo-agnostic user-home entry files that define universal agent behavior and remain valid without any repo context.",
+    "project": "Use for any file whose meaning, execution, validation, evidence, or rollback depends on a target repo.",
+    "shared_template": "Use for reusable source artifacts under source/project/_common that are distributed into repo roots but are not user-home files."
+  },
+  "default_fallback_class": "project",
+  "ambiguous_case_policy": {
+    "when_uncertain": "fallback_to_project",
+    "rationale": "Prefer preserving repo-local auditability and rollback instead of over-promoting files to global-user."
+  },
+  "allowed_boundary_class_values": [
+    "global-user",
+    "project",
+    "shared-template"
+  ],
+  "global_user_allowed_targets": [
+    "^C:/Users/[^/]+/\\.codex/AGENTS\\.md$",
+    "^C:/Users/[^/]+/\\.claude/CLAUDE\\.md$",
+    "^C:/Users/[^/]+/\\.gemini/GEMINI\\.md$"
+  ],
+  "repo_dependency_signals": {
+    "source_patterns": [
+      "^source/project/[^/]+/AGENTS\\.md$",
+      "^source/project/[^/]+/CLAUDE\\.md$",
+      "^source/project/[^/]+/GEMINI\\.md$",
+      "^source/project/.+/custom/.+"
+    ],
+    "target_patterns": [
+      "^.*/\\.github/workflows/.+",
+      "^.*/scripts/.+",
+      "^.*/\\.governance/.+",
+      "^.*/docs/.+",
+      "^.*/plugins/.+",
+      "^.*/overrides/.+",
+      "^.*/tools/.+"
+    ]
+  },
+  "decision_questions": [
+    {
+      "id": "repo_context_required",
+      "question": "Does the file depend on repo path, repo name, repo scripts, CI, gates, evidence, release, or rollback?",
+      "if_yes": "project"
+    },
+    {
+      "id": "user_home_target",
+      "question": "Is the final target one of the approved user-home CLI entry files?",
+      "if_yes": "global-user_if_repo_agnostic"
+    },
+    {
+      "id": "shared_source_only",
+      "question": "Is the source under source/project/_common and still intended for repo-root distribution rather than user-home install?",
+      "if_yes": "shared-template"
+    },
+    {
+      "id": "repo_variance",
+      "question": "Would different repos need different values, contents, or rollout timing for this file?",
+      "if_yes": "project_or_shared-template"
+    }
+  ],
+  "promotion_guards": {
+    "global_user_requires_all": [
+      "repo_agnostic_behavior_only",
+      "no_repo_path_dependency",
+      "no_repo_execution_or_gate_dependency",
+      "approved_user_home_target"
+    ],
+    "must_not_promote_to_global_user": [
+      ".github/workflows/*",
+      "scripts/*",
+      ".governance/*",
+      "docs/*",
+      "plugins/*",
+      "overrides/*",
+      "tools/*"
+    ]
+  },
+  "examples": {
+    "global-user": [
+      "source/global/AGENTS.md -> ~/.codex/AGENTS.md",
+      "source/global/CLAUDE.md -> ~/.claude/CLAUDE.md",
+      "source/global/GEMINI.md -> ~/.gemini/GEMINI.md"
+    ],
+    "shared-template": [
+      "source/project/_common/custom/scripts/governance/check-update-triggers.ps1",
+      "source/project/_common/custom/.governance/tracked-files-policy.json",
+      "source/project/_common/custom/.github/workflows/sbom.yml"
+    ],
+    "project": [
+      "source/project/ClassroomToolkit/custom/scripts/release/preflight-check.ps1",
+      "source/project/skills-manager/custom/scripts/prebuild-check.ps1",
+      "source/project/<RepoName>/AGENTS.md"
+    ]
+  }
+}

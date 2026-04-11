@@ -318,6 +318,7 @@ if ($modePlan) {
     $buildScript = Join-Path $PSScriptRoot "verify-kit.ps1"
     $testScript = Join-Path $kitRoot "tests\governance-kit.optimization.tests.ps1"
     $contractScript = Join-Path $PSScriptRoot "validate-config.ps1"
+    $boundaryScript = Join-Path $PSScriptRoot "governance\check-boundary-classification.ps1"
     $hotspotScript = Join-Path $PSScriptRoot "doctor.ps1"
 
     $gateScriptsReady = (Test-Path -LiteralPath $buildScript -PathType Leaf) -and
@@ -334,6 +335,11 @@ if ($modePlan) {
 
       Write-Host "=== POST_GATE contract/invariant ==="
       Invoke-ChildScript -ScriptPath $contractScript
+      if (Test-Path -LiteralPath $boundaryScript -PathType Leaf) {
+        Invoke-ChildScript -ScriptPath $boundaryScript
+      } else {
+        Write-Host "[INFO] skip boundary-classification: script not found in current workspace"
+      }
       Invoke-ChildScript -ScriptPath (Join-Path $PSScriptRoot "verify.ps1")
 
       Write-Host "=== POST_GATE hotspot ==="
