@@ -1,0 +1,34 @@
+规则ID=GK-TOKEN-PARAM-COMPREHENSIVE-RECHECK-20260411
+规则版本=3.85
+兼容窗口(观察期/强制期)=observe
+影响模块=.governance/*;config/*;scripts/governance/*;scripts/collect-governance-metrics.ps1
+当前落点=E:/CODE/governance-kit (source + runtime policies)
+目标归宿=source/project/_common/custom/* + source/project/governance-kit/custom/* + 目标仓分发文件
+迁移批次=20260411-round3
+风险等级=medium
+是否豁免(Waiver)=no
+豁免责任人=
+豁免到期=
+豁免回收计划=
+执行命令=powershell -File scripts/verify-kit.ps1; powershell -File tests/governance-kit.optimization.tests.ps1; powershell -File scripts/validate-config.ps1; powershell -File scripts/verify.ps1; powershell -File scripts/doctor.ps1; powershell -File scripts/install.ps1 -Mode safe; powershell -File scripts/governance/check-token-balance.ps1 -RepoRoot . -AsJson
+验证证据=verify-kit integrity OK; optimization tests all pass; verify done ok=232 fail=0; doctor HEALTH=GREEN; anti_bloat.status=PASS; token_balance.status=ADVISORY(warnings only)
+供应链安全扫描=N/A (not in this change scope; existing supply-chain gates unchanged)
+发布后验证(指标/阈值/窗口)=token_balance thresholds active; weekly recurring review includes token_balance_* fields
+数据变更治理(迁移/回填/回滚)=config-only and script-only; no business data migration
+回滚动作=scripts/restore.ps1 + backups/<timestamp>; rollback files: token-balance/check scripts + recurring/monthly review + anti-bloat and project-rule policy deltas
+subagent_decision_mode=not_used
+spawn_parallel_subagents=false
+max_parallel_agents=0
+decision_score=0
+reason_codes=single-agent-local-change
+hard_guard_hits=none
+policy_path=.governance/token-balance-policy.json + .governance/anti-bloat-policy.json + config/project-rule-policy.json
+growth_pack_enabled=true
+target_repo_count=3
+readiness_score=100
+quickstart_presence=true
+release_template_presence=true
+
+learning_points_3=1) 避免只看“省 token”，要同时看一次通过率/返工率;2) 新增脚本必须立即纳入 recurring/monthly;3) 新依赖默认应可选化以兼容旧测试夹具
+reusable_checklist=1) 参数调优先看质量指标再看 token;2) 修改 shared script 后同步 _common/custom 与 repo custom;3) 跑完 full gates 前不宣告完成
+open_questions=是否要把 token-balance 从 advisory 提升为 block_on_violation 可配置开关（默认关闭）

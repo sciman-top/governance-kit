@@ -72,6 +72,72 @@ function Invoke-JsonScriptSafe {
   }
 }
 
+function Get-TokenQualitySnapshot {
+  param([System.IO.FileInfo[]]$EvidenceFiles)
+
+  $attemptTotal = 0
+  $attemptFirstPass = 0
+  $attemptRework = 0
+  $responseTokens = [System.Collections.Generic.List[int]]::new()
+  $taskTokens = [System.Collections.Generic.List[int]]::new()
+
+  foreach ($f in @($EvidenceFiles)) {
+    $raw = ""
+    try {
+      $raw = Get-Content -LiteralPath $f.FullName -Raw
+    } catch {
+      continue
+    }
+
+    $attemptMatch = [regex]::Match($raw, "(?im)^\s*attempt_count\s*[:=]\s*([0-9]+)\s*$")
+    if ($attemptMatch.Success) {
+      $attempt = [int]$attemptMatch.Groups[1].Value
+      $attemptTotal++
+      if ($attempt -le 1) { $attemptFirstPass++ }
+      if ($attempt -ge 2) { $attemptRework++ }
+    }
+
+    $respMatch = [regex]::Match($raw, "(?im)^\s*average_response_token\s*[:=]\s*([0-9]+)\s*$")
+    if ($respMatch.Success) {
+      [void]$responseTokens.Add([int]$respMatch.Groups[1].Value)
+    }
+
+    $taskMatch = [regex]::Match($raw, "(?im)^\s*single_task_token\s*[:=]\s*([0-9]+)\s*$")
+    if ($taskMatch.Success) {
+      [void]$taskTokens.Add([int]$taskMatch.Groups[1].Value)
+    }
+  }
+
+  $firstPassRate = Format-Rate $attemptFirstPass $attemptTotal
+  $reworkRate = Format-Rate $attemptRework $attemptTotal
+
+  $avgResponseToken = "N/A"
+  if ($responseTokens.Count -gt 0) {
+    $avgResponseToken = [string]([int][math]::Round((($responseTokens | Measure-Object -Sum).Sum / [double]$responseTokens.Count), 0))
+  }
+
+  $avgSingleTaskToken = "N/A"
+  if ($taskTokens.Count -gt 0) {
+    $avgSingleTaskToken = [string]([int][math]::Round((($taskTokens | Measure-Object -Sum).Sum / [double]$taskTokens.Count), 0))
+  }
+
+  $tokenPerEffectiveConclusion = "N/A"
+  if ($avgSingleTaskToken -ne "N/A" -and $firstPassRate -ne "N/A") {
+    $rateValue = 0.0
+    if ([double]::TryParse(($firstPassRate -replace '%', ''), [ref]$rateValue) -and $rateValue -gt 0) {
+      $tokenPerEffectiveConclusion = [string]([int][math]::Round(([double]$avgSingleTaskToken) / ($rateValue / 100.0), 0))
+    }
+  }
+
+  return [pscustomobject]@{
+    first_pass_rate = $firstPassRate
+    rework_after_clarification_rate = $reworkRate
+    average_response_token = $avgResponseToken
+    single_task_token = $avgSingleTaskToken
+    token_per_effective_conclusion = $tokenPerEffectiveConclusion
+  }
+}
+
 function Get-PracticeStackEnableRates {
   param(
     [string]$RepoWin,
@@ -209,6 +275,7 @@ foreach ($repoRaw in $repos) {
   $overdueRate = Format-Rate $waiverExpiredUnrecovered $waiverFiles.Count
   $evidenceRate = Format-Rate $completeEvidence $totalEvidence
   $learningLoopRate = Format-Rate $learningLoopCompleteEvidence $totalEvidence
+  $tokenQuality = Get-TokenQualitySnapshot -EvidenceFiles $evidenceFiles
   $repoName = Split-Path -Leaf $repoWin
   $practiceRates = Get-PracticeStackEnableRates -RepoWin $repoWin -RepoName $repoName
 
@@ -288,6 +355,11 @@ foreach ($repoRaw in $repos) {
     "gate_pass_rate=N/A"
     "rollback_rate=N/A"
     "patch_recovery_overdue_rate=$overdueRate"
+    "first_pass_rate=$($tokenQuality.first_pass_rate)"
+    "rework_after_clarification_rate=$($tokenQuality.rework_after_clarification_rate)"
+    "average_response_token=$($tokenQuality.average_response_token)"
+    "single_task_token=$($tokenQuality.single_task_token)"
+    "token_per_effective_conclusion=$($tokenQuality.token_per_effective_conclusion)"
     "evidence_completeness_rate=$evidenceRate"
     "learning_loop_evidence_rate=$learningLoopRate"
     "waiver_active_count=$waiverActive"

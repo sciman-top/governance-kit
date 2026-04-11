@@ -227,6 +227,45 @@ function Resolve-TokenBudgetMode {
   return "lite"
 }
 
+function Normalize-RepoText {
+  param([string]$PathText)
+  if ([string]::IsNullOrWhiteSpace($PathText)) { return "" }
+  return (($PathText -replace '\\', '/').Trim().TrimEnd('/'))
+}
+
+function Resolve-PolicyRepoOverride {
+  param(
+    [object]$PolicyObject,
+    [string]$RepoRootResolved
+  )
+
+  if ($null -eq $PolicyObject -or $null -eq $PolicyObject.PSObject.Properties['repo_overrides']) {
+    return $null
+  }
+
+  $repoNorm = Normalize-RepoText -PathText $RepoRootResolved
+  $repoName = Split-Path -Leaf $RepoRootResolved
+  foreach ($entry in @($PolicyObject.repo_overrides)) {
+    if ($null -eq $entry) { continue }
+    $matched = $false
+    if ($null -ne $entry.PSObject.Properties['repo'] -and -not [string]::IsNullOrWhiteSpace([string]$entry.repo)) {
+      $entryNorm = Normalize-RepoText -PathText ([string]$entry.repo)
+      if ($entryNorm.Equals($repoNorm, [System.StringComparison]::OrdinalIgnoreCase)) {
+        $matched = $true
+      }
+    }
+    if (-not $matched -and $null -ne $entry.PSObject.Properties['repoName'] -and -not [string]::IsNullOrWhiteSpace([string]$entry.repoName)) {
+      if (([string]$entry.repoName).Equals($repoName, [System.StringComparison]::OrdinalIgnoreCase)) {
+        $matched = $true
+      }
+    }
+    if ($matched) {
+      return $entry
+    }
+  }
+  return $null
+}
+
 function Invoke-GitSilent {
   param(
     [string]$RepoRoot,
@@ -326,6 +365,8 @@ try {
   exit 1
 }
 
+$repoOverride = Resolve-PolicyRepoOverride -PolicyObject $policy -RepoRootResolved $repoRootResolved
+
 $enabled = $true
 if ($null -ne $policy.PSObject.Properties['enabled']) {
   $enabled = [bool]$policy.enabled
@@ -354,6 +395,20 @@ if ($null -ne $policy.PSObject.Properties['scope']) {
     $scopeMaxRepoFiles = [int]$policy.scope.max_repo_files
   }
 }
+if ($null -ne $repoOverride -and $null -ne $repoOverride.PSObject.Properties['scope'] -and $null -ne $repoOverride.scope) {
+  if ($null -ne $repoOverride.scope.PSObject.Properties['prefer_git_pending']) {
+    $scopePreferPending = [bool]$repoOverride.scope.prefer_git_pending
+  }
+  if ($null -ne $repoOverride.scope.PSObject.Properties['include_untracked']) {
+    $scopeIncludeUntracked = [bool]$repoOverride.scope.include_untracked
+  }
+  if ($null -ne $repoOverride.scope.PSObject.Properties['scan_repo_when_no_pending']) {
+    $scopeScanRepoWhenNoPending = [bool]$repoOverride.scope.scan_repo_when_no_pending
+  }
+  if ($null -ne $repoOverride.scope.PSObject.Properties['max_repo_files']) {
+    $scopeMaxRepoFiles = [int]$repoOverride.scope.max_repo_files
+  }
+}
 
 $includeExts = @('.ps1', '.psm1', '.psd1', '.cs', '.py', '.js', '.jsx', '.ts', '.tsx', '.go', '.java', '.kt', '.rb', '.php')
 $excludePaths = @('.git/', 'node_modules/', 'dist/', 'build/', 'bin/', 'obj/', 'backups/', '.venv/', 'coverage/', 'docs/')
@@ -372,46 +427,42 @@ $maxTokensPerFile = 2400
 $maxTokensTotalPending = 10000
 $maxDuplicateLines = 6
 $charsPerToken = 4
+function Apply-LimitOverrides {
+  param([object]$LimitObject)
+  if ($null -eq $LimitObject) { return }
+  if ($null -ne $LimitObject.PSObject.Properties['max_file_lines']) {
+    $script:maxFileLines = [int]$LimitObject.max_file_lines
+  }
+  if ($null -ne $LimitObject.PSObject.Properties['max_consecutive_non_empty_lines']) {
+    $script:maxBlockLines = [int]$LimitObject.max_consecutive_non_empty_lines
+  }
+  if ($null -ne $LimitObject.PSObject.Properties['max_estimated_tokens_per_file']) {
+    $script:maxTokensPerFile = [int]$LimitObject.max_estimated_tokens_per_file
+  }
+  if ($null -ne $LimitObject.PSObject.Properties['max_estimated_tokens_total_pending']) {
+    $script:maxTokensTotalPending = [int]$LimitObject.max_estimated_tokens_total_pending
+  }
+  if ($null -ne $LimitObject.PSObject.Properties['max_duplicate_line_occurrences']) {
+    $script:maxDuplicateLines = [int]$LimitObject.max_duplicate_line_occurrences
+  }
+  if ($null -ne $LimitObject.PSObject.Properties['chars_per_token']) {
+    $script:charsPerToken = [int]$LimitObject.chars_per_token
+  }
+}
+
 if ($null -ne $policy.PSObject.Properties['limits']) {
-  if ($null -ne $policy.limits.PSObject.Properties['max_file_lines']) {
-    $maxFileLines = [int]$policy.limits.max_file_lines
-  }
-  if ($null -ne $policy.limits.PSObject.Properties['max_consecutive_non_empty_lines']) {
-    $maxBlockLines = [int]$policy.limits.max_consecutive_non_empty_lines
-  }
-  if ($null -ne $policy.limits.PSObject.Properties['max_estimated_tokens_per_file']) {
-    $maxTokensPerFile = [int]$policy.limits.max_estimated_tokens_per_file
-  }
-  if ($null -ne $policy.limits.PSObject.Properties['max_estimated_tokens_total_pending']) {
-    $maxTokensTotalPending = [int]$policy.limits.max_estimated_tokens_total_pending
-  }
-  if ($null -ne $policy.limits.PSObject.Properties['max_duplicate_line_occurrences']) {
-    $maxDuplicateLines = [int]$policy.limits.max_duplicate_line_occurrences
-  }
-  if ($null -ne $policy.limits.PSObject.Properties['chars_per_token']) {
-    $charsPerToken = [int]$policy.limits.chars_per_token
-  }
+  Apply-LimitOverrides -LimitObject $policy.limits
 }
 if ($null -ne $policy.PSObject.Properties['mode_limits'] -and $null -ne $policy.mode_limits.PSObject.Properties[$tokenBudgetModeResolved]) {
   $modeLimits = $policy.mode_limits.PSObject.Properties[$tokenBudgetModeResolved].Value
-  if ($null -ne $modeLimits.PSObject.Properties['max_file_lines']) {
-    $maxFileLines = [int]$modeLimits.max_file_lines
-  }
-  if ($null -ne $modeLimits.PSObject.Properties['max_consecutive_non_empty_lines']) {
-    $maxBlockLines = [int]$modeLimits.max_consecutive_non_empty_lines
-  }
-  if ($null -ne $modeLimits.PSObject.Properties['max_estimated_tokens_per_file']) {
-    $maxTokensPerFile = [int]$modeLimits.max_estimated_tokens_per_file
-  }
-  if ($null -ne $modeLimits.PSObject.Properties['max_estimated_tokens_total_pending']) {
-    $maxTokensTotalPending = [int]$modeLimits.max_estimated_tokens_total_pending
-  }
-  if ($null -ne $modeLimits.PSObject.Properties['max_duplicate_line_occurrences']) {
-    $maxDuplicateLines = [int]$modeLimits.max_duplicate_line_occurrences
-  }
-  if ($null -ne $modeLimits.PSObject.Properties['chars_per_token']) {
-    $charsPerToken = [int]$modeLimits.chars_per_token
-  }
+  Apply-LimitOverrides -LimitObject $modeLimits
+}
+if ($null -ne $repoOverride -and $null -ne $repoOverride.PSObject.Properties['limits']) {
+  Apply-LimitOverrides -LimitObject $repoOverride.limits
+}
+if ($null -ne $repoOverride -and $null -ne $repoOverride.PSObject.Properties['mode_limits'] -and $null -ne $repoOverride.mode_limits.PSObject.Properties[$tokenBudgetModeResolved]) {
+  $modeLimits = $repoOverride.mode_limits.PSObject.Properties[$tokenBudgetModeResolved].Value
+  Apply-LimitOverrides -LimitObject $modeLimits
 }
 
 $limitsOut = @{

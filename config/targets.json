@@ -890,5 +890,41 @@
     {
         "source":  "source/project/_common/custom/docs/governance/slsa-target-level.md",
         "target":  "E:/CODE/governance-kit/docs/governance/slsa-target-level.md"
+    },
+    {
+        "source":  "source/project/_common/custom/config/clarification-policy.json",
+        "target":  "E:/CODE/ClassroomToolkit/config/clarification-policy.json"
+    },
+    {
+        "source":  "source/project/_common/custom/config/clarification-policy.json",
+        "target":  "E:/CODE/skills-manager/config/clarification-policy.json"
+    },
+    {
+        "source":  "source/project/_common/custom/config/clarification-policy.json",
+        "target":  "E:/CODE/governance-kit/config/clarification-policy.json"
+    },
+    {
+        "source":  "source/project/_common/custom/scripts/governance/check-token-balance.ps1",
+        "target":  "E:/CODE/ClassroomToolkit/scripts/governance/check-token-balance.ps1"
+    },
+    {
+        "source":  "source/project/_common/custom/.governance/token-balance-policy.json",
+        "target":  "E:/CODE/ClassroomToolkit/.governance/token-balance-policy.json"
+    },
+    {
+        "source":  "source/project/_common/custom/scripts/governance/check-token-balance.ps1",
+        "target":  "E:/CODE/skills-manager/scripts/governance/check-token-balance.ps1"
+    },
+    {
+        "source":  "source/project/_common/custom/.governance/token-balance-policy.json",
+        "target":  "E:/CODE/skills-manager/.governance/token-balance-policy.json"
+    },
+    {
+        "source":  "source/project/_common/custom/scripts/governance/check-token-balance.ps1",
+        "target":  "E:/CODE/governance-kit/scripts/governance/check-token-balance.ps1"
+    },
+    {
+        "source":  "source/project/_common/custom/.governance/token-balance-policy.json",
+        "target":  "E:/CODE/governance-kit/.governance/token-balance-policy.json"
     }
 ]

@@ -6,7 +6,7 @@
   },
   "scope": {
     "prefer_git_pending": true,
-    "include_untracked": true,
+    "include_untracked": false,
     "scan_repo_when_no_pending": false,
     "max_repo_files": 200
   },
@@ -72,5 +72,25 @@
       "max_estimated_tokens_total_pending": 70000,
       "max_duplicate_line_occurrences": 40
     }
-  }
+  },
+  "repo_overrides": [
+    {
+      "repoName": "ClassroomToolkit",
+      "mode_limits": {
+        "standard": {
+          "max_estimated_tokens_per_file": 14000,
+          "max_estimated_tokens_total_pending": 70000
+        }
+      }
+    },
+    {
+      "repoName": "skills-manager",
+      "mode_limits": {
+        "standard": {
+          "max_estimated_tokens_per_file": 20000,
+          "max_estimated_tokens_total_pending": 90000
+        }
+      }
+    }
+  ]
 }

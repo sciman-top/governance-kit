@@ -8,11 +8,11 @@
     "allow_auto_fix": true,
     "allow_rule_optimization": true,
     "allow_local_optimize_without_backflow": false,
-    "max_autonomous_iterations": 6,
+    "max_autonomous_iterations": 4,
     "max_repeated_failure_per_step": 2,
     "enable_no_progress_guard": true,
     "max_no_progress_iterations": 2,
-    "token_budget_mode": "lite",
+    "token_budget_mode": "standard",
     "stop_on_irreversible_risk": true,
     "forbid_breaking_contract": true,
     "clarification_mode_default": "direct_fix",
@@ -46,6 +46,7 @@
     },
     {
       "repoName": "governance-kit",
+      "max_autonomous_iterations": 6,
       "token_budget_mode": "deep",
       "auto_commit_enabled": true,
       "auto_commit_on_checkpoints": [
