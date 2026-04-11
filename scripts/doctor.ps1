@@ -153,6 +153,7 @@ $steps = @(
   [pscustomobject]@{ name = "validate-config"; script = (Join-Path $PSScriptRoot 'validate-config.ps1'); args = @() },
   [pscustomobject]@{ name = "release-profile-coverage"; script = (Join-Path $PSScriptRoot 'check-release-profile-coverage.ps1'); args = @() },
   [pscustomobject]@{ name = "verify-targets"; script = (Join-Path $PSScriptRoot 'verify.ps1'); args = @('-SkipConfigValidation') },
+  [pscustomobject]@{ name = "growth-readiness-report"; script = (Join-Path $PSScriptRoot 'governance\report-growth-readiness.ps1'); args = @() },
   [pscustomobject]@{ name = "waiver-check"; script = (Join-Path $PSScriptRoot 'check-waivers.ps1'); args = @() },
   [pscustomobject]@{ name = "practice-stack"; script = (Join-Path $PSScriptRoot 'governance\check-practice-stack.ps1'); args = @("-RepoRoot", $kitRoot) },
   [pscustomobject]@{ name = "status"; script = (Join-Path $PSScriptRoot 'status.ps1'); args = @() },
@@ -172,6 +173,13 @@ $stepResults = [System.Collections.Generic.List[object]]::new()
 $failedSteps = [System.Collections.Generic.List[string]]::new()
 
 foreach ($item in $steps) {
+  if (-not (Test-Path -LiteralPath $item.script -PathType Leaf)) {
+    [void]$skippedSteps.Add($item.name)
+    if (-not $AsJson) {
+      Write-Host ("[SKIP] {0} (script not found: {1})" -f $item.name, $item.script)
+    }
+    continue
+  }
   $result = Run-Step -Name $item.name -ScriptPath $item.script -ScriptArgs $item.args -CaptureOutput:$AsJson
   [void]$stepResults.Add($result)
   if ($result.status -ne "PASS") {

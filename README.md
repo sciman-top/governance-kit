@@ -36,7 +36,7 @@
 > 说明：`.codex/*` 仍保持“可选、按需启用”，不作为当前默认分发项，避免与本地运行态隔离策略冲突。
 > 若需启用 `.codex/*` 下发，使用 `config/codex-runtime-policy.json` 做按仓开关（默认关闭）。
 
-## 快速开始
+## Quick Start / 快速开始
 
 推荐只使用一个对外入口：
 
@@ -200,3 +200,4 @@ agent-browser --cdp 9222 open https://github.com
 ## 许可证
 
 本项目采用 [`MIT`](LICENSE) 许可证。
+

@@ -703,6 +703,13 @@ function Get-ProjectCustomFilesForRepo([string]$KitRoot, [string]$RepoPath, [str
     }
   }
 
+  $growthPackFiles = @(Get-GrowthPackFilesForRepo -KitRoot $KitRoot -RepoPath $RepoPath -RepoName $repoLeaf)
+  foreach ($f in $growthPackFiles) {
+    if (-not [string]::IsNullOrWhiteSpace([string]$f)) {
+      [void]$files.Add(([string]$f -replace '\\', '/').TrimStart('/'))
+    }
+  }
+
   $codexRuntimeFiles = @(Get-CodexRuntimeFilesForRepo -KitRoot $KitRoot -RepoPath $RepoPath -RepoName $repoLeaf)
   foreach ($f in $codexRuntimeFiles) {
     if (-not [string]::IsNullOrWhiteSpace([string]$f)) {
@@ -719,6 +726,66 @@ function Get-ProjectCustomFilesForRepo([string]$KitRoot, [string]$RepoPath, [str
   }
 
   return @($ordered)
+}
+
+function Get-GrowthPackFilesForRepo([string]$KitRoot, [string]$RepoPath, [string]$RepoName) {
+  $policyPath = Join-Path $KitRoot "config\growth-pack-policy.json"
+  $policy = Read-JsonFile -Path $policyPath -DefaultValue $null -UseCache -DisplayName "growth-pack-policy.json"
+  if ($null -eq $policy) { return @() }
+
+  $enabled = $false
+  if ($null -ne $policy.PSObject.Properties['enabled']) {
+    $enabled = [bool]$policy.enabled
+  }
+  if (-not $enabled) { return @() }
+
+  $repoNorm = Normalize-Repo $RepoPath
+  $repoLeaf = if ([string]::IsNullOrWhiteSpace($RepoName)) { Get-RepoName $RepoPath } else { [string]$RepoName }
+
+  $tier = "starter"
+  if ($null -ne $policy.PSObject.Properties['default_tier'] -and -not [string]::IsNullOrWhiteSpace([string]$policy.default_tier)) {
+    $tier = ([string]$policy.default_tier).Trim().ToLowerInvariant()
+  }
+
+  foreach ($entry in @($policy.repo_overrides)) {
+    if ($null -eq $entry) { continue }
+
+    $match = $false
+    if ($entry.PSObject.Properties['repo'] -and -not [string]::IsNullOrWhiteSpace([string]$entry.repo)) {
+      $entryRepoNorm = Normalize-Repo ([string]$entry.repo)
+      if ($entryRepoNorm.Equals($repoNorm, [System.StringComparison]::OrdinalIgnoreCase)) {
+        $match = $true
+      }
+    }
+    if (-not $match -and $entry.PSObject.Properties['repoName'] -and -not [string]::IsNullOrWhiteSpace([string]$entry.repoName)) {
+      if (([string]$entry.repoName).Equals($repoLeaf, [System.StringComparison]::OrdinalIgnoreCase)) {
+        $match = $true
+      }
+    }
+    if (-not $match) { continue }
+
+    if ($entry.PSObject.Properties['enabled']) {
+      $enabled = [bool]$entry.enabled
+    }
+    if ($entry.PSObject.Properties['tier'] -and -not [string]::IsNullOrWhiteSpace([string]$entry.tier)) {
+      $tier = ([string]$entry.tier).Trim().ToLowerInvariant()
+    }
+  }
+
+  if (-not $enabled) { return @() }
+  if ($null -eq $policy.PSObject.Properties['tiers'] -or $null -eq $policy.tiers) { return @() }
+
+  $tierProp = $policy.tiers.PSObject.Properties[$tier]
+  if ($null -eq $tierProp -or $null -eq $tierProp.Value) { return @() }
+
+  $files = [System.Collections.Generic.List[string]]::new()
+  foreach ($f in @($tierProp.Value)) {
+    if (-not [string]::IsNullOrWhiteSpace([string]$f)) {
+      [void]$files.Add(([string]$f -replace '\\', '/').TrimStart('/'))
+    }
+  }
+
+  return @($files.ToArray())
 }
 
 function Get-CodexRuntimeFilesForRepo([string]$KitRoot, [string]$RepoPath, [string]$RepoName) {

@@ -1,0 +1,34 @@
+规则ID=growth-pack-distribution-v1
+规则版本=1.0
+兼容窗口(观察期/强制期)=observe->enforce
+影响模块=config/scripts/templates/source/project/_common/custom
+当前落点=E:/CODE/governance-kit
+目标归宿=E:/CODE/governance-kit/source/project/_common/custom/* + target repos
+迁移批次=20260411
+风险等级=medium
+是否豁免(Waiver)=no
+豁免责任人=
+豁免到期=
+豁免回收计划=
+执行命令=scripts/install.ps1 -Mode safe; scripts/verify-kit.ps1; tests/governance-kit.optimization.tests.ps1; scripts/validate-config.ps1; scripts/verify.ps1; scripts/doctor.ps1
+验证证据=all gates pass; growth-pack readiness 100 for 3 repos
+供应链安全扫描=n/a
+发布后验证(指标/阈值/窗口)=readiness_score=100 threshold>=80
+数据变更治理(迁移/回填/回滚)=config policy additive + scripts additive + template additive
+回滚动作=scripts/restore.ps1 + backups/<timestamp>
+subagent_decision_mode=single-session
+spawn_parallel_subagents=false
+max_parallel_agents=0
+decision_score=0
+reason_codes=local_execution
+hard_guard_hits=none
+policy_path=config/growth-pack-policy.json
+growth_pack_enabled=true
+target_repo_count=3
+readiness_score=100
+quickstart_presence=3/3
+release_template_presence=3/3
+
+learning_points_3=1) quickstart detection must be locale-aware; 2) enforce gate should follow advisory warm-up; 3) fallback-safe scripts reduce fixture fragility
+reusable_checklist=add policy -> add templates -> add verifier -> add report -> integrate gates -> run full chain
+open_questions=whether to enforce root-level README section order

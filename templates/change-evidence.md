@@ -31,6 +31,11 @@ decision_score=
 reason_codes=
 hard_guard_hits=
 policy_path=
+growth_pack_enabled=
+target_repo_count=
+readiness_score=
+quickstart_presence=
+release_template_presence=
 
 learning_points_3=
 reusable_checklist=

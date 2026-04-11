@@ -1,0 +1,61 @@
+{
+  "schema_version": "1.0",
+  "enabled": true,
+  "readme_quickstart_mode": "enforce",
+  "root_apply_enabled_by_default": true,
+  "default_tier": "starter",
+  "tiers": {
+    "starter": [
+      ".governance/growth-pack/README.template.md",
+      ".governance/growth-pack/RELEASE_TEMPLATE.md",
+      ".governance/growth-pack/CONTRIBUTING.template.md",
+      ".governance/growth-pack/SECURITY.template.md",
+      ".governance/growth-pack/ISSUE_TEMPLATE/bug_report.yml",
+      ".governance/growth-pack/ISSUE_TEMPLATE/feature_request.yml",
+      ".governance/growth-pack/pull_request_template.md",
+      ".governance/growth-pack/CHECKLIST.md",
+      "scripts/governance/verify-growth-pack.ps1",
+      "scripts/governance/report-growth-readiness.ps1",
+      "scripts/governance/apply-growth-pack.ps1"
+    ],
+    "advanced": [
+      ".governance/growth-pack/README.template.md",
+      ".governance/growth-pack/RELEASE_TEMPLATE.md",
+      ".governance/growth-pack/ISSUE_TEMPLATE/bug_report.yml",
+      ".governance/growth-pack/ISSUE_TEMPLATE/feature_request.yml",
+      ".governance/growth-pack/pull_request_template.md",
+      ".governance/growth-pack/CHECKLIST.md",
+      "scripts/governance/verify-growth-pack.ps1",
+      "scripts/governance/report-growth-readiness.ps1",
+      "scripts/governance/apply-growth-pack.ps1"
+    ],
+    "integration": [
+      ".governance/growth-pack/README.template.md",
+      ".governance/growth-pack/RELEASE_TEMPLATE.md",
+      ".governance/growth-pack/CHECKLIST.md",
+      "scripts/governance/verify-growth-pack.ps1",
+      "scripts/governance/report-growth-readiness.ps1",
+      "scripts/governance/apply-growth-pack.ps1"
+    ]
+  },
+  "repo_overrides": [
+    {
+      "repoName": "ClassroomToolkit",
+      "tier": "starter",
+      "enabled": true,
+      "root_apply_enabled": true
+    },
+    {
+      "repoName": "skills-manager",
+      "tier": "advanced",
+      "enabled": true,
+      "root_apply_enabled": true
+    },
+    {
+      "repoName": "governance-kit",
+      "tier": "starter",
+      "enabled": true,
+      "root_apply_enabled": true
+    }
+  ]
+}

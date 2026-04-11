@@ -178,4 +178,17 @@ if (-not $SkipTrackedFilesPolicy -and $TrackedFilesScope -ne "none") {
   }
 }
 
-if ($fail -gt 0 -or $policyFail -gt 0 -or $trackedFilesFail -gt 0) { exit 1 }
+$growthFail = 0
+$growthScript = Join-Path $PSScriptRoot "governance\verify-growth-pack.ps1"
+if (-not (Test-Path -LiteralPath $growthScript -PathType Leaf)) {
+  Write-Host "[GROWTH] skip: script not found"
+} else {
+  try {
+    Invoke-ChildScript -ScriptPath $growthScript
+  } catch {
+    Write-Host ("[GROWTH] verification failed: " + $_.Exception.Message)
+    $growthFail++
+  }
+}
+
+if ($fail -gt 0 -or $policyFail -gt 0 -or $trackedFilesFail -gt 0 -or $growthFail -gt 0) { exit 1 }

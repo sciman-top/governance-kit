@@ -17,6 +17,7 @@ $practiceStackPolicyPath = Join-Path $kitRoot "config\practice-stack-policy.json
 $clarificationPolicyPath = Join-Path $kitRoot "config\clarification-policy.json"
 $codexProfileRegistryPath = Join-Path $kitRoot "config\codex-profile-registry.json"
 $codexRuntimePolicyPath = Join-Path $kitRoot "config\codex-runtime-policy.json"
+$growthPackPolicyPath = Join-Path $kitRoot "config\growth-pack-policy.json"
 
 if (!(Test-Path $reposPath)) { throw "repositories.json not found: $reposPath" }
 if (!(Test-Path $targetsPath)) { throw "targets.json not found: $targetsPath" }
@@ -176,6 +177,22 @@ $projectCustom = Read-RequiredJsonConfig -Path $projectCustomPath -InvalidMessag
 $oneclickDistributionPolicy = Read-OptionalJsonConfig -Path $oneclickDistributionPolicyPath -InvalidNotice "[CFG] oneclick-distribution-policy.json invalid JSON: $oneclickDistributionPolicyPath"
 $releaseDistributionPolicy = Read-RequiredJsonConfig -Path $releaseDistributionPolicyPath -InvalidMessage "release-distribution-policy.json invalid JSON: $releaseDistributionPolicyPath"
 $practiceStackPolicy = Read-RequiredJsonConfig -Path $practiceStackPolicyPath -InvalidMessage "practice-stack-policy.json invalid JSON: $practiceStackPolicyPath"
+$growthPackPolicy = Read-OptionalJsonConfig -Path $growthPackPolicyPath -InvalidNotice "[CFG] growth-pack-policy.json invalid JSON: $growthPackPolicyPath"
+if ($null -eq $growthPackPolicy) {
+  $growthPackPolicy = [pscustomobject]@{
+    schema_version = "compat-default"
+    enabled = $false
+    readme_quickstart_mode = "advisory"
+    root_apply_enabled_by_default = $false
+    default_tier = "starter"
+    tiers = [pscustomobject]@{
+      starter = @()
+      advanced = @()
+      integration = @()
+    }
+    repo_overrides = @()
+  }
+}
 
 if (Test-Path $clarificationPolicyPath) {
   $clarificationPolicy = Read-RequiredJsonConfig -Path $clarificationPolicyPath -InvalidMessage "clarification-policy.json invalid JSON: $clarificationPolicyPath"
@@ -774,6 +791,84 @@ if (Test-Path -LiteralPath $codexRuntimePolicyPath -PathType Leaf) {
 
         [void](Validate-RequiredBooleanProperty -Object $entry -PropertyName "enabled" -Message "[CFG] codex-runtime-policy.repos.enabled must be boolean")
       }
+    }
+  }
+}
+
+[void](Validate-RequiredNonEmptyStringProperty -Object $growthPackPolicy -PropertyName "schema_version" -MissingMessage "[CFG] growth-pack-policy.schema_version missing")
+[void](Validate-RequiredBooleanProperty -Object $growthPackPolicy -PropertyName "enabled" -Message "[CFG] growth-pack-policy.enabled must be boolean")
+[void](Validate-RequiredBooleanProperty -Object $growthPackPolicy -PropertyName "root_apply_enabled_by_default" -Message "[CFG] growth-pack-policy.root_apply_enabled_by_default must be boolean")
+$growthDefaultTier = Validate-RequiredNonEmptyStringProperty -Object $growthPackPolicy -PropertyName "default_tier" -MissingMessage "[CFG] growth-pack-policy.default_tier missing"
+$growthAllowedTiers = @("starter", "advanced", "integration")
+$quickStartMode = Validate-RequiredNonEmptyStringProperty -Object $growthPackPolicy -PropertyName "readme_quickstart_mode" -MissingMessage "[CFG] growth-pack-policy.readme_quickstart_mode missing"
+if ($null -ne $quickStartMode) {
+  $allowedQuickStartModes = @("advisory", "enforce")
+  if ($allowedQuickStartModes -notcontains ([string]$quickStartMode).ToLowerInvariant()) {
+    Write-Host "[CFG] growth-pack-policy.readme_quickstart_mode invalid: expected advisory/enforce"
+    $fail++
+  }
+}
+if ($null -ne $growthDefaultTier) {
+  if ($growthAllowedTiers -notcontains ([string]$growthDefaultTier).ToLowerInvariant()) {
+    Write-Host "[CFG] growth-pack-policy.default_tier invalid: expected starter/advanced/integration"
+    $fail++
+  }
+}
+if ($null -eq $growthPackPolicy.PSObject.Properties['tiers'] -or $null -eq $growthPackPolicy.tiers) {
+  Write-Host "[CFG] growth-pack-policy.tiers missing"
+  $fail++
+} else {
+  foreach ($tierName in $growthAllowedTiers) {
+    $tierProp = $growthPackPolicy.tiers.PSObject.Properties[$tierName]
+    if ($null -eq $tierProp -or $null -eq $tierProp.Value) {
+      Write-Host ("[CFG] growth-pack-policy.tiers.{0} missing" -f $tierName)
+      $fail++
+      continue
+    }
+    if ($tierProp.Value -isnot [System.Array]) {
+      Write-Host ("[CFG] growth-pack-policy.tiers.{0} must be array" -f $tierName)
+      $fail++
+      continue
+    }
+    foreach ($f in @($tierProp.Value)) {
+      $fText = [string]$f
+      if ([string]::IsNullOrWhiteSpace($fText)) {
+        Write-Host ("[CFG] growth-pack-policy.tiers.{0} contains empty path" -f $tierName)
+        $fail++
+        continue
+      }
+      if ([System.IO.Path]::IsPathRooted(($fText -replace '/', '\'))) {
+        Write-Host ("[CFG] growth-pack-policy.tiers.{0} path must be relative: {1}" -f $tierName, $fText)
+        $fail++
+      }
+    }
+  }
+}
+if ($null -ne $growthPackPolicy.PSObject.Properties['repo_overrides'] -and $null -ne $growthPackPolicy.repo_overrides) {
+  foreach ($entry in @($growthPackPolicy.repo_overrides)) {
+    if ($null -eq $entry) {
+      Write-Host "[CFG] growth-pack-policy.repo_overrides contains null entry"
+      $fail++
+      continue
+    }
+    $hasRepo = $entry.PSObject.Properties['repo'] -and -not [string]::IsNullOrWhiteSpace([string]$entry.repo)
+    $hasRepoName = $entry.PSObject.Properties['repoName'] -and -not [string]::IsNullOrWhiteSpace([string]$entry.repoName)
+    if (-not $hasRepo -and -not $hasRepoName) {
+      Write-Host "[CFG] growth-pack-policy.repo_overrides entry must contain repo or repoName"
+      $fail++
+    }
+    if ($entry.PSObject.Properties['tier']) {
+      $entryTier = ([string]$entry.tier).ToLowerInvariant()
+      if ($growthAllowedTiers -notcontains $entryTier) {
+        Write-Host ("[CFG] growth-pack-policy.repo_overrides.tier invalid: {0}" -f [string]$entry.tier)
+        $fail++
+      }
+    }
+    if ($entry.PSObject.Properties['enabled']) {
+      [void](Validate-BooleanValue -Value $entry.enabled -Message "[CFG] growth-pack-policy.repo_overrides.enabled must be boolean")
+    }
+    if ($entry.PSObject.Properties['root_apply_enabled']) {
+      [void](Validate-BooleanValue -Value $entry.root_apply_enabled -Message "[CFG] growth-pack-policy.repo_overrides.root_apply_enabled must be boolean")
     }
   }
 }
