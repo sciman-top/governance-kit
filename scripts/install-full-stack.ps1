@@ -133,6 +133,7 @@ function Get-TargetGatePlan {
   param(
     [Parameter(Mandatory = $true)][string]$TargetRepo
   )
+  $targetRepoName = Split-Path -Leaf ([System.IO.Path]::GetFullPath($TargetRepo))
 
   $analyzeScript = Join-Path $PSScriptRoot "analyze-repo-governance.ps1"
   if (-not (Test-Path -LiteralPath $analyzeScript -PathType Leaf)) {
@@ -170,6 +171,12 @@ function Get-TargetGatePlan {
       }
       if ($GateName -eq "hotspot") {
         return (".\\skills.ps1 " + $buildApplyCmd)
+      }
+      if ($GateName -eq "contract/invariant" `
+          -and $targetRepoName.Equals("skills-manager", [System.StringComparison]::OrdinalIgnoreCase) `
+          -and $fixed -match '^\s*\.\\skills\.ps1\s+doctor(\s+|$)' `
+          -and $fixed -notmatch '(?i)--threshold-ms\s+\d+') {
+        return ($fixed.TrimEnd() + " --threshold-ms 8000")
       }
     }
 

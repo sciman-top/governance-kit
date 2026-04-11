@@ -25,8 +25,8 @@
     "solution_design": true,
     "architecture_choice": true,
     "pre_release_review": true,
-    "simple_mechanical_change": false,
-    "bugfix_mechanical": false,
+    "simple_mechanical_change": true,
+    "bugfix_mechanical": true,
     "formatting_only": false
   },
   "standard_upgrade_guard": {
@@ -52,8 +52,8 @@
   "token_guard": {
     "prefer_mode_when_budget_tight": "lite",
     "force_silent_on_user_opt_out": true,
-    "max_total_suggestion_words_per_turn": 80,
-    "max_total_suggestion_words_per_issue": 240,
+    "max_total_suggestion_words_per_turn": 60,
+    "max_total_suggestion_words_per_issue": 200,
     "downgrade_to_silent_when_over_issue_budget": true
   },
   "response_shape": {

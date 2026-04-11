@@ -9,5 +9,9 @@
   "registry_relative_path": ".governance/skill-candidates/promotion-registry.json",
   "skills_root": "E:/CODE/skills-manager",
   "overrides_relative_path": "overrides",
-  "auto_run_skills_manager_gates": true
+  "auto_run_skills_manager_gates": true,
+  "collapse_suffix_pattern": "^(.*-\\d{8})-[a-z]$",
+  "exclude_signature_patterns": [
+    "(?i)^autopilot-utf8-smoke"
+  ]
 }

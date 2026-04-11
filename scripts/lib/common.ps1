@@ -87,6 +87,30 @@ function Write-Utf8NoBom([string]$Path, [string]$Content) {
   [System.IO.File]::WriteAllText($Path, $Content, $enc)
 }
 
+function Test-FileHasUtf8Bom([string]$Path) {
+  if ([string]::IsNullOrWhiteSpace($Path)) { return $false }
+  if (-not (Test-Path -LiteralPath $Path -PathType Leaf)) { return $false }
+  $bytes = [System.IO.File]::ReadAllBytes($Path)
+  if ($bytes.Length -lt 3) { return $false }
+  return ($bytes[0] -eq 0xEF -and $bytes[1] -eq 0xBB -and $bytes[2] -eq 0xBF)
+}
+
+function Read-SkillMarkdownNormalized([string]$Path) {
+  if ([string]::IsNullOrWhiteSpace($Path)) { return "" }
+  if (-not (Test-Path -LiteralPath $Path -PathType Leaf)) { return "" }
+  $raw = [System.IO.File]::ReadAllText($Path)
+  if ($null -eq $raw) { return "" }
+  return $raw.TrimStart([char]0xFEFF)
+}
+
+function Write-SkillMarkdownNormalized([string]$Path, [string]$Content) {
+  if ([string]::IsNullOrWhiteSpace($Path)) {
+    throw "Path is required for Write-SkillMarkdownNormalized."
+  }
+  $normalized = if ($null -eq $Content) { "" } else { $Content.TrimStart([char]0xFEFF) }
+  Write-Utf8NoBom -Path $Path -Content $normalized
+}
+
 function Invoke-CommandCapture {
   param(
     [Parameter(Mandatory = $true)]

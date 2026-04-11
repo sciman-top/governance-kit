@@ -184,6 +184,7 @@ foreach ($item in $targets) {
   $dstRaw = $item.target
   $src = Join-Path $kitRoot $srcRel
   $dst = [System.IO.Path]::GetFullPath(($dstRaw -replace '/', '\'))
+  $isSkillMarkdown = ([System.IO.Path]::GetFileName($src)).Equals("SKILL.md", [System.StringComparison]::OrdinalIgnoreCase)
 
   if (!(Test-Path $src)) {
     throw "Source not found: $src"
@@ -191,7 +192,11 @@ foreach ($item in $targets) {
 
   $dstExists = Test-Path $dst
   $same = $false
-  if ($dstExists) {
+  if ($dstExists -and $isSkillMarkdown) {
+    $srcNormalized = Read-SkillMarkdownNormalized $src
+    $dstNormalized = Read-SkillMarkdownNormalized $dst
+    $same = ($srcNormalized -ceq $dstNormalized)
+  } elseif ($dstExists) {
     $same = Test-FileContentEqual -PathA $src -PathB $dst
   }
 
@@ -241,7 +246,12 @@ foreach ($item in $targets) {
   }
 
   if (-not $same) {
-    Copy-Item -Path $src -Destination $dst -Force
+    if ($isSkillMarkdown) {
+      $srcNormalized = Read-SkillMarkdownNormalized $src
+      Write-SkillMarkdownNormalized -Path $dst -Content $srcNormalized
+    } else {
+      Copy-Item -Path $src -Destination $dst -Force
+    }
     $copied++
     Write-Host "[COPIED] $srcRel -> $dst"
     $records += [pscustomobject]@{

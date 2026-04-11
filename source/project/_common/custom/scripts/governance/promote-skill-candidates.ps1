@@ -24,7 +24,7 @@ function ConvertTo-Slug([string]$Text) {
   if ([string]::IsNullOrWhiteSpace($Text)) { return "candidate" }
   $slug = ($Text.ToLowerInvariant() -replace '[^a-z0-9]+', '-').Trim('-')
   if ([string]::IsNullOrWhiteSpace($slug)) { return "candidate" }
-  if ($slug.Length -gt 24) { $slug = $slug.Substring(0, 24).Trim('-') }
+  if ($slug.Length -gt 48) { $slug = $slug.Substring(0, 48).Trim('-') }
   if ([string]::IsNullOrWhiteSpace($slug)) { return "candidate" }
   return $slug
 }
@@ -48,6 +48,38 @@ function Get-SignatureHash8([string]$Text) {
   }
 }
 
+function Get-CanonicalSkillName([string]$Signature) {
+  $family = Get-SignatureFamily -Signature $Signature
+  $slug = ConvertTo-Slug $family
+  $hash8 = Get-SignatureHash8 $family
+  return ("custom-auto-{0}-{1}" -f $slug, $hash8)
+}
+
+function Get-SignatureFamily([string]$Signature, [string]$CollapsePattern = "^(.*-\d{8})-[a-z]$") {
+  $raw = if ($null -eq $Signature) { "" } else { $Signature.Trim().ToLowerInvariant() }
+  if ([string]::IsNullOrWhiteSpace($raw)) { return "" }
+  if (-not [string]::IsNullOrWhiteSpace($CollapsePattern) -and $raw -match $CollapsePattern) {
+    $base = [string]$Matches[1]
+    if (-not [string]::IsNullOrWhiteSpace($base)) { return $base.Trim().ToLowerInvariant() }
+  }
+  return $raw
+}
+
+function Test-SignatureExcluded([string]$Signature, [object]$Patterns) {
+  $value = if ($null -eq $Signature) { "" } else { $Signature.Trim().ToLowerInvariant() }
+  if ([string]::IsNullOrWhiteSpace($value)) { return $false }
+  foreach ($patternObj in @($Patterns)) {
+    $pattern = [string]$patternObj
+    if ([string]::IsNullOrWhiteSpace($pattern)) { continue }
+    try {
+      if ($value -match $pattern) { return $true }
+    } catch {
+      continue
+    }
+  }
+  return $false
+}
+
 function New-DefaultPolicy {
   return [pscustomobject]@{
     schema_version = "1.0"
@@ -61,6 +93,15 @@ function New-DefaultPolicy {
     skills_root = "E:/CODE/skills-manager"
     overrides_relative_path = "overrides"
     auto_run_skills_manager_gates = $true
+    collapse_suffix_pattern = "^(.*-\d{8})-[a-z]$"
+    exclude_signature_patterns = @(
+      "(?i)^autopilot-utf8-smoke"
+    )
+    summary_relative_path = ".governance/skill-candidates/last-promotion-summary.json"
+    write_summary_file = $true
+    require_user_ack = $false
+    user_ack_env_var = "SKILL_PROMOTION_ACK"
+    user_ack_expected_value = "YES"
   }
 }
 
@@ -117,6 +158,80 @@ function Save-Registry([string]$PathText, [psobject]$Registry) {
   $Registry | ConvertTo-Json -Depth 8 | Set-Content -LiteralPath $PathText -Encoding utf8
 }
 
+function Get-SkillSignatureFromSkillFile([string]$SkillFile, [string]$CollapsePattern, [object]$ExcludePatterns) {
+  if (-not (Test-Path -LiteralPath $SkillFile -PathType Leaf)) { return $null }
+  $raw = Get-Content -LiteralPath $SkillFile -Raw -ErrorAction SilentlyContinue
+  if ([string]::IsNullOrWhiteSpace($raw)) { return $null }
+  $m = [regex]::Match($raw, "Auto-promoted from repeated issue signature '([^']+)'", [System.Text.RegularExpressions.RegexOptions]::IgnoreCase)
+  if (-not $m.Success) { return $null }
+  $sig = [string]$m.Groups[1].Value
+  if ([string]::IsNullOrWhiteSpace($sig)) { return $null }
+  if (Test-SignatureExcluded -Signature $sig -Patterns $ExcludePatterns) { return $null }
+  $family = Get-SignatureFamily -Signature $sig -CollapsePattern $CollapsePattern
+  if ([string]::IsNullOrWhiteSpace($family)) { return $null }
+  return $family
+}
+
+function Merge-RegistryByFamily([psobject]$Registry, [string]$CollapsePattern, [object]$ExcludePatterns) {
+  $merged = @{}
+  foreach ($item in @($Registry.promoted)) {
+    if ($null -eq $item) { continue }
+    $rawSig = [string]$item.issue_signature
+    if ([string]::IsNullOrWhiteSpace($rawSig)) { continue }
+    if (Test-SignatureExcluded -Signature $rawSig -Patterns $ExcludePatterns) { continue }
+    $family = Get-SignatureFamily -Signature $rawSig -CollapsePattern $CollapsePattern
+    if ([string]::IsNullOrWhiteSpace($family)) { continue }
+    $key = $family.ToLowerInvariant()
+    if (-not $merged.ContainsKey($key)) {
+      $merged[$key] = [ordered]@{
+        issue_signature = $family
+        skill_name = (Get-CanonicalSkillName $family)
+        promoted_at = ""
+        hit_count = 0
+        repos = New-Object System.Collections.Generic.HashSet[string]([System.StringComparer]::OrdinalIgnoreCase)
+        signature_variants = New-Object System.Collections.Generic.HashSet[string]([System.StringComparer]::OrdinalIgnoreCase)
+      }
+    }
+    $bucket = $merged[$key]
+    $bucket.hit_count = [Math]::Max([int]$bucket.hit_count, [int]$item.hit_count)
+    foreach ($r in @($item.repos)) {
+      $repoText = [string]$r
+      if (-not [string]::IsNullOrWhiteSpace($repoText)) { $bucket.repos.Add($repoText) | Out-Null }
+    }
+    $bucket.signature_variants.Add($rawSig.Trim().ToLowerInvariant()) | Out-Null
+    foreach ($v in @($item.signature_variants)) {
+      $vv = [string]$v
+      if (-not [string]::IsNullOrWhiteSpace($vv)) { $bucket.signature_variants.Add($vv.Trim().ToLowerInvariant()) | Out-Null }
+    }
+    $candidate = ""
+    try { $candidate = ([datetime]$item.promoted_at).ToString("o") } catch { $candidate = [string]$item.promoted_at }
+    if ([string]::IsNullOrWhiteSpace($bucket.promoted_at)) {
+      $bucket.promoted_at = $candidate
+    } else {
+      $lhs = $null; $rhs = $null
+      try { $lhs = [datetime]$bucket.promoted_at } catch { $lhs = $null }
+      try { $rhs = [datetime]$candidate } catch { $rhs = $null }
+      if ($null -ne $rhs -and ($null -eq $lhs -or $rhs -gt $lhs)) { $bucket.promoted_at = $candidate }
+    }
+  }
+
+  $result = @()
+  foreach ($key in @($merged.Keys | Sort-Object)) {
+    $b = $merged[$key]
+    $result += [pscustomobject]@{
+      issue_signature = [string]$b.issue_signature
+      skill_name = [string]$b.skill_name
+      promoted_at = [string]$b.promoted_at
+      hit_count = [int]$b.hit_count
+      repos = @($b.repos | Sort-Object)
+      signature_variants = @($b.signature_variants | Sort-Object)
+    }
+  }
+
+  $Registry.promoted = @($result)
+  return $Registry
+}
+
 function Read-EventLines([string]$PathText) {
   if (-not (Test-Path -LiteralPath $PathText -PathType Leaf)) { return @() }
   $items = New-Object System.Collections.Generic.List[object]
@@ -145,8 +260,13 @@ function Get-PromotedLookup([psobject]$Registry) {
   return $lookup
 }
 
-function Build-SkillContent([string]$SkillName, [string]$Signature, [int]$Count, [string[]]$Repos) {
+function Build-SkillContent([string]$SkillName, [string]$Signature, [int]$Count, [string[]]$Repos, [string[]]$Variants = @()) {
   $repoText = if ($Repos.Count -gt 0) { ($Repos -join ", ") } else { "unknown-repo" }
+  $variantLine = $null
+  $cleanVariants = @($Variants | Where-Object { -not [string]::IsNullOrWhiteSpace([string]$_) } | ForEach-Object { ([string]$_).Trim().ToLowerInvariant() } | Sort-Object -Unique)
+  if ($cleanVariants.Count -gt 1) {
+    $variantLine = ("signature_variants: {0}" -f ($cleanVariants -join ", "))
+  }
   @(
     "---",
     ("name: {0}" -f $SkillName),
@@ -158,7 +278,8 @@ function Build-SkillContent([string]$SkillName, [string]$Signature, [int]$Count,
     "3. Verify with repository gates in fixed order: build -> test -> contract/invariant -> hotspot.",
     "4. If the same signature reappears, update this skill and evidence records instead of creating a duplicate skill.",
     "",
-    ("source_repos: {0}" -f $repoText)
+    ("source_repos: {0}" -f $repoText),
+    $variantLine
   ) -join "`n"
 }
 
@@ -227,6 +348,8 @@ $windowStart = $now.AddDays(-1 * [int]$policy.window_days)
 $cooldownDays = [int]$policy.cooldown_days
 $maxPromotions = [Math]::Max(1, [int]$policy.max_promotions_per_run)
 $threshold = [Math]::Max(1, [int]$policy.threshold_count)
+$collapsePattern = [string]$policy.collapse_suffix_pattern
+$excludePatterns = @($policy.exclude_signature_patterns)
 
 $groupMap = @{}
 $eventCount = 0
@@ -240,7 +363,10 @@ foreach ($repoEntry in @($repos)) {
   }
   foreach ($event in @(Read-EventLines $eventPath)) {
     if ($null -eq $event) { continue }
-    $signature = [string]$event.issue_signature
+    $rawSignature = [string]$event.issue_signature
+    if ([string]::IsNullOrWhiteSpace($rawSignature)) { continue }
+    if (Test-SignatureExcluded -Signature $rawSignature -Patterns $excludePatterns) { continue }
+    $signature = Get-SignatureFamily -Signature $rawSignature -CollapsePattern $collapsePattern
     if ([string]::IsNullOrWhiteSpace($signature)) { continue }
     $eventTime = $null
     try { $eventTime = [datetime]$event.timestamp } catch { $eventTime = $null }
@@ -253,12 +379,14 @@ foreach ($repoEntry in @($repos)) {
         issue_signature = $key
         count = 0
         repos = New-Object System.Collections.Generic.HashSet[string]([System.StringComparer]::OrdinalIgnoreCase)
+        raw_signatures = New-Object System.Collections.Generic.HashSet[string]([System.StringComparer]::OrdinalIgnoreCase)
         latest_event = $eventTime
       }
     }
     $bucket = $groupMap[$key]
     $bucket.count = [int]$bucket.count + 1
     $bucket.repos.Add(($repoText -replace '\\', '/')) | Out-Null
+    $bucket.raw_signatures.Add($rawSignature.Trim().ToLowerInvariant()) | Out-Null
     if ($eventTime -gt [datetime]$bucket.latest_event) {
       $bucket.latest_event = $eventTime
     }
@@ -304,7 +432,8 @@ foreach ($item in @($selected)) {
     New-Item -ItemType Directory -Force -Path $skillDir | Out-Null
   }
   $reposUsed = @($item.repos | Sort-Object)
-  $skillContent = Build-SkillContent -SkillName $skillName -Signature $signature -Count ([int]$item.count) -Repos $reposUsed
+  $signatureVariants = @($item.raw_signatures | Sort-Object)
+  $skillContent = Build-SkillContent -SkillName $skillName -Signature $signature -Count ([int]$item.count) -Repos $reposUsed -Variants $signatureVariants
   Set-Content -LiteralPath $skillFile -Encoding utf8 -Value $skillContent
 
   $registryRecord = [pscustomobject]@{
@@ -313,6 +442,7 @@ foreach ($item in @($selected)) {
     promoted_at = $now.ToString("o")
     hit_count = [int]$item.count
     repos = $reposUsed
+    signature_variants = $signatureVariants
   }
 
   $existing = @($registry.promoted | Where-Object { ([string]$_.issue_signature).ToLowerInvariant() -eq $signature })
@@ -322,6 +452,7 @@ foreach ($item in @($selected)) {
       $entry.promoted_at = $registryRecord.promoted_at
       $entry.hit_count = $registryRecord.hit_count
       $entry.repos = $registryRecord.repos
+      $entry.signature_variants = $registryRecord.signature_variants
     }
   } else {
     $registry.promoted += $registryRecord

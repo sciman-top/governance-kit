@@ -1,6 +1,16 @@
 ﻿$here = Split-Path -Parent $MyInvocation.MyCommand.Path
 $repoRoot = (Resolve-Path (Join-Path $here "..")).Path
 
+function Write-Utf8NoBomFile {
+  param(
+    [Parameter(Mandatory = $true)][string]$Path,
+    [Parameter(Mandatory = $true)][string]$Content
+  )
+  $enc = New-Object System.Text.UTF8Encoding($false)
+  [System.IO.File]::WriteAllText($Path, $Content, $enc)
+}
+
+
 function Set-MinProjectRulePolicy {
   param(
     [Parameter(Mandatory = $true)]
@@ -467,7 +477,14 @@ exit 0
       Copy-Item -Path (Join-Path $repoRoot "scripts\lib\common.ps1") -Destination (Join-Path $tmp "scripts\lib\common.ps1") -Force
       Copy-Item -Path (Join-Path $repoRoot "scripts\validate-config.ps1") -Destination (Join-Path $tmp "scripts\validate-config.ps1") -Force
 
-      "test" | Set-Content -Path (Join-Path $tmp "source\project\_common\custom\.agents\skills\new-skill\SKILL.md") -Encoding UTF8
+      Write-Utf8NoBomFile -Path (Join-Path $tmp "source\project\_common\custom\.agents\skills\new-skill\SKILL.md") -Content @'
+---
+name: new-skill
+description: test fixture skill
+---
+
+Fixture body.
+'@
 
       @("E:/CODE/FakeRepo") | ConvertTo-Json -Depth 3 | Set-Content -Path (Join-Path $tmp "config\repositories.json") -Encoding UTF8
       @(@{ source = "source/global/AGENTS.md"; target = "C:/Users/sciman/.codex/AGENTS.md" }) | ConvertTo-Json -Depth 4 | Set-Content -Path (Join-Path $tmp "config\targets.json") -Encoding UTF8
@@ -507,7 +524,14 @@ exit 0
       Copy-Item -Path (Join-Path $repoRoot "scripts\lib\common.ps1") -Destination (Join-Path $tmp "scripts\lib\common.ps1") -Force
       Copy-Item -Path (Join-Path $repoRoot "scripts\validate-config.ps1") -Destination (Join-Path $tmp "scripts\validate-config.ps1") -Force
 
-      "test" | Set-Content -Path (Join-Path $tmp "source\project\_common\custom\.agents\skills\new-skill\SKILL.md") -Encoding UTF8
+      Write-Utf8NoBomFile -Path (Join-Path $tmp "source\project\_common\custom\.agents\skills\new-skill\SKILL.md") -Content @'
+---
+name: new-skill
+description: test fixture skill
+---
+
+Fixture body.
+'@
 
       @("E:/CODE/FakeRepo") | ConvertTo-Json -Depth 3 | Set-Content -Path (Join-Path $tmp "config\repositories.json") -Encoding UTF8
       @(@{ source = "source/global/AGENTS.md"; target = "C:/Users/sciman/.codex/AGENTS.md" }) | ConvertTo-Json -Depth 4 | Set-Content -Path (Join-Path $tmp "config\targets.json") -Encoding UTF8

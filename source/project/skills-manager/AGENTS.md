@@ -74,14 +74,14 @@
 ### C.2 门禁命令与顺序（硬门禁）
 - build：`./build.ps1`
 - test：`./skills.ps1 发现`
-- contract/invariant：`./skills.ps1 doctor --strict`
+- contract/invariant：`./skills.ps1 doctor --strict --threshold-ms 8000`
 - hotspot：`./skills.ps1 构建生效`
 - fixed order：`build -> test -> contract/invariant -> hotspot`
 
 ### C.3 命令存在性与 N/A 回退验证
 - precheck：`Get-Command powershell`、`Test-Path ./skills.ps1`、`Test-Path ./build.ps1`。
-- `doctor --strict` 不可执行：标记 contract/invariant=gate_na，执行 `发现 + 构建生效` 并记录契约风险。
-- `构建生效` 受环境限制：标记 hotspot=gate_na，至少完成 `build + doctor --strict` 并记录未覆盖风险。
+- `doctor --strict --threshold-ms 8000` 不可执行：标记 contract/invariant=gate_na，执行 `发现 + 构建生效` 并记录契约风险。
+- `构建生效` 受环境限制：标记 hotspot=gate_na，至少完成 `build + doctor --strict --threshold-ms 8000` 并记录未覆盖风险。
 
 ### C.4 失败分流与阻断
 - build 失败：阻断，先修构建脚本与入口拼装错误。
@@ -93,7 +93,7 @@
 ### C.5 构建、生效与回滚
 - 构建：`./build.ps1`。
 - 生效：`./skills.ps1 构建生效`。
-- 最小验证：`./skills.ps1 doctor --strict`。
+- 最小验证：`./skills.ps1 doctor --strict --threshold-ms 8000`。
 - 回滚：恢复 `skills.json` 与 `overrides/` 后重新执行 `构建生效`。
 
 ### C.6 同步与目录策略

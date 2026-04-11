@@ -159,6 +159,15 @@ function Validate-TokenBudgetModeValue {
   return $true
 }
 
+function Test-YamlFrontmatterSkillFile([string]$Path) {
+  if ([string]::IsNullOrWhiteSpace($Path)) { return $false }
+  if (-not (Test-Path -LiteralPath $Path -PathType Leaf)) { return $false }
+  $raw = [System.IO.File]::ReadAllText($Path)
+  if ([string]::IsNullOrWhiteSpace($raw)) { return $false }
+  $normalized = $raw.TrimStart([char]0xFEFF).TrimStart()
+  return ($normalized -match "^---(\r?\n|$)")
+}
+
 try {
   $repos = Read-JsonArray $reposPath
 } catch {
@@ -533,6 +542,16 @@ if (Test-Path -LiteralPath $projectSourceRoot -PathType Container) {
 
     if (-not $registered) {
       Write-Host ("[CFG] unregistered skill custom file: {0}/{1}" -f $scopeRepo, $customRel)
+      $fail++
+    }
+
+    if (Test-FileHasUtf8Bom $skillFile.FullName) {
+      Write-Host ("[CFG] SKILL.md must be UTF-8 without BOM: {0}/{1}" -f $scopeRepo, $customRel)
+      $fail++
+    }
+
+    if (-not (Test-YamlFrontmatterSkillFile $skillFile.FullName)) {
+      Write-Host ("[CFG] SKILL.md missing YAML frontmatter: {0}/{1}" -f $scopeRepo, $customRel)
       $fail++
     }
   }
