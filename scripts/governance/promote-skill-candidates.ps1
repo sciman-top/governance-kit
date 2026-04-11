@@ -103,6 +103,13 @@ function New-DefaultPolicy {
     optimize_existing_without_ack = $true
     user_ack_env_var = "SKILL_PROMOTION_ACK"
     user_ack_expected_value = "YES"
+    create_min_unique_repos = 2
+    optimize_min_new_variants = 1
+    require_trigger_eval_for_create = $false
+    trigger_eval_summary_relative_path = ".governance/skill-candidates/trigger-eval-summary.json"
+    trigger_eval_min_validation_pass_rate = 0.70
+    trigger_eval_max_validation_false_trigger_rate = 0.20
+    block_create_when_eval_missing = $true
   }
 }
 
@@ -286,6 +293,87 @@ function Build-SkillContent([string]$SkillName, [string]$Signature, [int]$Count,
   ) -join "`n"
 }
 
+function Get-TriggerEvalGateState {
+  param(
+    [Parameter(Mandatory = $true)][string]$KitRoot,
+    [Parameter(Mandatory = $true)][psobject]$Policy
+  )
+
+  $requireEval = $false
+  if ($null -ne $Policy.PSObject.Properties['require_trigger_eval_for_create']) {
+    $requireEval = [bool]$Policy.require_trigger_eval_for_create
+  }
+  $summaryRel = [string]$Policy.trigger_eval_summary_relative_path
+  if ([string]::IsNullOrWhiteSpace($summaryRel)) {
+    $summaryRel = ".governance/skill-candidates/trigger-eval-summary.json"
+  }
+  $summaryPath = Join-Path ($KitRoot -replace '/', '\') ($summaryRel -replace '/', '\')
+  $minPassRate = [double]$Policy.trigger_eval_min_validation_pass_rate
+  $maxFalseRate = [double]$Policy.trigger_eval_max_validation_false_trigger_rate
+  $blockWhenMissing = $true
+  if ($null -ne $Policy.PSObject.Properties['block_create_when_eval_missing']) {
+    $blockWhenMissing = [bool]$Policy.block_create_when_eval_missing
+  }
+
+  $state = [ordered]@{
+    require_trigger_eval_for_create = [bool]$requireEval
+    trigger_eval_summary_path = ($summaryPath -replace '\\', '/')
+    trigger_eval_summary_found = $false
+    trigger_eval_pass = $false
+    trigger_eval_min_validation_pass_rate = $minPassRate
+    trigger_eval_max_validation_false_trigger_rate = $maxFalseRate
+    trigger_eval_validation_pass_rate = $null
+    trigger_eval_validation_false_trigger_rate = $null
+    trigger_eval_blocked_reason = ""
+  }
+
+  if (-not $requireEval) {
+    $state.trigger_eval_pass = $true
+    return [pscustomobject]$state
+  }
+
+  if (-not (Test-Path -LiteralPath $summaryPath -PathType Leaf)) {
+    $state.trigger_eval_blocked_reason = if ($blockWhenMissing) { "eval_summary_missing" } else { "" }
+    $state.trigger_eval_pass = (-not $blockWhenMissing)
+    return [pscustomobject]$state
+  }
+
+  $state.trigger_eval_summary_found = $true
+  $summary = Load-JsonObject $summaryPath
+  $vp = $null
+  $vf = $null
+  if ($null -ne $summary) {
+    if ($null -ne $summary.PSObject.Properties['validation_pass_rate']) {
+      try { $vp = [double]$summary.validation_pass_rate } catch { $vp = $null }
+    }
+    if ($null -ne $summary.PSObject.Properties['validation_false_trigger_rate']) {
+      try { $vf = [double]$summary.validation_false_trigger_rate } catch { $vf = $null }
+    }
+  }
+  $state.trigger_eval_validation_pass_rate = $vp
+  $state.trigger_eval_validation_false_trigger_rate = $vf
+
+  if ($null -eq $vp -or $null -eq $vf) {
+    $state.trigger_eval_blocked_reason = "eval_summary_missing_metrics"
+    $state.trigger_eval_pass = $false
+    return [pscustomobject]$state
+  }
+
+  if ($vp -lt $minPassRate) {
+    $state.trigger_eval_blocked_reason = "validation_pass_rate_below_threshold"
+    $state.trigger_eval_pass = $false
+    return [pscustomobject]$state
+  }
+  if ($vf -gt $maxFalseRate) {
+    $state.trigger_eval_blocked_reason = "validation_false_trigger_rate_above_threshold"
+    $state.trigger_eval_pass = $false
+    return [pscustomobject]$state
+  }
+
+  $state.trigger_eval_pass = $true
+  return [pscustomobject]$state
+}
+
 function Invoke-SkillsManagerGates([string]$SkillsRoot) {
   $skillsScript = Join-Path ($SkillsRoot -replace '/', '\') "skills.ps1"
   if (-not (Test-Path -LiteralPath $skillsScript -PathType Leaf)) {
@@ -413,15 +501,36 @@ $optimizeWithoutAck = $true
 if ($null -ne $policy.PSObject.Properties['optimize_existing_without_ack']) {
   $optimizeWithoutAck = [bool]$policy.optimize_existing_without_ack
 }
+$createMinUniqueRepos = [Math]::Max(1, [int]$policy.create_min_unique_repos)
+$optimizeMinNewVariants = [Math]::Max(1, [int]$policy.optimize_min_new_variants)
+$triggerEvalState = Get-TriggerEvalGateState -KitRoot $kitRoot -Policy $policy
 
 $actionable = New-Object System.Collections.Generic.List[object]
+$decisionAudit = New-Object System.Collections.Generic.List[object]
 foreach ($key in $groupMap.Keys) {
   $item = $groupMap[$key]
   if ([int]$item.count -lt $threshold) { continue }
   $family = [string]$item.issue_signature
   $canonical = Get-CanonicalSkillName $family
+  $repoCount = @($item.repos | Sort-Object).Count
 
   if (-not $promotedLookup.ContainsKey($key)) {
+    $blockedReasons = New-Object System.Collections.Generic.List[string]
+    if ($repoCount -lt $createMinUniqueRepos) { $blockedReasons.Add("insufficient_repo_diversity") | Out-Null }
+    if (-not [bool]$triggerEvalState.trigger_eval_pass) {
+      $blockedReasons.Add([string]$triggerEvalState.trigger_eval_blocked_reason) | Out-Null
+    }
+    if ($blockedReasons.Count -gt 0) {
+      $decisionAudit.Add([pscustomobject]@{
+        action = "skip"
+        issue_signature = $family
+        skill_name = $canonical
+        hit_count = [int]$item.count
+        unique_repo_count = [int]$repoCount
+        reason_codes = @($blockedReasons)
+      }) | Out-Null
+      continue
+    }
     $actionable.Add([pscustomobject]@{
       action = "create"
       reason_codes = @("new_family_threshold_met")
@@ -431,6 +540,15 @@ foreach ($key in $groupMap.Keys) {
       latest_event = $item.latest_event
       repos = @($item.repos | Sort-Object)
       raw_signatures = @($item.raw_signatures | Sort-Object)
+      unique_repo_count = [int]$repoCount
+    }) | Out-Null
+    $decisionAudit.Add([pscustomobject]@{
+      action = "create"
+      issue_signature = $family
+      skill_name = $canonical
+      hit_count = [int]$item.count
+      unique_repo_count = [int]$repoCount
+      reason_codes = @("new_family_threshold_met")
     }) | Out-Null
     continue
   }
@@ -461,7 +579,7 @@ foreach ($key in $groupMap.Keys) {
     if (-not $prevVariants.Contains($norm)) { $newVariants += $norm }
   }
   $countIncreased = ([int]$item.count -gt $prevHit)
-  if ($newVariants.Count -gt 0 -or $countIncreased) {
+  if ($newVariants.Count -ge $optimizeMinNewVariants -or $countIncreased) {
     $reasons = New-Object System.Collections.Generic.List[string]
     if ($newVariants.Count -gt 0) { $reasons.Add("new_signature_variant") | Out-Null }
     if ($countIncreased) { $reasons.Add("hit_count_increased") | Out-Null }
@@ -474,6 +592,24 @@ foreach ($key in $groupMap.Keys) {
       latest_event = $item.latest_event
       repos = @($item.repos | Sort-Object)
       raw_signatures = @($item.raw_signatures | Sort-Object)
+      unique_repo_count = [int]$repoCount
+    }) | Out-Null
+    $decisionAudit.Add([pscustomobject]@{
+      action = "optimize"
+      issue_signature = $family
+      skill_name = $canonical
+      hit_count = [int]$item.count
+      unique_repo_count = [int]$repoCount
+      reason_codes = @($reasons)
+    }) | Out-Null
+  } else {
+    $decisionAudit.Add([pscustomobject]@{
+      action = "skip"
+      issue_signature = $family
+      skill_name = $canonical
+      hit_count = [int]$item.count
+      unique_repo_count = [int]$repoCount
+      reason_codes = @("no_material_delta")
     }) | Out-Null
   }
 }
@@ -494,6 +630,7 @@ $plannedPromotions = @($selected | ForEach-Object {
     issue_signature = [string]$_.issue_signature
     skill_name = [string]$_.skill_name
     hit_count = [int]$_.count
+    unique_repo_count = [int]$_.unique_repo_count
     signature_variants = @($_.raw_signatures | Sort-Object)
   }
 })
@@ -659,11 +796,23 @@ $result = [ordered]@{
   require_user_ack = [bool]$requireAck
   user_ack_satisfied = [bool]$ackSatisfied
   user_ack_env_var = $ackEnvVar
+  create_min_unique_repos = [int]$createMinUniqueRepos
+  optimize_min_new_variants = [int]$optimizeMinNewVariants
+  require_trigger_eval_for_create = [bool]$triggerEvalState.require_trigger_eval_for_create
+  trigger_eval_summary_path = [string]$triggerEvalState.trigger_eval_summary_path
+  trigger_eval_summary_found = [bool]$triggerEvalState.trigger_eval_summary_found
+  trigger_eval_pass = [bool]$triggerEvalState.trigger_eval_pass
+  trigger_eval_min_validation_pass_rate = [double]$triggerEvalState.trigger_eval_min_validation_pass_rate
+  trigger_eval_max_validation_false_trigger_rate = [double]$triggerEvalState.trigger_eval_max_validation_false_trigger_rate
+  trigger_eval_validation_pass_rate = $triggerEvalState.trigger_eval_validation_pass_rate
+  trigger_eval_validation_false_trigger_rate = $triggerEvalState.trigger_eval_validation_false_trigger_rate
+  trigger_eval_blocked_reason = [string]$triggerEvalState.trigger_eval_blocked_reason
   skills_root = [string]$skillsRoot
   overrides_root = ($overridesRoot -replace '\\', '/')
+  decision_audit = @($decisionAudit.ToArray())
   planned_promotions = $plannedPromotions
   promoted = $promotedArray
-  cleanup_removed = @($cleanupRemoved)
+  cleanup_removed = @($cleanupRemoved.ToArray())
 }
 
 if ([bool]$policy.write_summary_file) {

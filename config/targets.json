@@ -746,5 +746,53 @@
     {
         "source":  "source/project/_common/custom/.governance/skill-promotion-policy.json",
         "target":  "E:/CODE/governance-kit/.governance/skill-promotion-policy.json"
+    },
+    {
+        "source":  "source/project/_common/custom/scripts/governance/check-skill-trigger-evals.ps1",
+        "target":  "E:/CODE/ClassroomToolkit/scripts/governance/check-skill-trigger-evals.ps1"
+    },
+    {
+        "source":  "source/project/_common/custom/scripts/governance/check-skill-trigger-evals.ps1",
+        "target":  "E:/CODE/skills-manager/scripts/governance/check-skill-trigger-evals.ps1"
+    },
+    {
+        "source":  "source/project/_common/custom/scripts/governance/check-skill-trigger-evals.ps1",
+        "target":  "E:/CODE/governance-kit/scripts/governance/check-skill-trigger-evals.ps1"
+    },
+    {
+        "source":  "source/project/_common/custom/scripts/governance/register-skill-trigger-eval-run.ps1",
+        "target":  "E:/CODE/ClassroomToolkit/scripts/governance/register-skill-trigger-eval-run.ps1"
+    },
+    {
+        "source":  "source/project/_common/custom/scripts/governance/register-skill-trigger-eval-run.ps1",
+        "target":  "E:/CODE/skills-manager/scripts/governance/register-skill-trigger-eval-run.ps1"
+    },
+    {
+        "source":  "source/project/_common/custom/scripts/governance/register-skill-trigger-eval-run.ps1",
+        "target":  "E:/CODE/governance-kit/scripts/governance/register-skill-trigger-eval-run.ps1"
+    },
+    {
+        "source":  "source/project/_common/custom/.governance/skill-candidates/trigger-eval-runs.sample.jsonl",
+        "target":  "E:/CODE/ClassroomToolkit/.governance/skill-candidates/trigger-eval-runs.sample.jsonl"
+    },
+    {
+        "source":  "source/project/_common/custom/docs/governance/skill-trigger-eval-runbook.md",
+        "target":  "E:/CODE/ClassroomToolkit/docs/governance/skill-trigger-eval-runbook.md"
+    },
+    {
+        "source":  "source/project/_common/custom/.governance/skill-candidates/trigger-eval-runs.sample.jsonl",
+        "target":  "E:/CODE/skills-manager/.governance/skill-candidates/trigger-eval-runs.sample.jsonl"
+    },
+    {
+        "source":  "source/project/_common/custom/docs/governance/skill-trigger-eval-runbook.md",
+        "target":  "E:/CODE/skills-manager/docs/governance/skill-trigger-eval-runbook.md"
+    },
+    {
+        "source":  "source/project/_common/custom/.governance/skill-candidates/trigger-eval-runs.sample.jsonl",
+        "target":  "E:/CODE/governance-kit/.governance/skill-candidates/trigger-eval-runs.sample.jsonl"
+    },
+    {
+        "source":  "source/project/_common/custom/docs/governance/skill-trigger-eval-runbook.md",
+        "target":  "E:/CODE/governance-kit/docs/governance/skill-trigger-eval-runbook.md"
     }
 ]

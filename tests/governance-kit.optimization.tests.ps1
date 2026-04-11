@@ -3874,6 +3874,130 @@ if ($AsJson) {
       if (Test-Path $tmp) { Remove-Item -LiteralPath $tmp -Recurse -Force }
     }
   }
+
+  it "run-target-autopilot auto-registers trigger eval negative sample when policy enabled" {
+    $tmp = Join-Path $env:TEMP ("govkit-test-" + [guid]::NewGuid().ToString("N"))
+    try {
+      $repo = Join-Path $tmp "RepoA"
+      New-Item -ItemType Directory -Path (Join-Path $tmp "scripts\governance") -Force | Out-Null
+      New-Item -ItemType Directory -Path (Join-Path $tmp "scripts\lib") -Force | Out-Null
+      New-Item -ItemType Directory -Path (Join-Path $repo "scripts\governance") -Force | Out-Null
+      New-Item -ItemType Directory -Path (Join-Path $repo ".governance") -Force | Out-Null
+
+      Copy-Item -Path (Join-Path $repoRoot "scripts\governance\run-target-autopilot.ps1") -Destination (Join-Path $tmp "scripts\governance\run-target-autopilot.ps1") -Force
+      Copy-Item -Path (Join-Path $repoRoot "scripts\governance\register-skill-trigger-eval-run.ps1") -Destination (Join-Path $repo "scripts\governance\register-skill-trigger-eval-run.ps1") -Force
+      Copy-Item -Path (Join-Path $repoRoot "scripts\lib\common.ps1") -Destination (Join-Path $tmp "scripts\lib\common.ps1") -Force
+
+      @'
+param(
+  [switch]$AsJson,
+  [string]$RepoPath = "."
+)
+if ($AsJson) {
+  @{ recommended = @{ build = "Write-Output build-ok"; test = "Write-Output test-ok"; contract_invariant = "Write-Output contract-ok"; hotspot = "Write-Output hotspot-ok" } } | ConvertTo-Json -Depth 6 | Write-Output
+  exit 0
+}
+'@ | Set-Content -Path (Join-Path $tmp "scripts\analyze-repo-governance.ps1") -Encoding UTF8
+
+      @'
+param(
+  [string]$RepoPath,
+  [string]$IssueId,
+  [string]$Scenario = "bugfix",
+  [ValidateSet("evaluate","record")]
+  [string]$Mode = "evaluate",
+  [string]$Outcome = "",
+  [string]$Reason = ""
+)
+@{
+  issue_id = $IssueId
+  attempt_count = 0
+  scenario = $Scenario
+  clarification_required = $false
+} | ConvertTo-Json -Depth 5 | Write-Output
+'@ | Set-Content -Path (Join-Path $tmp "scripts\governance\track-issue-state.ps1") -Encoding UTF8
+
+      @'
+{
+  "auto_register_trigger_eval_from_autopilot": true
+}
+'@ | Set-Content -Path (Join-Path $repo ".governance\skill-promotion-policy.json") -Encoding UTF8
+
+      $output = & powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $tmp "scripts\governance\run-target-autopilot.ps1") -RepoRoot $repo -GovernanceKitRoot $tmp -IssueId "issue-auto-eval-enabled" -MaxCycles 1 -SkipWorkIteration 2>&1 | Out-String
+      $LASTEXITCODE | should be 0
+      $output | should match "\[SKILL_TRIGGER_EVAL\] split=validation should_trigger=False triggered=False"
+
+      $eventPath = Join-Path $repo ".governance\skill-candidates\trigger-eval-runs.jsonl"
+      (Test-Path -LiteralPath $eventPath) | should be $true
+      $line = Get-Content -Path $eventPath | Select-Object -First 1
+      $entry = $line | ConvertFrom-Json
+      [bool]$entry.should_trigger | should be $false
+      [bool]$entry.triggered | should be $false
+      [string]$entry.split | should be "validation"
+      [string]$entry.evaluator | should be "autopilot"
+    } finally {
+      if (Test-Path $tmp) { Remove-Item -LiteralPath $tmp -Recurse -Force }
+    }
+  }
+
+  it "run-target-autopilot skips trigger eval auto-register when policy disabled" {
+    $tmp = Join-Path $env:TEMP ("govkit-test-" + [guid]::NewGuid().ToString("N"))
+    try {
+      $repo = Join-Path $tmp "RepoA"
+      New-Item -ItemType Directory -Path (Join-Path $tmp "scripts\governance") -Force | Out-Null
+      New-Item -ItemType Directory -Path (Join-Path $tmp "scripts\lib") -Force | Out-Null
+      New-Item -ItemType Directory -Path (Join-Path $repo "scripts\governance") -Force | Out-Null
+      New-Item -ItemType Directory -Path (Join-Path $repo ".governance") -Force | Out-Null
+
+      Copy-Item -Path (Join-Path $repoRoot "scripts\governance\run-target-autopilot.ps1") -Destination (Join-Path $tmp "scripts\governance\run-target-autopilot.ps1") -Force
+      Copy-Item -Path (Join-Path $repoRoot "scripts\governance\register-skill-trigger-eval-run.ps1") -Destination (Join-Path $repo "scripts\governance\register-skill-trigger-eval-run.ps1") -Force
+      Copy-Item -Path (Join-Path $repoRoot "scripts\lib\common.ps1") -Destination (Join-Path $tmp "scripts\lib\common.ps1") -Force
+
+      @'
+param(
+  [switch]$AsJson,
+  [string]$RepoPath = "."
+)
+if ($AsJson) {
+  @{ recommended = @{ build = "Write-Output build-ok"; test = "Write-Output test-ok"; contract_invariant = "Write-Output contract-ok"; hotspot = "Write-Output hotspot-ok" } } | ConvertTo-Json -Depth 6 | Write-Output
+  exit 0
+}
+'@ | Set-Content -Path (Join-Path $tmp "scripts\analyze-repo-governance.ps1") -Encoding UTF8
+
+      @'
+param(
+  [string]$RepoPath,
+  [string]$IssueId,
+  [string]$Scenario = "bugfix",
+  [ValidateSet("evaluate","record")]
+  [string]$Mode = "evaluate",
+  [string]$Outcome = "",
+  [string]$Reason = ""
+)
+@{
+  issue_id = $IssueId
+  attempt_count = 0
+  scenario = $Scenario
+  clarification_required = $false
+} | ConvertTo-Json -Depth 5 | Write-Output
+'@ | Set-Content -Path (Join-Path $tmp "scripts\governance\track-issue-state.ps1") -Encoding UTF8
+
+      @'
+{
+  "auto_register_trigger_eval_from_autopilot": false
+}
+'@ | Set-Content -Path (Join-Path $repo ".governance\skill-promotion-policy.json") -Encoding UTF8
+
+      $output = & powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $tmp "scripts\governance\run-target-autopilot.ps1") -RepoRoot $repo -GovernanceKitRoot $tmp -IssueId "issue-auto-eval-disabled" -MaxCycles 1 -SkipWorkIteration 2>&1 | Out-String
+      $LASTEXITCODE | should be 0
+      $output | should match "\[SKILL_TRIGGER_EVAL\] skipped reason=policy_disabled"
+
+      $eventPath = Join-Path $repo ".governance\skill-candidates\trigger-eval-runs.jsonl"
+      (Test-Path -LiteralPath $eventPath) | should be $false
+    } finally {
+      if (Test-Path $tmp) { Remove-Item -LiteralPath $tmp -Recurse -Force }
+    }
+  }
 }
 
 

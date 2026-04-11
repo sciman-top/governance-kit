@@ -85,9 +85,10 @@ function Try-RegisterSkillCandidate {
     [Parameter(Mandatory = $true)][string]$PowerShellPath
   )
 
+  $registered = $false
   $registerScript = Join-Path $RepoPath "scripts\governance\register-skill-candidate.ps1"
   if (-not (Test-Path -LiteralPath $registerScript -PathType Leaf)) {
-    return
+    return $false
   }
 
   try {
@@ -108,12 +109,14 @@ function Try-RegisterSkillCandidate {
     if ($LASTEXITCODE -ne 0) {
       Write-Host ("[WARN] skill candidate register failed: step={0} exit={1}" -f $StepName, $LASTEXITCODE)
     } else {
+      $registered = $true
       Write-Host ("[SKILL_CANDIDATE] step={0} signature={1}" -f $StepName, $signature)
     }
   }
   catch {
     Write-Host ("[WARN] skill candidate register exception: step={0} error={1}" -f $StepName, $_.Exception.Message)
   }
+  return $registered
 }
 
 function Try-PromoteSkillCandidates {
@@ -148,6 +151,94 @@ function Try-PromoteSkillCandidates {
   }
   catch {
     Write-Host ("[WARN] skill promotion exception: {0}" -f $_.Exception.Message)
+  }
+}
+
+function Resolve-SkillPromotionPolicyState {
+  param(
+    [Parameter(Mandatory = $true)][string]$RepoPath,
+    [Parameter(Mandatory = $true)][string]$KitRoot
+  )
+
+  $defaultEnabled = $false
+  $repoPolicyPath = Join-Path $RepoPath ".governance\skill-promotion-policy.json"
+  $kitPolicyPath = Join-Path $KitRoot "config\skill-promotion-policy.json"
+  $selectedPath = $null
+  $selectedSource = "default"
+  $enabled = $defaultEnabled
+
+  if (Test-Path -LiteralPath $repoPolicyPath -PathType Leaf) {
+    $selectedPath = $repoPolicyPath
+    $selectedSource = "repo"
+  } elseif (Test-Path -LiteralPath $kitPolicyPath -PathType Leaf) {
+    $selectedPath = $kitPolicyPath
+    $selectedSource = "kit"
+  }
+
+  if ($null -ne $selectedPath) {
+    $candidate = Read-JsonFile -Path $selectedPath -DefaultValue $null -UseCache -DisplayName "skill-promotion-policy.json"
+    if ($null -ne $candidate -and $null -ne $candidate.PSObject.Properties['auto_register_trigger_eval_from_autopilot']) {
+      $enabled = [bool]$candidate.auto_register_trigger_eval_from_autopilot
+    }
+  }
+
+  return [pscustomobject]@{
+    source = $selectedSource
+    path = if ($null -ne $selectedPath) { $selectedPath } else { "default(in-memory)" }
+    auto_register_trigger_eval_from_autopilot = [bool]$enabled
+  }
+}
+
+function Try-RegisterSkillTriggerEvalRun {
+  param(
+    [Parameter(Mandatory = $true)][string]$RepoPath,
+    [Parameter(Mandatory = $true)][string]$IssueId,
+    [Parameter(Mandatory = $true)][string]$Query,
+    [Parameter(Mandatory = $true)][bool]$ShouldTrigger,
+    [Parameter(Mandatory = $true)][bool]$Triggered,
+    [Parameter(Mandatory = $false)][string]$EvidencePath,
+    [Parameter(Mandatory = $true)][psobject]$PolicyState,
+    [Parameter(Mandatory = $true)][string]$PowerShellPath
+  )
+
+  if (-not [bool]$PolicyState.auto_register_trigger_eval_from_autopilot) {
+    Write-Host "[SKILL_TRIGGER_EVAL] skipped reason=policy_disabled"
+    return $false
+  }
+
+  $registerScript = Join-Path $RepoPath "scripts\governance\register-skill-trigger-eval-run.ps1"
+  if (-not (Test-Path -LiteralPath $registerScript -PathType Leaf)) {
+    Write-Host "[SKILL_TRIGGER_EVAL] skipped reason=script_missing"
+    return $false
+  }
+
+  try {
+    $args = @(
+      "-NoProfile",
+      "-ExecutionPolicy", "Bypass",
+      "-File", $registerScript,
+      "-RepoRoot", $RepoPath,
+      "-IssueId", $IssueId,
+      "-Split", "validation",
+      "-Evaluator", "autopilot",
+      "-Query", $Query,
+      "-ShouldTrigger", $(if ($ShouldTrigger) { 1 } else { 0 }),
+      "-Triggered", ([string]$Triggered).ToLowerInvariant()
+    )
+    if (-not [string]::IsNullOrWhiteSpace($EvidencePath)) {
+      $args += @("-EvidencePath", $EvidencePath)
+    }
+    & $PowerShellPath @args | Out-Null
+    if ($LASTEXITCODE -ne 0) {
+      Write-Host ("[WARN] skill trigger eval register failed: exit={0}" -f $LASTEXITCODE)
+      return $false
+    }
+    Write-Host ("[SKILL_TRIGGER_EVAL] split=validation should_trigger={0} triggered={1}" -f $ShouldTrigger, $Triggered)
+    return $true
+  }
+  catch {
+    Write-Host ("[WARN] skill trigger eval register exception: {0}" -f $_.Exception.Message)
+    return $false
   }
 }
 
@@ -370,6 +461,7 @@ $logRoot = Join-Path $repoPath (".codex/logs/target-autopilot/" + (Get-Date -For
 New-Item -ItemType Directory -Force -Path $logRoot | Out-Null
 $subagentPolicyState = Resolve-SubagentTriggerPolicy -RepoPath $repoPath -KitRoot $kitRoot
 $subagentDecision = Resolve-SubagentDecision -Policy $subagentPolicyState.policy -RepoPath $repoPath -IssueId $IssueId -MaxWorkIterationsPerCycle $MaxWorkIterationsPerCycle -SkipWorkIteration:$SkipWorkIteration
+$skillPromotionPolicyState = Resolve-SkillPromotionPolicyState -RepoPath $repoPath -KitRoot $kitRoot
 $subagentDecisionPath = Join-Path $logRoot "subagent-decision.json"
 if ([bool]$subagentPolicyState.policy.evidence.emit_decision_json) {
   Set-Content -LiteralPath $subagentDecisionPath -Encoding UTF8 -Value (($subagentDecision | ConvertTo-Json -Depth 8))
@@ -411,6 +503,9 @@ Write-Host "subagent_decision.max_parallel_agents=$($subagentDecision.max_parall
 Write-Host "subagent_decision.score=$($subagentDecision.decision_score)"
 Write-Host "subagent_decision.reason_codes=$([string]::Join(',', @($subagentDecision.reason_codes)))"
 Write-Host "subagent_decision.evidence_json=$subagentDecisionPath"
+Write-Host "skill_promotion_policy.source=$($skillPromotionPolicyState.source)"
+Write-Host "skill_promotion_policy.path=$($skillPromotionPolicyState.path)"
+Write-Host "skill_promotion_policy.auto_register_trigger_eval_from_autopilot=$($skillPromotionPolicyState.auto_register_trigger_eval_from_autopilot)"
 Write-Host ("[SUBAGENT_DECISION_JSON] " + ($subagentDecision | ConvertTo-Json -Depth 8 -Compress))
 if ($effectiveMaxCycles -lt $MaxCycles) {
   Write-Host "[LIMIT] requested MaxCycles=$MaxCycles capped to policy max_autonomous_iterations=$effectiveMaxCycles"
@@ -440,6 +535,7 @@ for ($cycle = 1; $cycle -le $effectiveMaxCycles; $cycle++) {
   Write-Host ""
   Write-Host "=== cycle $cycle / $effectiveMaxCycles ==="
 
+  $skillCandidateRecordedInCycle = $false
   foreach ($step in $gateSteps) {
     if ([string]::IsNullOrWhiteSpace($step.command) -or $step.command -like "N/A*") {
       throw "Required gate step '$($step.name)' is unavailable: $($step.command)"
@@ -450,7 +546,8 @@ for ($cycle = 1; $cycle -le $effectiveMaxCycles; $cycle++) {
       continue
     }
 
-    Try-RegisterSkillCandidate -RepoPath $repoPath -IssueId $IssueId -StepName ([string]$step.name) -CommandText ([string]$step.command) -LogPath ([string]$result.log_path) -FailureReason "gate_failed_first_attempt" -PowerShellPath $psExe
+    $registeredCandidate = Try-RegisterSkillCandidate -RepoPath $repoPath -IssueId $IssueId -StepName ([string]$step.name) -CommandText ([string]$step.command) -LogPath ([string]$result.log_path) -FailureReason "gate_failed_first_attempt" -PowerShellPath $psExe
+    if ($registeredCandidate) { $skillCandidateRecordedInCycle = $true }
 
     $recovered = $false
     for ($attempt = 1; $attempt -le $effectiveMaxFixAttemptsPerGate; $attempt++) {
@@ -464,7 +561,8 @@ for ($cycle = 1; $cycle -le $effectiveMaxCycles; $cycle++) {
         $recovered = $true
         break
       }
-      Try-RegisterSkillCandidate -RepoPath $repoPath -IssueId $IssueId -StepName ([string]$step.name) -CommandText ([string]$step.command) -LogPath ([string]$result.log_path) -FailureReason ("gate_retry_failed_attempt_" + $attempt) -PowerShellPath $psExe
+      $registeredCandidate = Try-RegisterSkillCandidate -RepoPath $repoPath -IssueId $IssueId -StepName ([string]$step.name) -CommandText ([string]$step.command) -LogPath ([string]$result.log_path) -FailureReason ("gate_retry_failed_attempt_" + $attempt) -PowerShellPath $psExe
+      if ($registeredCandidate) { $skillCandidateRecordedInCycle = $true }
       if ($enableNoProgressGuard) {
         $sig = New-CommandFailureSignature -StepName ([string]$step.name) -CommandText ([string]$step.command) -LogPath ([string]$result.log_path)
         if (-not $failureSignatureCounts.ContainsKey($sig)) {
@@ -495,6 +593,13 @@ for ($cycle = 1; $cycle -le $effectiveMaxCycles; $cycle++) {
     } else {
       Write-Host "WORK_ITERATION delegated_to_outer_ai_session mode=serial (no-op)"
     }
+  }
+
+  if ($skillCandidateRecordedInCycle) {
+    Write-Host "[SKILL_TRIGGER_EVAL] skipped reason=skill_candidate_detected_requires_manual_label"
+  } else {
+    $queryText = "autopilot cycle=$cycle issue_id=$IssueId gate_chain_passed_without_skill_candidate"
+    Try-RegisterSkillTriggerEvalRun -RepoPath $repoPath -IssueId $IssueId -Query $queryText -ShouldTrigger $false -Triggered $false -PolicyState $skillPromotionPolicyState -PowerShellPath $psExe | Out-Null
   }
 }
 

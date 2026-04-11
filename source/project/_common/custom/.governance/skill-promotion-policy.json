@@ -19,5 +19,13 @@
   "require_user_ack": true,
   "optimize_existing_without_ack": true,
   "user_ack_env_var": "SKILL_PROMOTION_ACK",
-  "user_ack_expected_value": "YES"
+  "user_ack_expected_value": "YES",
+  "create_min_unique_repos": 2,
+  "optimize_min_new_variants": 1,
+  "require_trigger_eval_for_create": true,
+  "auto_register_trigger_eval_from_autopilot": true,
+  "trigger_eval_summary_relative_path": ".governance/skill-candidates/trigger-eval-summary.json",
+  "trigger_eval_min_validation_pass_rate": 0.7,
+  "trigger_eval_max_validation_false_trigger_rate": 0.2,
+  "block_create_when_eval_missing": true
 }
