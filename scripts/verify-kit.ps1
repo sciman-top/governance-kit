@@ -19,6 +19,7 @@ $mustExist = @(
   "config\subagent-trigger-policy.json",
   "config\practice-stack-policy.json",
   "config\growth-pack-policy.json",
+  "config\distribution-prune-policy.json",
   "config\update-trigger-policy.json",
   "config\editorconfig.base",
   ".governance\tracked-files-policy.json",
@@ -63,6 +64,7 @@ $mustExist = @(
   "scripts\check-waivers.ps1",
   "scripts\check-orphan-custom-sources.ps1",
   "scripts\prune-orphan-custom-sources.ps1",
+  "scripts\prune-target-orphans.ps1",
   "scripts\prune-backups.ps1",
   "scripts\collect-governance-metrics.ps1",
   "scripts\bump-rule-version.ps1",
@@ -297,6 +299,22 @@ if ($null -eq $refreshObj) {
 }
 if ([int]$refreshObj.target_change_count -gt 0) {
   throw ("distribution mapping drift detected: target_change_count={0}. Run scripts/install.ps1 (or scripts/refresh-targets.ps1) to sync one-click install mapping." -f [int]$refreshObj.target_change_count)
+}
+
+$pruneScript = Join-Path $PSScriptRoot "prune-target-orphans.ps1"
+if (-not (Test-Path -LiteralPath $pruneScript -PathType Leaf)) {
+  throw "prune-target-orphans script missing: $pruneScript"
+}
+$pruneOutput = Invoke-ChildScriptCapture -ScriptPath $pruneScript -ScriptArgs @("-Mode", "plan", "-AsJson")
+$pruneObj = $null
+if (-not [string]::IsNullOrWhiteSpace([string]($pruneOutput | Out-String))) {
+  $pruneObj = ([string]::Join([Environment]::NewLine, @($pruneOutput))) | ConvertFrom-Json
+}
+if ($null -eq $pruneObj) {
+  throw "prune-target-orphans returned empty result"
+}
+if ([bool]$pruneObj.should_fail_gate) {
+  throw ("target orphan prune gate failed: total_orphan_candidates={0}. Run scripts/install.ps1 to reconcile and review prune policy/budgets." -f [int]$pruneObj.total_orphan_candidates)
 }
 
 $dupScript = Join-Path $root "scripts\governance\check-rule-duplication.ps1"

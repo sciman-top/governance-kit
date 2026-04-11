@@ -2287,6 +2287,149 @@ exit 0
     }
   }
 
+  it "prune-target-orphans removes manifest-tracked orphan files and updates manifest" {
+    $tmp = Join-Path $env:TEMP ("govkit-test-" + [guid]::NewGuid().ToString("N"))
+    $repo = Join-Path $tmp "RepoX"
+    try {
+      New-Item -ItemType Directory -Path (Join-Path $tmp "scripts\lib") -Force | Out-Null
+      New-Item -ItemType Directory -Path (Join-Path $tmp "scripts") -Force | Out-Null
+      New-Item -ItemType Directory -Path (Join-Path $tmp "config") -Force | Out-Null
+      New-Item -ItemType Directory -Path (Join-Path $repo ".governance") -Force | Out-Null
+      New-Item -ItemType Directory -Path (Join-Path $repo "rules") -Force | Out-Null
+
+      Copy-Item -Path (Join-Path $repoRoot "scripts\prune-target-orphans.ps1") -Destination (Join-Path $tmp "scripts\prune-target-orphans.ps1") -Force
+      Copy-Item -Path (Join-Path $repoRoot "scripts\lib\common.ps1") -Destination (Join-Path $tmp "scripts\lib\common.ps1") -Force
+
+      @($repo) | ConvertTo-Json -Depth 3 | Set-Content -Path (Join-Path $tmp "config\repositories.json") -Encoding UTF8
+      @(
+        @{ source = "source/project/RepoX/custom/rules/kept.md"; target = ($repo -replace '\\', '/') + "/rules/kept.md" }
+      ) | ConvertTo-Json -Depth 6 | Set-Content -Path (Join-Path $tmp "config\targets.json") -Encoding UTF8
+
+      @'
+{
+  "enabled": true,
+  "default_mode": "plan",
+  "enforce_after_days": 14,
+  "ownership": {
+    "required_for_delete": true,
+    "manifest_path": ".governance/distribution-state.json"
+  },
+  "safety_guards": {
+    "max_delete_per_run": 30,
+    "max_delete_ratio": 0.5,
+    "block_on_unmanaged_conflict": true,
+    "dry_run_required_before_safe": true
+  },
+  "protected_paths": [],
+  "protected_globs": [],
+  "gate": {
+    "fail_on_delete_budget_exceeded": true,
+    "fail_on_orphans_in_enforce": true
+  },
+  "repo_overrides": []
+}
+'@ | Set-Content -Path (Join-Path $tmp "config\distribution-prune-policy.json") -Encoding UTF8
+
+      Set-Content -Path (Join-Path $repo "rules\kept.md") -Value "kept" -Encoding UTF8
+      Set-Content -Path (Join-Path $repo "rules\orphan.md") -Value "orphan" -Encoding UTF8
+
+      @'
+{
+  "version": 1,
+  "managed_files": [
+    { "path": "rules/kept.md", "source": "source/project/RepoX/custom/rules/kept.md" },
+    { "path": "rules/orphan.md", "source": "source/project/RepoX/custom/rules/orphan.md" }
+  ]
+}
+'@ | Set-Content -Path (Join-Path $repo ".governance\distribution-state.json") -Encoding UTF8
+
+      $result = & powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $tmp "scripts\prune-target-orphans.ps1") -Mode safe -AsJson
+      if ($LASTEXITCODE -ne 0) { throw "prune-target-orphans.ps1 failed with exit code $LASTEXITCODE" }
+      $obj = $result | ConvertFrom-Json
+      $obj.total_orphan_candidates | should be 1
+      $obj.total_pruned | should be 1
+      (Test-Path (Join-Path $repo "rules\orphan.md")) | should be $false
+      (Test-Path (Join-Path $repo "rules\kept.md")) | should be $true
+
+      $manifest = Get-Content -Path (Join-Path $repo ".governance\distribution-state.json") -Raw | ConvertFrom-Json
+      $manifest.managed_count | should be 1
+      @($manifest.managed_files | Where-Object { $_.path -eq "rules/kept.md" }).Count | should be 1
+      @($manifest.managed_files | Where-Object { $_.path -eq "rules/orphan.md" }).Count | should be 0
+    } finally {
+      if (Test-Path $tmp) { Remove-Item -LiteralPath $tmp -Recurse -Force }
+    }
+  }
+
+  it "prune-target-orphans blocks by delete budget and sets should_fail_gate" {
+    $tmp = Join-Path $env:TEMP ("govkit-test-" + [guid]::NewGuid().ToString("N"))
+    $repo = Join-Path $tmp "RepoY"
+    try {
+      New-Item -ItemType Directory -Path (Join-Path $tmp "scripts\lib") -Force | Out-Null
+      New-Item -ItemType Directory -Path (Join-Path $tmp "scripts") -Force | Out-Null
+      New-Item -ItemType Directory -Path (Join-Path $tmp "config") -Force | Out-Null
+      New-Item -ItemType Directory -Path (Join-Path $repo ".governance") -Force | Out-Null
+      New-Item -ItemType Directory -Path (Join-Path $repo "rules") -Force | Out-Null
+
+      Copy-Item -Path (Join-Path $repoRoot "scripts\prune-target-orphans.ps1") -Destination (Join-Path $tmp "scripts\prune-target-orphans.ps1") -Force
+      Copy-Item -Path (Join-Path $repoRoot "scripts\lib\common.ps1") -Destination (Join-Path $tmp "scripts\lib\common.ps1") -Force
+
+      @($repo) | ConvertTo-Json -Depth 3 | Set-Content -Path (Join-Path $tmp "config\repositories.json") -Encoding UTF8
+      @(
+        @{ source = "source/project/RepoY/custom/rules/kept.md"; target = ($repo -replace '\\', '/') + "/rules/kept.md" }
+      ) | ConvertTo-Json -Depth 6 | Set-Content -Path (Join-Path $tmp "config\targets.json") -Encoding UTF8
+
+      @'
+{
+  "enabled": true,
+  "default_mode": "safe",
+  "enforce_after_days": 14,
+  "ownership": {
+    "required_for_delete": true,
+    "manifest_path": ".governance/distribution-state.json"
+  },
+  "safety_guards": {
+    "max_delete_per_run": 1,
+    "max_delete_ratio": 0.2,
+    "block_on_unmanaged_conflict": true,
+    "dry_run_required_before_safe": true
+  },
+  "protected_paths": [],
+  "protected_globs": [],
+  "gate": {
+    "fail_on_delete_budget_exceeded": true,
+    "fail_on_orphans_in_enforce": true
+  },
+  "repo_overrides": []
+}
+'@ | Set-Content -Path (Join-Path $tmp "config\distribution-prune-policy.json") -Encoding UTF8
+
+      Set-Content -Path (Join-Path $repo "rules\kept.md") -Value "kept" -Encoding UTF8
+      Set-Content -Path (Join-Path $repo "rules\orphan-a.md") -Value "a" -Encoding UTF8
+      Set-Content -Path (Join-Path $repo "rules\orphan-b.md") -Value "b" -Encoding UTF8
+
+      @'
+{
+  "version": 1,
+  "managed_files": [
+    { "path": "rules/kept.md", "source": "source/project/RepoY/custom/rules/kept.md" },
+    { "path": "rules/orphan-a.md", "source": "source/project/RepoY/custom/rules/orphan-a.md" },
+    { "path": "rules/orphan-b.md", "source": "source/project/RepoY/custom/rules/orphan-b.md" }
+  ]
+}
+'@ | Set-Content -Path (Join-Path $repo ".governance\distribution-state.json") -Encoding UTF8
+
+      $result = & powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $tmp "scripts\prune-target-orphans.ps1") -Mode plan -AsJson
+      if ($LASTEXITCODE -ne 0) { throw "prune-target-orphans.ps1 failed with exit code $LASTEXITCODE" }
+      $obj = $result | ConvertFrom-Json
+      $obj.total_orphan_candidates | should be 2
+      $obj.total_pruned | should be 0
+      $obj.should_fail_gate | should be $true
+      [int]$obj.repos[0].skipped_budget | should be 2
+    } finally {
+      if (Test-Path $tmp) { Remove-Item -LiteralPath $tmp -Recurse -Force }
+    }
+  }
+
   it "install fails fast when script lock cannot be acquired" {
     $tmp = Join-Path $env:TEMP ("govkit-test-" + [guid]::NewGuid().ToString("N"))
     $hold = $null

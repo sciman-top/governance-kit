@@ -178,6 +178,7 @@ $copied = 0
 $backedUp = 0
 $skipped = 0
 $records = @()
+$pruneResult = $null
 
 foreach ($item in $targets) {
   $srcRel = $item.source
@@ -273,6 +274,18 @@ foreach ($item in $targets) {
 }
 
 if ($modePlan) {
+  $pruneScript = Join-Path $PSScriptRoot "prune-target-orphans.ps1"
+  if (Test-Path -LiteralPath $pruneScript -PathType Leaf) {
+    $pruneOutput = Invoke-ChildScriptCapture -ScriptPath $pruneScript -ScriptArgs @("-Mode", "plan", "-AsJson")
+    $pruneText = ($pruneOutput | Out-String).Trim()
+    if (-not [string]::IsNullOrWhiteSpace($pruneText)) {
+      $pruneResult = $pruneText | ConvertFrom-Json
+      Write-Host ("[PLAN] PRUNE_TARGET_ORPHANS candidates=" + [int]$pruneResult.total_orphan_candidates)
+    }
+  } else {
+    Write-Host "[INFO] skip target orphan prune: prune-target-orphans.ps1 not found in current workspace"
+  }
+
   if ($FullCycle) {
     $fullCycleTargets = @(Get-FullCycleRepos -KitRoot $kitRoot -Targets $targets)
     foreach ($repoPath in $fullCycleTargets) {
@@ -285,11 +298,24 @@ if ($modePlan) {
       copied = 0
       backup = 0
       skipped = ($records | Where-Object { $_.action -like "SKIP*" -or $_.action -eq "UNCHANGED" }).Count
+      prune = $pruneResult
       items = @($records)
     } | ConvertTo-Json -Depth 6 | Write-Output
   }
   Write-Host "Plan done."
 } else {
+  $pruneScript = Join-Path $PSScriptRoot "prune-target-orphans.ps1"
+  if (Test-Path -LiteralPath $pruneScript -PathType Leaf) {
+    $pruneOutput = Invoke-ChildScriptCapture -ScriptPath $pruneScript -ScriptArgs @("-Mode", "safe", "-AsJson")
+    $pruneText = ($pruneOutput | Out-String).Trim()
+    if (-not [string]::IsNullOrWhiteSpace($pruneText)) {
+      $pruneResult = $pruneText | ConvertFrom-Json
+      Write-Host ("[ASSERT] target orphan prune done. candidates=" + [int]$pruneResult.total_orphan_candidates + " pruned=" + [int]$pruneResult.total_pruned)
+    }
+  } else {
+    Write-Host "[INFO] skip target orphan prune: prune-target-orphans.ps1 not found in current workspace"
+  }
+
   Write-Host "Done. copied=$copied backup=$backedUp skipped=$skipped mode=$Mode"
   if (-not $NoBackup -and $backedUp -gt 0) {
     Write-Host "Backup root: $backupRoot"
@@ -339,6 +365,7 @@ if ($modePlan) {
       copied = $copied
       backup = $backedUp
       skipped = $skipped
+      prune = $pruneResult
       items = @($records)
     } | ConvertTo-Json -Depth 6 | Write-Output
   }

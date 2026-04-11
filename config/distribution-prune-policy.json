@@ -1,0 +1,68 @@
+{
+  "version": "1.0",
+  "enabled": true,
+  "default_mode": "plan",
+  "enforce_after_days": 14,
+  "managed_scope": {
+    "from_targets_json": true,
+    "from_project_custom_files": true,
+    "from_growth_pack_policy": true,
+    "from_codex_runtime_policy": true
+  },
+  "ownership": {
+    "required_for_delete": true,
+    "manifest_path": ".governance/distribution-state.json",
+    "file_marker": {
+      "enabled": false,
+      "token": "managed-by: governance-kit"
+    }
+  },
+  "safety_guards": {
+    "max_delete_per_run": 30,
+    "max_delete_ratio": 0.2,
+    "block_on_unmanaged_conflict": true,
+    "dry_run_required_before_safe": true
+  },
+  "protected_paths": [
+    ".git/",
+    ".github/workflows/",
+    "src/",
+    "app/",
+    "packages/"
+  ],
+  "protected_globs": [
+    "**/.env*",
+    "**/*.key",
+    "**/*.pfx"
+  ],
+  "gate": {
+    "fail_on_delete_budget_exceeded": true,
+    "fail_on_orphans_in_enforce": true
+  },
+  "repo_overrides": [
+    {
+      "repoName": "ClassroomToolkit",
+      "enabled": true,
+      "safety_guards": {
+        "max_delete_per_run": 20,
+        "max_delete_ratio": 0.15
+      }
+    },
+    {
+      "repoName": "skills-manager",
+      "enabled": true,
+      "safety_guards": {
+        "max_delete_per_run": 12,
+        "max_delete_ratio": 0.12
+      }
+    },
+    {
+      "repoName": "governance-kit",
+      "enabled": true,
+      "safety_guards": {
+        "max_delete_per_run": 10,
+        "max_delete_ratio": 0.1
+      }
+    }
+  ]
+}
