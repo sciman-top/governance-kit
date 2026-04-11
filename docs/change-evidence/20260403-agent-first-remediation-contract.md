@@ -25,13 +25,13 @@
 
 ## Commands
 - `powershell -NoProfile -ExecutionPolicy Bypass -File scripts/verify-kit.ps1`
-- `powershell -NoProfile -ExecutionPolicy Bypass -File tests/governance-kit.optimization.tests.ps1`
+- `powershell -NoProfile -ExecutionPolicy Bypass -File tests/repo-governance-hub.optimization.tests.ps1`
 - `powershell -NoProfile -ExecutionPolicy Bypass -File scripts/validate-config.ps1`
 - `powershell -NoProfile -ExecutionPolicy Bypass -File scripts/verify.ps1`
 - `powershell -NoProfile -ExecutionPolicy Bypass -File scripts/doctor.ps1`
 - `powershell -NoProfile -ExecutionPolicy Bypass -File scripts/bump-rule-version.ps1 -Scope project -Version 3.80 -Date 2026-04-03 -Mode safe`
-- `powershell -NoProfile -ExecutionPolicy Bypass -File scripts/run-project-governance-cycle.ps1 -RepoPath E:\CODE\governance-kit -RepoName governance-kit -Mode plan -SkipInstall -SkipOptimize -SkipBackflow`
-- `powershell -NoProfile -ExecutionPolicy Bypass -File scripts/automation/run-safe-autopilot.ps1 -RepoRoot E:\CODE\governance-kit -DryRun`
+- `powershell -NoProfile -ExecutionPolicy Bypass -File scripts/run-project-governance-cycle.ps1 -RepoPath E:\CODE\repo-governance-hub -RepoName repo-governance-hub -Mode plan -SkipInstall -SkipOptimize -SkipBackflow`
+- `powershell -NoProfile -ExecutionPolicy Bypass -File scripts/automation/run-safe-autopilot.ps1 -RepoRoot E:\CODE\repo-governance-hub -DryRun`
 
 ## Key Output
 - build/test 通过。

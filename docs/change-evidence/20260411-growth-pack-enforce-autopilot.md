@@ -2,15 +2,15 @@
 规则版本=1.0
 兼容窗口(观察期/强制期)=observe->enforce
 影响模块=config/scripts/templates/source/project/_common/custom
-当前落点=E:/CODE/governance-kit
-目标归宿=E:/CODE/governance-kit/source/project/_common/custom/* + target repos
+当前落点=E:/CODE/repo-governance-hub
+目标归宿=E:/CODE/repo-governance-hub/source/project/_common/custom/* + target repos
 迁移批次=20260411
 风险等级=medium
 是否豁免(Waiver)=no
 豁免责任人=
 豁免到期=
 豁免回收计划=
-执行命令=scripts/install.ps1 -Mode safe; scripts/verify-kit.ps1; tests/governance-kit.optimization.tests.ps1; scripts/validate-config.ps1; scripts/verify.ps1; scripts/doctor.ps1
+执行命令=scripts/install.ps1 -Mode safe; scripts/verify-kit.ps1; tests/repo-governance-hub.optimization.tests.ps1; scripts/validate-config.ps1; scripts/verify.ps1; scripts/doctor.ps1
 验证证据=all gates pass; growth-pack readiness 100 for 3 repos
 供应链安全扫描=n/a
 发布后验证(指标/阈值/窗口)=readiness_score=100 threshold>=80

@@ -1,8 +1,8 @@
 规则 ID=GK-20260403-autocommit-preflight-guard-and-redistribute
 风险等级=medium
-影响模块=scripts/run-project-governance-cycle.ps1;tests/governance-kit.optimization.tests.ps1
-当前落点=E:/CODE/governance-kit
-目标归宿=E:/CODE/governance-kit/scripts/run-project-governance-cycle.ps1
+影响模块=scripts/run-project-governance-cycle.ps1;tests/repo-governance-hub.optimization.tests.ps1
+当前落点=E:/CODE/repo-governance-hub
+目标归宿=E:/CODE/repo-governance-hub/scripts/run-project-governance-cycle.ps1
 迁移批次=2026-04-03 一键重装分发前置安全加固
 
 依据=
@@ -15,15 +15,15 @@
 - codex --help
 - codex status
 - powershell -NoProfile -ExecutionPolicy Bypass -File scripts/verify-kit.ps1
-- powershell -NoProfile -ExecutionPolicy Bypass -File tests/governance-kit.optimization.tests.ps1
+- powershell -NoProfile -ExecutionPolicy Bypass -File tests/repo-governance-hub.optimization.tests.ps1
 - powershell -NoProfile -ExecutionPolicy Bypass -File scripts/validate-config.ps1
 - powershell -NoProfile -ExecutionPolicy Bypass -File scripts/verify.ps1
 - powershell -NoProfile -ExecutionPolicy Bypass -File scripts/doctor.ps1
 - powershell -NoProfile -ExecutionPolicy Bypass -File scripts/install.ps1 -Mode plan -ShowScope
 - powershell -NoProfile -ExecutionPolicy Bypass -File scripts/install.ps1 -Mode safe -ShowScope
-- powershell -NoProfile -ExecutionPolicy Bypass -File E:/CODE/ClassroomToolkit/scripts/governance/run-target-autopilot.ps1 -RepoRoot E:/CODE/ClassroomToolkit -GovernanceKitRoot E:/CODE/governance-kit -DryRun
-- powershell -NoProfile -ExecutionPolicy Bypass -File E:/CODE/skills-manager/scripts/governance/run-target-autopilot.ps1 -RepoRoot E:/CODE/skills-manager -GovernanceKitRoot E:/CODE/governance-kit -DryRun
-- powershell -NoProfile -ExecutionPolicy Bypass -File E:/CODE/governance-kit/scripts/governance/run-target-autopilot.ps1 -RepoRoot E:/CODE/governance-kit -GovernanceKitRoot E:/CODE/governance-kit -DryRun
+- powershell -NoProfile -ExecutionPolicy Bypass -File E:/CODE/ClassroomToolkit/scripts/governance/run-target-autopilot.ps1 -RepoRoot E:/CODE/ClassroomToolkit -GovernanceKitRoot E:/CODE/repo-governance-hub -DryRun
+- powershell -NoProfile -ExecutionPolicy Bypass -File E:/CODE/skills-manager/scripts/governance/run-target-autopilot.ps1 -RepoRoot E:/CODE/skills-manager -GovernanceKitRoot E:/CODE/repo-governance-hub -DryRun
+- powershell -NoProfile -ExecutionPolicy Bypass -File E:/CODE/repo-governance-hub/scripts/governance/run-target-autopilot.ps1 -RepoRoot E:/CODE/repo-governance-hub -GovernanceKitRoot E:/CODE/repo-governance-hub -DryRun
 
 关键变更=
 - `run-project-governance-cycle.ps1` 新增 `Assert-PreflightWorkspaceClean`：safe 模式进入循环前强制检查 git 工作区是否干净；若不干净直接阻断并输出清晰错误。
@@ -45,4 +45,4 @@ N/A=
 
 回滚动作=
 - 使用 `powershell -File scripts/restore.ps1` 恢复对应时间戳备份目录。
-- 或基于 git 仅回退本次变更文件：scripts/run-project-governance-cycle.ps1、tests/governance-kit.optimization.tests.ps1、docs/change-evidence/20260403-autocommit-preflight-guard-and-redistribute.md。
+- 或基于 git 仅回退本次变更文件：scripts/run-project-governance-cycle.ps1、tests/repo-governance-hub.optimization.tests.ps1、docs/change-evidence/20260403-autocommit-preflight-guard-and-redistribute.md。

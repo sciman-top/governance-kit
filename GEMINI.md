@@ -1,11 +1,11 @@
-# GEMINI.md — governance-kit（Gemini 项目级）
-**项目**: governance-kit  
+﻿# GEMINI.md — repo-governance-hub（Gemini 项目级）
+**项目**: repo-governance-hub  
 **适用范围**: 项目级（仓库根）  
 **版本**: 3.85  
 **最后更新**: 2026-04-10
 
 ## 1. 阅读指引（必读）
-- 本文件承接 `GlobalUser/GEMINI.md`，仅定义 governance-kit 的仓库落地动作（WHERE/HOW）。
+- 本文件承接 `GlobalUser/GEMINI.md`，仅定义 repo-governance-hub 的仓库落地动作（WHERE/HOW）。
 - 固定结构：`1 / A / B / C / D`。
 - 裁决链：`运行事实/代码 > 项目级文件 > 全局文件 > 临时上下文`。
 
@@ -16,7 +16,7 @@
 - `backups/` 为回滚证据区，覆盖式操作必须可追溯到快照。
 
 ### A.2 执行锚点
-- 先定归宿再改动：项目级规则归宿为 `source/project/governance-kit/*`。
+- 先定归宿再改动：项目级规则归宿为 `source/project/repo-governance-hub/*`。
 - 小步闭环：先 `plan` 预演，再 `safe` 落地；失败先修根因再重试。
 - 每次变更留痕：`依据 -> 命令 -> 证据 -> 回滚`。
 
@@ -76,7 +76,7 @@
 
 ### C.2 硬门禁命令与顺序
 - build：`powershell -File scripts/verify-kit.ps1`
-- test：`powershell -File tests/governance-kit.optimization.tests.ps1`
+- test：`powershell -File tests/repo-governance-hub.optimization.tests.ps1`
 - contract/invariant：`powershell -File scripts/validate-config.ps1; powershell -File scripts/verify.ps1`
 - hotspot：`powershell -File scripts/doctor.ps1`
 - quick gate：`gate_na (quick gate script not found)`
@@ -105,9 +105,9 @@
 - 数据结构变更需同步更新校验脚本与测试夹具，并提供回滚路径。
 
 ### C.7 目标仓直改回灌策略
-- source of truth：`E:/CODE/governance-kit/source/project/governance-kit/*`。
+- source of truth：`E:/CODE/repo-governance-hub/source/project/repo-governance-hub/*`。
 - 允许在目标仓根 `AGENTS/CLAUDE/GEMINI` 临时直改试验，但同日必须回灌到 source 并留证据。
-- 回灌后执行：`powershell -File E:/CODE/governance-kit/scripts/install.ps1 -Mode safe`。
+- 回灌后执行：`powershell -File E:/CODE/repo-governance-hub/scripts/install.ps1 -Mode safe`。
 - 未完成“回灌 + 复验”前，禁止再次 `sync/install` 覆盖未沉淀改动。
 
 ### C.8 CI 与仓内校验入口
@@ -163,7 +163,7 @@
 - 优化原则：按指标趋势迭代规则与提示词，优先降低返工与语义偏差。
 
 ### C.14 治理问题优先修复顺序
-- 发现与 governance-kit 规则/脚本/配置相关的问题时，必须先在 `E:/CODE/governance-kit` 修复 source of truth。
+- 发现与 repo-governance-hub 规则/脚本/配置相关的问题时，必须先在 `E:/CODE/repo-governance-hub` 修复 source of truth。
 - 修复后按固定顺序复验：`build -> test -> contract/invariant -> hotspot`，确认通过后再在目标仓执行相关命令。
 - 禁止带着已知治理问题继续分发、提交或推送。
 - 若为临时止血，需在证据中记录回收时点与最终归宿。
@@ -184,6 +184,8 @@
 - 三文件同构约束：`A/C/D` 语义一致，仅 `B` 允许平台差异。
 - 规则升级后同步校验版本、日期、承接映射与门禁命令一致性。
 - 平台差异仅在 B 段表达；A/C/D 不承载平台实现细节。
+
+
 
 
 

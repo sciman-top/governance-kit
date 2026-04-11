@@ -52,10 +52,11 @@
       "root_apply_enabled": true
     },
     {
-      "repoName": "governance-kit",
+      "repoName": "repo-governance-hub",
       "tier": "starter",
       "enabled": true,
       "root_apply_enabled": true
     }
   ]
 }
+

@@ -2,15 +2,15 @@
 规则版本=3.85
 兼容窗口(观察期/强制期)=observe
 影响模块=.governance/*;config/*;scripts/governance/*;scripts/collect-governance-metrics.ps1
-当前落点=E:/CODE/governance-kit (source + runtime policies)
-目标归宿=source/project/_common/custom/* + source/project/governance-kit/custom/* + 目标仓分发文件
+当前落点=E:/CODE/repo-governance-hub (source + runtime policies)
+目标归宿=source/project/_common/custom/* + source/project/repo-governance-hub/custom/* + 目标仓分发文件
 迁移批次=20260411-round3
 风险等级=medium
 是否豁免(Waiver)=no
 豁免责任人=
 豁免到期=
 豁免回收计划=
-执行命令=powershell -File scripts/verify-kit.ps1; powershell -File tests/governance-kit.optimization.tests.ps1; powershell -File scripts/validate-config.ps1; powershell -File scripts/verify.ps1; powershell -File scripts/doctor.ps1; powershell -File scripts/install.ps1 -Mode safe; powershell -File scripts/governance/check-token-balance.ps1 -RepoRoot . -AsJson
+执行命令=powershell -File scripts/verify-kit.ps1; powershell -File tests/repo-governance-hub.optimization.tests.ps1; powershell -File scripts/validate-config.ps1; powershell -File scripts/verify.ps1; powershell -File scripts/doctor.ps1; powershell -File scripts/install.ps1 -Mode safe; powershell -File scripts/governance/check-token-balance.ps1 -RepoRoot . -AsJson
 验证证据=verify-kit integrity OK; optimization tests all pass; verify done ok=232 fail=0; doctor HEALTH=GREEN; anti_bloat.status=PASS; token_balance.status=ADVISORY(warnings only)
 供应链安全扫描=N/A (not in this change scope; existing supply-chain gates unchanged)
 发布后验证(指标/阈值/窗口)=token_balance thresholds active; weekly recurring review includes token_balance_* fields

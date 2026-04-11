@@ -5,8 +5,8 @@
 - Repo policy: keep fixed gates order `build -> test -> contract/invariant -> hotspot`.
 
 ## Destination
-- Source of truth path: `E:/CODE/governance-kit/source/project/governance-kit/*` (rule docs unchanged in this task).
-- Code landing path: `E:/CODE/governance-kit/scripts/*` + tests.
+- Source of truth path: `E:/CODE/repo-governance-hub/source/project/repo-governance-hub/*` (rule docs unchanged in this task).
+- Code landing path: `E:/CODE/repo-governance-hub/scripts/*` + tests.
 
 ## Changes
 - Added shared helpers in `scripts/lib/common.ps1`:
@@ -20,7 +20,7 @@
   - `scripts/prune-orphan-custom-sources.ps1`
 - Updated `scripts/doctor.ps1` to use shared helper, with compatibility fallback when `lib/common.ps1` is absent in isolated temp tests.
 - Added regression test:
-  - `tests/governance-kit.optimization.tests.ps1`
+  - `tests/repo-governance-hub.optimization.tests.ps1`
   - case: `common Invoke-ChildScriptCapture returns script output and enforces exit code`
 
 ## Commands and Evidence
@@ -31,13 +31,13 @@
 ### platform_na
 - type: `platform_na`
 - reason: `codex status` cannot run in current non-interactive session.
-- alternative_verification: used `codex --version` and `codex --help`, and manually referenced active project rule file `E:/CODE/governance-kit/AGENTS.md`.
+- alternative_verification: used `codex --version` and `codex --help`, and manually referenced active project rule file `E:/CODE/repo-governance-hub/AGENTS.md`.
 - evidence_link: this file
 - expires_at: `2026-04-30`
 
 ### gate execution (fixed order)
 1. build: `powershell -NoProfile -ExecutionPolicy Bypass -File scripts/verify-kit.ps1` => pass
-2. test: `powershell -NoProfile -ExecutionPolicy Bypass -File tests/governance-kit.optimization.tests.ps1` => pass (all cases)
+2. test: `powershell -NoProfile -ExecutionPolicy Bypass -File tests/repo-governance-hub.optimization.tests.ps1` => pass (all cases)
 3. contract/invariant:
    - `powershell -NoProfile -ExecutionPolicy Bypass -File scripts/validate-config.ps1` => pass
    - `powershell -NoProfile -ExecutionPolicy Bypass -File scripts/verify.ps1` => pass
@@ -66,7 +66,7 @@
 
 ### Round 2 verification
 1. build: `powershell -NoProfile -ExecutionPolicy Bypass -File scripts/verify-kit.ps1` => pass
-2. test: `powershell -NoProfile -ExecutionPolicy Bypass -File tests/governance-kit.optimization.tests.ps1` => pass
+2. test: `powershell -NoProfile -ExecutionPolicy Bypass -File tests/repo-governance-hub.optimization.tests.ps1` => pass
 3. contract/invariant:
    - `powershell -NoProfile -ExecutionPolicy Bypass -File scripts/validate-config.ps1` => pass
    - `powershell -NoProfile -ExecutionPolicy Bypass -File scripts/verify.ps1` => pass

@@ -1,8 +1,8 @@
 规则ID=GK-PRACTICE-STACK-POLICY-20260410-001
 规则版本=3.85
 兼容窗口(观察期/强制期)=observe
-影响模块=config/practice-stack-policy.json; .governance/practice-stack-policy.json; scripts/governance/check-practice-stack.ps1; scripts/doctor.ps1; scripts/validate-config.ps1; scripts/verify-kit.ps1; config/project-custom-files.json; config/targets.json; source/project/_common/custom/.governance/practice-stack-policy.json; source/project/_common/custom/scripts/governance/check-practice-stack.ps1; tests/governance-kit.optimization.tests.ps1
-当前落点=practice-stack 策略与校验能力新增于 governance-kit，并通过 _common custom 分发到目标仓
+影响模块=config/practice-stack-policy.json; .governance/practice-stack-policy.json; scripts/governance/check-practice-stack.ps1; scripts/doctor.ps1; scripts/validate-config.ps1; scripts/verify-kit.ps1; config/project-custom-files.json; config/targets.json; source/project/_common/custom/.governance/practice-stack-policy.json; source/project/_common/custom/scripts/governance/check-practice-stack.ps1; tests/repo-governance-hub.optimization.tests.ps1
+当前落点=practice-stack 策略与校验能力新增于 repo-governance-hub，并通过 _common custom 分发到目标仓
 目标归宿=将 SDD/TDD/ATDD-BCD/Contract/Harness/Policy/Observability/ProgressiveDelivery/Hook&CI 以 Policy-as-Code 统一纳入治理体系
 迁移批次=2026-04-10-practice-stack-policy-gate
 风险等级=low
@@ -10,12 +10,12 @@
 豁免责任人=
 豁免到期=
 豁免回收计划=
-执行命令=powershell -NoProfile -ExecutionPolicy Bypass -File scripts/refresh-targets.ps1 -Mode safe; powershell -NoProfile -ExecutionPolicy Bypass -File scripts/install.ps1 -Mode safe; powershell -NoProfile -ExecutionPolicy Bypass -File tests/governance-kit.optimization.tests.ps1; powershell -NoProfile -ExecutionPolicy Bypass -File scripts/verify-kit.ps1; powershell -NoProfile -ExecutionPolicy Bypass -File scripts/validate-config.ps1; powershell -NoProfile -ExecutionPolicy Bypass -File scripts/verify.ps1; powershell -NoProfile -ExecutionPolicy Bypass -File scripts/doctor.ps1
+执行命令=powershell -NoProfile -ExecutionPolicy Bypass -File scripts/refresh-targets.ps1 -Mode safe; powershell -NoProfile -ExecutionPolicy Bypass -File scripts/install.ps1 -Mode safe; powershell -NoProfile -ExecutionPolicy Bypass -File tests/repo-governance-hub.optimization.tests.ps1; powershell -NoProfile -ExecutionPolicy Bypass -File scripts/verify-kit.ps1; powershell -NoProfile -ExecutionPolicy Bypass -File scripts/validate-config.ps1; powershell -NoProfile -ExecutionPolicy Bypass -File scripts/verify.ps1; powershell -NoProfile -ExecutionPolicy Bypass -File scripts/doctor.ps1
 验证证据=refresh-targets target_change_count=6; install safe 完成且 verify ok=133 fail=0; optimization tests 全通过(含新增 check-practice-stack 两条用例); validate-config passed(repositories=3 targets=133 rolloutRepos=1); doctor HEALTH=GREEN 且新增 practice-stack 步骤 PASS
 供应链安全扫描=N/A (policy/script/test/config changes)
 发布后验证(指标/阈值/窗口)=practice_stack.average_score 维持 100；doctor 每次执行包含 practice-stack 子步骤；目标仓同步后 check-practice-stack 可独立运行
 数据变更治理(迁移/回填/回滚)=无持久化数据结构迁移；仅新增治理策略文件与脚本
-回滚动作=git checkout -- config/practice-stack-policy.json .governance/practice-stack-policy.json scripts/governance/check-practice-stack.ps1 scripts/doctor.ps1 scripts/validate-config.ps1 scripts/verify-kit.ps1 config/project-custom-files.json config/targets.json source/project/_common/custom/.governance/practice-stack-policy.json source/project/_common/custom/scripts/governance/check-practice-stack.ps1 tests/governance-kit.optimization.tests.ps1 docs/change-evidence/20260410-practice-stack-policy-gate.md
+回滚动作=git checkout -- config/practice-stack-policy.json .governance/practice-stack-policy.json scripts/governance/check-practice-stack.ps1 scripts/doctor.ps1 scripts/validate-config.ps1 scripts/verify-kit.ps1 config/project-custom-files.json config/targets.json source/project/_common/custom/.governance/practice-stack-policy.json source/project/_common/custom/scripts/governance/check-practice-stack.ps1 tests/repo-governance-hub.optimization.tests.ps1 docs/change-evidence/20260410-practice-stack-policy-gate.md
 subagent_decision_mode=hard_guard_plus_score
 spawn_parallel_subagents=false
 max_parallel_agents=0

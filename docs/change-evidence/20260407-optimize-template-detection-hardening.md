@@ -12,7 +12,7 @@
     - 允许 `N/A` 与 `NA` 写法
     - 启用大小写不敏感匹配
   - 同步放宽 C2/C3/A3 替换段正则，避免因为轻微格式差异跳过替换。
-- `tests/governance-kit.optimization.tests.ps1`
+- `tests/repo-governance-hub.optimization.tests.ps1`
   - `optimize-project-rules` 用例改为同进程直接调用脚本，减少子进程 `LASTEXITCODE` 不确定性。
 
 ## 关键现象与修复
@@ -24,10 +24,10 @@
   - 正则放宽到“语义匹配而非字面匹配”。
 
 ## 命令与结果
-- `powershell -File tests/governance-kit.optimization.tests.ps1` -> pass（目标用例恢复通过）
+- `powershell -File tests/repo-governance-hub.optimization.tests.ps1` -> pass（目标用例恢复通过）
 - 全门禁:
   - `powershell -File scripts/verify-kit.ps1` -> pass
-  - `powershell -File tests/governance-kit.optimization.tests.ps1` -> pass
+  - `powershell -File tests/repo-governance-hub.optimization.tests.ps1` -> pass
   - `powershell -File scripts/validate-config.ps1` -> pass
   - `powershell -File scripts/verify.ps1` -> pass
   - `powershell -File scripts/doctor.ps1` -> pass
@@ -35,7 +35,7 @@
 ## 回滚
 - 回滚文件:
   - `scripts/optimize-project-rules.ps1`
-  - `tests/governance-kit.optimization.tests.ps1`
+  - `tests/repo-governance-hub.optimization.tests.ps1`
 - 全量回滚入口:
   - `powershell -File scripts/restore.ps1` + `backups/<timestamp>/`
 

@@ -3,7 +3,7 @@
 兼容窗口(观察期/强制期)=observe->enforce
 影响模块=source/project/AGENTS.md;source/project/CLAUDE.md;source/project/GEMINI.md
 当前落点=项目级规则文档 C.2/C.4/D
-目标归宿=项目级规则与 governance-kit 脚本协同约束
+目标归宿=项目级规则与 repo-governance-hub 脚本协同约束
 迁移批次=batch-1
 风险等级=low
 是否豁免(Waiver)=no
@@ -16,3 +16,4 @@
 发布后验证(指标/阈值/窗口)=观察一次 metrics-auto 与 waiver-check 执行结果，窗口7天
 数据变更治理(迁移/回填/回滚)=N/A(无数据结构变更)
 回滚动作=git revert 本次提交或按文件恢复 templates/project-rule-collab-change-note.md 与 source/project/* 相关条款
+

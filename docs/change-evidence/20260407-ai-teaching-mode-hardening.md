@@ -1,16 +1,16 @@
 规则ID=GK-20260407-TEACHING-MODE-HARDENING
 规则版本=3.83
 兼容窗口(观察期/强制期)=observe=2026-04-07~2026-04-14; enforce>=2026-04-15
-影响模块=source/project/governance-kit/{AGENTS,CLAUDE,GEMINI}.md
-当前落点=E:/CODE/governance-kit/source/project/governance-kit/*
-目标归宿=E:/CODE/governance-kit/{AGENTS,CLAUDE,GEMINI}.md + config/targets.json映射目标仓
+影响模块=source/project/repo-governance-hub/{AGENTS,CLAUDE,GEMINI}.md
+当前落点=E:/CODE/repo-governance-hub/source/project/repo-governance-hub/*
+目标归宿=E:/CODE/repo-governance-hub/{AGENTS,CLAUDE,GEMINI}.md + config/targets.json映射目标仓
 迁移批次=2026-04-07-teaching-hardening
 风险等级=中
 是否豁免(Waiver)=否
 豁免责任人=
 豁免到期=
 豁免回收计划=
-执行命令=apply_patch(source); powershell -File scripts/install.ps1 -Mode safe; powershell -File scripts/verify-kit.ps1; powershell -File tests/governance-kit.optimization.tests.ps1; powershell -File scripts/validate-config.ps1; powershell -File scripts/verify.ps1; powershell -File scripts/doctor.ps1
+执行命令=apply_patch(source); powershell -File scripts/install.ps1 -Mode safe; powershell -File scripts/verify-kit.ps1; powershell -File tests/repo-governance-hub.optimization.tests.ps1; powershell -File scripts/validate-config.ps1; powershell -File scripts/verify.ps1; powershell -File scripts/doctor.ps1
 验证证据=本文件 + 终端门禁输出
 供应链安全扫描=N/A(本次仅规则文档变更, 无新增依赖)
 发布后验证(指标/阈值/窗口)=误解触发率下降/一次通过率提升，按周观察，窗口4周

@@ -10,7 +10,7 @@
    - `powershell -File scripts/validate-config.ps1`
    - `powershell -File scripts/verify.ps1`
    - `powershell -File scripts/doctor.ps1`
-   - `powershell -File tests/governance-kit.optimization.tests.ps1`
+   - `powershell -File tests/repo-governance-hub.optimization.tests.ps1`
 3. Validate JSON contracts:
    - `powershell -File scripts/verify-json-contract.ps1`
 4. Validate real repositories (smoke):
@@ -32,3 +32,4 @@
 - Use:
   - `powershell -File scripts/restore.ps1 -BackupName <snapshot>`
 - Record rollback evidence in `docs/change-evidence/`.
+

@@ -8,7 +8,7 @@
 - non_target: No contract-breaking behavior changes.
 - acceptance: `build -> test -> contract/invariant -> hotspot` all pass.
 - key_assumptions:
-  - confirmed: repository root is `E:/CODE/governance-kit`.
+  - confirmed: repository root is `E:/CODE/repo-governance-hub`.
   - confirmed: gate scripts required by project-level AGENTS are present.
 
 ## Platform NA
@@ -26,13 +26,13 @@
 - `codex --help`
 - `codex status`
 - `powershell -File scripts/verify-kit.ps1`
-- `powershell -File tests/governance-kit.optimization.tests.ps1`
+- `powershell -File tests/repo-governance-hub.optimization.tests.ps1`
 - `powershell -File scripts/validate-config.ps1`
 - `powershell -File scripts/verify.ps1`
 - `powershell -File scripts/doctor.ps1`
 
 ## Key Outputs
-- `verify-kit`: `governance-kit integrity OK`
+- `verify-kit`: `repo-governance-hub integrity OK`
 - `tests`: full suite passed (optimization guardrails, common helper tests, doctor fallback test)
 - `validate-config`: `Config validation passed. repositories=3 targets=73 rolloutRepos=1`
 - `verify`: `Verify done. ok=73 fail=0`

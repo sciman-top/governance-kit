@@ -2,7 +2,7 @@
 规则版本=1.0
 兼容窗口(观察期/强制期)=observe
 影响模块=scripts/governance, source/project/_common/custom/scripts/governance, source/project/*/custom/scripts/governance
-当前落点=E:/CODE/governance-kit/scripts/governance/run-recurring-review.ps1
+当前落点=E:/CODE/repo-governance-hub/scripts/governance/run-recurring-review.ps1
 目标归宿=external baseline 字段在 recurring/monthly 中稳定输出，不因文本模式而 PARSE_ERROR
 迁移批次=2026-04-11 batch-3
 风险等级=low

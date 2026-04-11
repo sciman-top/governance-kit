@@ -1,9 +1,9 @@
 规则ID=GK-CODEX-RUNTIME-ROLLOUT-ALL-006
 规则版本=3.83
 兼容窗口(观察期/强制期)=observe -> enforce (codex runtime policy enabled for all configured repos)
-影响模块=config/codex-runtime-policy.json; scripts/set-codex-runtime-policy.ps1; tests/governance-kit.optimization.tests.ps1; targets distribution outputs
-当前落点=E:/CODE/governance-kit
-目标归宿=E:/CODE/ClassroomToolkit + E:/CODE/skills-manager + E:/CODE/governance-kit
+影响模块=config/codex-runtime-policy.json; scripts/set-codex-runtime-policy.ps1; tests/repo-governance-hub.optimization.tests.ps1; targets distribution outputs
+当前落点=E:/CODE/repo-governance-hub
+目标归宿=E:/CODE/ClassroomToolkit + E:/CODE/skills-manager + E:/CODE/repo-governance-hub
 迁移批次=2026-04-09-phase-rollout-all-targets
 风险等级=medium (controlled write to multi-repo runtime config)
 是否豁免(Waiver)=no
@@ -20,7 +20,7 @@
 供应链安全扫描=N/A (config/script/test changes only)
 发布后验证(指标/阈值/窗口)=窗口: 当日分发后即时; 阈值: .codex 四文件在三仓均存在，门禁全通过
 数据变更治理(迁移/回填/回滚)=无结构化数据迁移；策略文件为可回滚文本变更
-回滚动作=将 config/codex-runtime-policy.json 恢复为仅 governance-kit enabled=true；执行 powershell -File scripts/install.ps1 -Mode safe 覆盖回滚
+回滚动作=将 config/codex-runtime-policy.json 恢复为仅 repo-governance-hub enabled=true；执行 powershell -File scripts/install.ps1 -Mode safe 覆盖回滚
 issue_id=codex-runtime-rollout-all-targets
 attempt_count=2
 clarification_mode=direct_fix

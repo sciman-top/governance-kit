@@ -1,4 +1,4 @@
-# GEMINI.md — ClassroomToolkit（Gemini 项目级）
+﻿# GEMINI.md — ClassroomToolkit（Gemini 项目级）
 **项目**: ClassroomToolkit  
 **类型**: Windows WPF (.NET 10)  
 **适用范围**: 项目级（仓库根）  
@@ -107,9 +107,9 @@
 - waiver 字段：`owner/expires_at/status/recovery_plan/evidence_link`。
 
 ### C.6 目标仓直改回灌策略
-- source of truth：`E:/CODE/governance-kit/source/project/ClassroomToolkit/*`。
+- source of truth：`E:/CODE/repo-governance-hub/source/project/ClassroomToolkit/*`。
 - 允许在目标仓临时直改做试验，但同日必须回灌并留证据。
-- 回灌后必须执行：`powershell -File E:/CODE/governance-kit/scripts/install.ps1 -Mode safe` + `powershell -File E:/CODE/governance-kit/scripts/doctor.ps1`。
+- 回灌后必须执行：`powershell -File E:/CODE/repo-governance-hub/scripts/install.ps1 -Mode safe` + `powershell -File E:/CODE/repo-governance-hub/scripts/doctor.ps1`。
 - 未完成“回灌 + 复验”前，禁止再次 `sync/install` 覆盖未沉淀改动。
 
 ### C.7 CI 入口差异
@@ -143,7 +143,7 @@
 - 执行 `git add -A` 前必须先隔离非本次改动，避免误纳入。
 
 ### C.12 治理问题优先修复顺序
-- 发现与 governance-kit 规则/脚本/配置相关的问题时，必须先在 `E:/CODE/governance-kit` 修复 source of truth。
+- 发现与 repo-governance-hub 规则/脚本/配置相关的问题时，必须先在 `E:/CODE/repo-governance-hub` 修复 source of truth。
 - 修复后按固定顺序复验：`build -> test -> contract/invariant -> hotspot`，确认通过后再在目标仓执行相关命令。
 - 禁止带着已知治理问题继续分发、提交或推送。
 - 若为临时止血，需在证据中记录回收时点与最终归宿。
@@ -155,6 +155,8 @@
 - 平台诊断命令在非交互环境失败时，必须按 A.3/A.4 字段落证，不得静默跳过。
 - 规则升级后同步校验三文件版本、日期、承接映射与门禁命令一致性。
 - 平台差异仅在 B 段表达；A/C/D 不承载平台实现细节。
+
+
 
 
 

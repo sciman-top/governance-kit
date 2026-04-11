@@ -93,7 +93,7 @@
       }
     },
     {
-      "repoName": "governance-kit",
+      "repoName": "repo-governance-hub",
       "mode_limits": {
         "deep": {
           "max_file_lines": 1250,
@@ -103,3 +103,4 @@
     }
   ]
 }
+

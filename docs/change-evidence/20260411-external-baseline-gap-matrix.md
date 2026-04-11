@@ -2,7 +2,7 @@
 规则版本=1.0-draft
 兼容窗口(观察期/强制期)=observe -> enforce（试点）
 影响模块=docs/governance, docs/change-evidence
-当前落点=E:/CODE/governance-kit/docs/governance/external-baseline-gap-matrix.md
+当前落点=E:/CODE/repo-governance-hub/docs/governance/external-baseline-gap-matrix.md
 目标归宿=将外部基线映射为本仓与目标仓可执行迁移清单
 迁移批次=2026-04-11 batch-1
 风险等级=low
@@ -26,4 +26,4 @@ policy_path=config/subagent-trigger-policy.json
 
 learning_points_3=1) 现有 practice-stack 治理已具备扩展基线承载能力;2) observe 阶段应优先降低误报后再 enforce;3) 多仓一致分发是推进基线升级的核心杠杆
 reusable_checklist=1) 定义外部基线->本仓动作映射;2) 先 advisory 后 enforce;3) 保留 gate_na 到期字段并定期回收
-open_questions=1) Scorecard 扫描选 nightly 还是 per-PR;2) SBOM 统一选 CycloneDX 还是 SPDX 先行;3) enforce 试点优先仓是否固定为 governance-kit
+open_questions=1) Scorecard 扫描选 nightly 还是 per-PR;2) SBOM 统一选 CycloneDX 还是 SPDX 先行;3) enforce 试点优先仓是否固定为 repo-governance-hub

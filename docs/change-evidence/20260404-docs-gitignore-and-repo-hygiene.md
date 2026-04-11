@@ -2,8 +2,8 @@
 
 - 规则 ID: repo-docs-hygiene-20260404
 - 风险等级: medium
-- 当前落点: `E:/CODE/governance-kit/{README.md,README.en.md,CONTRIBUTING.md,SECURITY.md,.gitignore,docs/change-evidence}`
-- 目标归宿: `E:/CODE/governance-kit/{README.md,README.en.md,CONTRIBUTING.md,SECURITY.md,.gitignore,docs/change-evidence/20260404-docs-gitignore-and-repo-hygiene.md}`
+- 当前落点: `E:/CODE/repo-governance-hub/{README.md,README.en.md,CONTRIBUTING.md,SECURITY.md,.gitignore,docs/change-evidence}`
+- 目标归宿: `E:/CODE/repo-governance-hub/{README.md,README.en.md,CONTRIBUTING.md,SECURITY.md,.gitignore,docs/change-evidence/20260404-docs-gitignore-and-repo-hygiene.md}`
 
 ## 依据
 
@@ -27,7 +27,7 @@
 - `git remote -v`
 - `git ls-files backups`
 - `powershell -File scripts/verify-kit.ps1`
-- `powershell -File tests/governance-kit.optimization.tests.ps1`
+- `powershell -File tests/repo-governance-hub.optimization.tests.ps1`
 - `powershell -File scripts/validate-config.ps1`
 - `powershell -File scripts/verify.ps1`
 - `powershell -File scripts/doctor.ps1`
@@ -45,7 +45,7 @@
   - `key_output=Error: stdin is not a terminal`
 - `git remote -v`
   - `exit_code=0`
-  - `key_output=origin https://github.com/sciman-top/governance-kit.git`
+  - `key_output=origin https://github.com/sciman-top/repo-governance-hub.git`
 - `git ls-files backups | Measure-Object`
   - `exit_code=0`
   - `key_output=246 tracked backup files before cleanup`
@@ -54,8 +54,8 @@
   - `key_output=tracked backup files removed from Git index and kept locally`
 - `powershell -File scripts/verify-kit.ps1`
   - `exit_code=0`
-  - `key_output=governance-kit integrity OK`
-- `powershell -File tests/governance-kit.optimization.tests.ps1`
+  - `key_output=repo-governance-hub integrity OK`
+- `powershell -File tests/repo-governance-hub.optimization.tests.ps1`
   - `exit_code=0`
   - `key_output=all listed tests passed`
 - `powershell -File scripts/validate-config.ps1`
@@ -90,7 +90,7 @@
   - `git-hooks`
   - `ci`
 - 建议 homepage:
-  - `https://github.com/sciman-top/governance-kit#readme`
+  - `https://github.com/sciman-top/repo-governance-hub#readme`
 
 ## 回滚
 

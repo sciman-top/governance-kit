@@ -3,7 +3,7 @@
 - 规则 ID: GK-TOKEN-SAVER-DEFAULT-THROTTLE-20260411
 - 风险等级: medium
 - issue_id: 20260411-token-saver-default-throttle
-- 当前落点: `E:/CODE/governance-kit/source/project/_common/custom/.governance/*` + `E:/CODE/governance-kit/config/*`
+- 当前落点: `E:/CODE/repo-governance-hub/source/project/_common/custom/.governance/*` + `E:/CODE/repo-governance-hub/config/*`
 - 目标归宿: 分发后目标仓 `.governance/proactive-suggestion-policy.json`、`.governance/token-saver-policy.json`、`config/clarification-policy.json`
 
 ## task_snapshot
@@ -35,8 +35,8 @@
 
 ## 执行命令与关键输出
 1. `powershell -NoProfile -ExecutionPolicy Bypass -File scripts/verify-kit.ps1`
-   - 关键输出: `governance-kit integrity OK`
-2. `powershell -NoProfile -ExecutionPolicy Bypass -File tests/governance-kit.optimization.tests.ps1`
+   - 关键输出: `repo-governance-hub integrity OK`
+2. `powershell -NoProfile -ExecutionPolicy Bypass -File tests/repo-governance-hub.optimization.tests.ps1`
    - 关键输出: 全部测试 `+` 通过
 3. `powershell -NoProfile -ExecutionPolicy Bypass -File scripts/validate-config.ps1`
    - 关键输出: `Config validation passed`

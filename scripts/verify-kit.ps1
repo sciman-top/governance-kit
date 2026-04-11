@@ -1,4 +1,4 @@
-$ErrorActionPreference = "Stop"
+﻿$ErrorActionPreference = "Stop"
 $root = Split-Path -Parent $PSScriptRoot
 $commonPath = Join-Path $PSScriptRoot "lib\common.ps1"
 if (-not (Test-Path -LiteralPath $commonPath -PathType Leaf)) {
@@ -162,7 +162,7 @@ foreach ($rel in $mustExist) {
 
 if ($missing.Count -gt 0) {
   $missing | ForEach-Object { Write-Host "[MISS] $_" }
-  throw "governance-kit integrity check failed"
+  throw "repo-governance-hub integrity check failed"
 }
 
 function Get-RuleMeta([string]$Path) {
@@ -267,7 +267,7 @@ if ($projectVersions.Count -ne 1) {
 }
 
 if ($metaFail -gt 0) {
-  throw "governance-kit metadata check failed: issues=$metaFail"
+  throw "repo-governance-hub metadata check failed: issues=$metaFail"
 }
 
 $evidenceTemplateChecks = @(
@@ -295,7 +295,7 @@ foreach ($rel in $evidenceTemplateChecks) {
 }
 
 if ($metaFail -gt 0) {
-  throw "governance-kit metadata check failed: issues=$metaFail"
+  throw "repo-governance-hub metadata check failed: issues=$metaFail"
 }
 
 $refreshScript = Join-Path $PSScriptRoot "refresh-targets.ps1"
@@ -368,7 +368,8 @@ if ($null -ne $sizeGuard) {
 }
 
 if ($metaFail -gt 0) {
-  throw "governance-kit metadata check failed: issues=$metaFail"
+  throw "repo-governance-hub metadata check failed: issues=$metaFail"
 }
 
-Write-Host "governance-kit integrity OK"
+Write-Host "repo-governance-hub integrity OK"
+

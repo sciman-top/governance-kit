@@ -1,4 +1,4 @@
-param(
+﻿param(
   [string]$RepoRoot = ".",
   [string]$GovernanceKitRoot = "",
   [string]$IssueId = "target-autopilot-default",
@@ -45,7 +45,7 @@ function Resolve-KitRoot {
     if ($null -ne $resolved) { return $resolved.Path }
   }
 
-  throw "Cannot resolve governance-kit root. Set git config governance.kitRoot or pass -GovernanceKitRoot."
+  throw "Cannot resolve repo-governance-hub root. Set git config governance.kitRoot or pass -GovernanceKitRoot."
 }
 
 function Invoke-ShellCommand {
@@ -607,3 +607,4 @@ Try-PromoteSkillCandidates -RepoPath $repoPath -GovernanceKitRoot $kitRoot -Powe
 Write-Host "STATUS: ITERATION_COMPLETE_CONTINUE"
 Write-Host "target safe autopilot completed"
 Invoke-ClarificationTracker -TrackerScript $trackerScript -RepoPath $repoPath -IssueId $IssueId -Scenario $effectiveClarificationScenario -Mode "record" -Outcome "success" -PowerShellPath $psExe | Out-Null
+

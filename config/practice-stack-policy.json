@@ -53,7 +53,7 @@
       }
     },
     {
-      "repoName": "governance-kit",
+      "repoName": "repo-governance-hub",
       "practices": {
         "sdd": true,
         "tdd": true,
@@ -72,3 +72,4 @@
     }
   ]
 }
+

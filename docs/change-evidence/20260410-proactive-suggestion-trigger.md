@@ -15,7 +15,7 @@
 
 ## 命令
 1. `powershell -File scripts/verify-kit.ps1`
-2. `powershell -File tests/governance-kit.optimization.tests.ps1`
+2. `powershell -File tests/repo-governance-hub.optimization.tests.ps1`
 3. `powershell -File scripts/validate-config.ps1; powershell -File scripts/verify.ps1`
 4. `powershell -File scripts/doctor.ps1`
 5. `powershell -File scripts/install.ps1 -Mode safe`
@@ -24,7 +24,7 @@
 ## 关键输出
 - 首次 verify 被阻断：source 与目标仓规则文件存在差异（符合“待分发”状态）。
 - 执行 `install -Mode safe` 后：
-  - 关键规则文件已复制到 `E:/CODE/ClassroomToolkit`、`E:/CODE/skills-manager`、`E:/CODE/governance-kit`。
+  - 关键规则文件已复制到 `E:/CODE/ClassroomToolkit`、`E:/CODE/skills-manager`、`E:/CODE/repo-governance-hub`。
   - `verify` 输出 `ok=109 fail=0`。
   - `doctor` 输出 `HEALTH=GREEN`，`[ASSERT] post-gate full chain passed`。
 
@@ -38,9 +38,9 @@
 - `source/project/ClassroomToolkit/AGENTS.md`
 - `source/project/ClassroomToolkit/CLAUDE.md`
 - `source/project/ClassroomToolkit/GEMINI.md`
-- `source/project/governance-kit/AGENTS.md`
-- `source/project/governance-kit/CLAUDE.md`
-- `source/project/governance-kit/GEMINI.md`
+- `source/project/repo-governance-hub/AGENTS.md`
+- `source/project/repo-governance-hub/CLAUDE.md`
+- `source/project/repo-governance-hub/GEMINI.md`
 
 ## 新增条款（摘要）
 - 触发场景：`产品需求/功能实现/方案设计/交互流程/技术选型`

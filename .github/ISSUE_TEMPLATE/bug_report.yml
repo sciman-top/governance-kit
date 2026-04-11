@@ -42,7 +42,7 @@ body:
     id: version
     attributes:
       label: 相关版本
-      description: governance-kit 版本 / 分支 / commit
+      description: repo-governance-hub 版本 / 分支 / commit
       placeholder: v3.81 / main / abc1234
   - type: dropdown
     id: risk
@@ -54,3 +54,4 @@ body:
         - high
     validations:
       required: true
+

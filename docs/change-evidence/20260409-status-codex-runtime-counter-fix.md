@@ -2,7 +2,7 @@
 规则版本=3.83
 兼容窗口(观察期/强制期)=observe
 影响模块=scripts/status.ps1
-当前落点=governance-kit source
+当前落点=repo-governance-hub source
 目标归宿=Correct codex runtime mapping counter in status output
 迁移批次=2026-04-09-phase-observability-fix
 风险等级=low

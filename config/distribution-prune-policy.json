@@ -14,7 +14,7 @@
     "manifest_path": ".governance/distribution-state.json",
     "file_marker": {
       "enabled": false,
-      "token": "managed-by: governance-kit"
+      "token": "managed-by: repo-governance-hub"
     }
   },
   "safety_guards": {
@@ -57,7 +57,7 @@
       }
     },
     {
-      "repoName": "governance-kit",
+      "repoName": "repo-governance-hub",
       "enabled": true,
       "safety_guards": {
         "max_delete_per_run": 10,
@@ -66,3 +66,4 @@
     }
   ]
 }
+

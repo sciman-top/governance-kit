@@ -17,7 +17,7 @@ readiness_score=80
 coverage=8/8
 advisory=README.md missing Quick Start section
 
-## governance-kit
+## repo-governance-hub
 status=PASS
 readiness_score=80
 coverage=10/10

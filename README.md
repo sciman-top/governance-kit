@@ -1,8 +1,8 @@
-# governance-kit
+﻿# repo-governance-hub
 
 中文 | [English](README.en.md)
 
-`governance-kit` 是一个面向多仓治理的唯一源目录（source-of-truth）仓库，用来维护全局/项目级规则，并按配置安全分发到目标仓。
+`repo-governance-hub` 是一个面向多仓治理的唯一源目录（source-of-truth）仓库，用来维护全局/项目级规则，并按配置安全分发到目标仓。
 
 它解决的不是“怎么写某一条规则”，而是“如何让规则、模板、钩子、CI、证据和回滚机制在多个仓库里持续一致地落地”。
 
@@ -41,13 +41,13 @@
 推荐只使用一个对外入口：
 
 ```powershell
-powershell -File E:\CODE\governance-kit\scripts\install-full-stack.ps1 -RepoPath E:\CODE\NewRepo -Mode safe
+powershell -File E:\CODE\repo-governance-hub\scripts\install-full-stack.ps1 -RepoPath E:\CODE\NewRepo -Mode safe
 ```
 
 预演模式：
 
 ```powershell
-powershell -File E:\CODE\governance-kit\scripts\install-full-stack.ps1 -RepoPath E:\CODE\NewRepo -Mode plan
+powershell -File E:\CODE\repo-governance-hub\scripts\install-full-stack.ps1 -RepoPath E:\CODE\NewRepo -Mode plan
 ```
 
 ## 标准工作流
@@ -55,7 +55,7 @@ powershell -File E:\CODE\governance-kit\scripts\install-full-stack.ps1 -RepoPath
 ### 1. 接入或重装目标仓
 
 ```powershell
-powershell -File E:\CODE\governance-kit\scripts\install-full-stack.ps1 -RepoPath E:\CODE\TargetRepo -Mode safe
+powershell -File E:\CODE\repo-governance-hub\scripts\install-full-stack.ps1 -RepoPath E:\CODE\TargetRepo -Mode safe
 ```
 
 默认流程：
@@ -65,13 +65,13 @@ powershell -File E:\CODE\governance-kit\scripts\install-full-stack.ps1 -RepoPath
 ### 2. 仅执行项目级规则闭环
 
 ```powershell
-powershell -File E:\CODE\governance-kit\scripts\run-project-governance-cycle.ps1 -RepoPath E:\CODE\TargetRepo -RepoName TargetRepo -Mode safe
+powershell -File E:\CODE\repo-governance-hub\scripts\run-project-governance-cycle.ps1 -RepoPath E:\CODE\TargetRepo -RepoName TargetRepo -Mode safe
 ```
 
 ### 3. 仅回灌目标仓项目规则到唯一源
 
 ```powershell
-powershell -File E:\CODE\governance-kit\scripts\backflow-project-rules.ps1 -RepoPath E:\CODE\TargetRepo -RepoName TargetRepo -Mode safe
+powershell -File E:\CODE\repo-governance-hub\scripts\backflow-project-rules.ps1 -RepoPath E:\CODE\TargetRepo -RepoName TargetRepo -Mode safe
 ```
 
 ## 关键目录
@@ -132,7 +132,7 @@ powershell -File scripts\governance\run-monthly-policy-review.ps1
 按仓启停 `.codex/*` 分发（默认关闭）：
 
 ```powershell
-powershell -File scripts\set-codex-runtime-policy.ps1 -RepoName governance-kit -Enabled true -Mode safe
+powershell -File scripts\set-codex-runtime-policy.ps1 -RepoName repo-governance-hub -Enabled true -Mode safe
 ```
 
 注册 Windows 定时提醒（每周一 09:30）：
@@ -165,7 +165,7 @@ agent-browser --cdp 9222 open https://github.com
 本仓库固定使用以下顺序，不能跳序：
 
 1. `build`: `powershell -File scripts/verify-kit.ps1`
-2. `test`: `powershell -File tests/governance-kit.optimization.tests.ps1`
+2. `test`: `powershell -File tests/repo-governance-hub.optimization.tests.ps1`
 3. `contract/invariant`: `powershell -File scripts/validate-config.ps1` 然后 `powershell -File scripts/verify.ps1`
 4. `hotspot`: `powershell -File scripts/doctor.ps1`
 
@@ -200,4 +200,6 @@ agent-browser --cdp 9222 open https://github.com
 ## 许可证
 
 本项目采用 [`MIT`](LICENSE) 许可证。
+
+
 

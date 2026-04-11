@@ -23,7 +23,7 @@ Bootstrap complete: codex-native reusable assets + minimal plugin packaging seed
 
 ## Validation
 - build: powershell -File scripts/verify-kit.ps1
-- test: powershell -File tests/governance-kit.optimization.tests.ps1
+- test: powershell -File tests/repo-governance-hub.optimization.tests.ps1
 - contract: powershell -File scripts/validate-config.ps1; powershell -File scripts/verify.ps1
 - hotspot: powershell -File scripts/doctor.ps1
 
@@ -34,3 +34,4 @@ Bootstrap complete: codex-native reusable assets + minimal plugin packaging seed
 ## Rollback
 - Restore using scripts/restore.ps1 and backups/<timestamp>/.
 - Revert source/project/_common/custom asset additions and config default-file entries.
+

@@ -20,7 +20,7 @@
   - `source/global/GEMINI.md`
 - 项目规则（9）：
   - `source/project/ClassroomToolkit/{AGENTS,CLAUDE,GEMINI}.md`
-  - `source/project/governance-kit/{AGENTS,CLAUDE,GEMINI}.md`
+  - `source/project/repo-governance-hub/{AGENTS,CLAUDE,GEMINI}.md`
   - `source/project/skills-manager/{AGENTS,CLAUDE,GEMINI}.md`
 - 模板规则（3）：
   - `source/template/project/{AGENTS,CLAUDE,GEMINI}.md`
@@ -36,7 +36,7 @@
 
 ## 4. 评估结果（改造后）
 - 全局规则组：95/100
-- governance-kit 项目组：93/100
+- repo-governance-hub 项目组：93/100
 - skills-manager 项目组：93/100
 - ClassroomToolkit 项目组：95/100（本轮以复核为主）
 - 模板组：92/100
@@ -47,7 +47,7 @@
   - 强化平台差异边界（Codex/Claude/Gemini 各自探测与回退语义）。
   - 增加边界防重叠约束（全局不下沉仓库私有动作，项目不改写全局语义）。
 - 项目规则（仅协作适配）：
-  - 在 `governance-kit` 与 `skills-manager` 增补 `Global 输出字段 -> Repo 证据字段` 映射。
+  - 在 `repo-governance-hub` 与 `skills-manager` 增补 `Global 输出字段 -> Repo 证据字段` 映射。
   - 保持门禁、阻断、仓库事实不变。
 - 模板规则：
   - 重整为与全局契约一致的三层结构并精简冗余，提升新仓落地一致性。
@@ -58,12 +58,12 @@
   - 关键输出：目标规则文件均具备 `1/A/B/C/D` 主结构。
 - 门禁链路：
   - `powershell -File scripts/verify-kit.ps1`
-  - `powershell -File tests/governance-kit.optimization.tests.ps1`
+  - `powershell -File tests/repo-governance-hub.optimization.tests.ps1`
   - `powershell -File scripts/validate-config.ps1`
   - `powershell -File scripts/verify.ps1`
   - `powershell -File scripts/doctor.ps1`
   - 关键输出：
-    - `verify-kit`: `governance-kit integrity OK`
+    - `verify-kit`: `repo-governance-hub integrity OK`
     - `tests`: 全部通过
     - `verify`: 最终 `ok=31 fail=0`
     - `doctor`: `HEALTH=GREEN`
@@ -81,7 +81,7 @@
 - 项目仓库级：
   - `E:\CODE\ClassroomToolkit\{AGENTS,CLAUDE,GEMINI}.md` 及配置中的 custom 文件
   - `E:\CODE\skills-manager\{AGENTS,CLAUDE,GEMINI}.md` 及配置中的 custom 文件
-  - `E:\CODE\governance-kit\{AGENTS,CLAUDE,GEMINI}.md`
+  - `E:\CODE\repo-governance-hub\{AGENTS,CLAUDE,GEMINI}.md`
 
 ## 8. 异常与修复记录
 - 发现一次目标仓差异：

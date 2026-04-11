@@ -1,8 +1,8 @@
 规则ID=R2/R5/R8 (参数与脚本调用去摩擦精简)
 规则版本=3.79
 兼容窗口(观察期/强制期)=observe / planned_enforce_date=2026-04-15
-影响模块=scripts/backflow-project-rules.ps1, scripts/verify.ps1, README.md, tests/governance-kit.optimization.tests.ps1
-当前落点=E:/CODE/governance-kit/{scripts,tests,README}
+影响模块=scripts/backflow-project-rules.ps1, scripts/verify.ps1, README.md, tests/repo-governance-hub.optimization.tests.ps1
+当前落点=E:/CODE/repo-governance-hub/{scripts,tests,README}
 目标归宿=治理脚本调用体验与一致性（不改变门禁语义）
 迁移批次=2026-04-02-governance-simplify-batch2
 风险等级=Low (参数兼容增强 + 测试补齐)
@@ -11,7 +11,7 @@
 豁免到期=N/A
 豁免回收计划=N/A
 执行命令=
-- powershell -File tests/governance-kit.optimization.tests.ps1
+- powershell -File tests/repo-governance-hub.optimization.tests.ps1
 - powershell -File scripts/verify-kit.ps1
 - powershell -File scripts/validate-config.ps1; powershell -File scripts/verify.ps1
 - powershell -File scripts/doctor.ps1
@@ -30,4 +30,4 @@
 发布后验证(指标/阈值/窗口)=保持 observe，观察到 2026-04-15；目标：doctor 持续 GREEN、verify fail=0
 数据变更治理(迁移/回填/回滚)=N/A (无数据结构变更)
 回滚动作=
-- git checkout -- scripts/backflow-project-rules.ps1 scripts/verify.ps1 README.md tests/governance-kit.optimization.tests.ps1
+- git checkout -- scripts/backflow-project-rules.ps1 scripts/verify.ps1 README.md tests/repo-governance-hub.optimization.tests.ps1

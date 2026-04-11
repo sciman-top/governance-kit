@@ -1,4 +1,4 @@
-{
+﻿{
   "schema_version": "1.0",
   "repos": [
     {
@@ -24,15 +24,17 @@
       "full_command": ""
     },
     {
-      "repo_name": "governance-kit",
-      "repo": "E:/CODE/governance-kit",
+      "repo_name": "repo-governance-hub",
+      "repo": "E:/CODE/repo-governance-hub",
       "required_paths": [
         "AGENTS.md",
         "scripts/doctor.ps1",
-        "tests/governance-kit.optimization.tests.ps1"
+        "tests/repo-governance-hub.optimization.tests.ps1"
       ],
       "smoke_command": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/doctor.ps1 -SkipVerifyTargets",
       "full_command": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/doctor.ps1"
     }
   ]
 }
+
+

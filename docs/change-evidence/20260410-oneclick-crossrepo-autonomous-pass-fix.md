@@ -3,7 +3,7 @@
 兼容窗口(观察期/强制期)=observe=2026-04-10,enforce=2026-04-17
 影响模块=scripts/install-full-stack.ps1; E:/CODE/skills-manager/src/Core.ps1
 当前落点=scripts/install-full-stack.ps1
-目标归宿=source/project/governance-kit/custom/scripts/install-full-stack.ps1
+目标归宿=source/project/repo-governance-hub/custom/scripts/install-full-stack.ps1
 迁移批次=2026-04-10
 风险等级=中
 是否豁免(Waiver)=否
@@ -11,7 +11,7 @@
 豁免到期=
 豁免回收计划=
 执行命令=powershell -File scripts/install-full-stack.ps1 -RepoPath <repo> -Mode safe -SkipInstallGlobalGit (3 repos); powershell -File E:/CODE/skills-manager/build.ps1; powershell -File E:/CODE/skills-manager/skills.ps1 发现
-验证证据=ClassroomToolkit exit=0 (log: .codex/logs/final-install-classroomtoolkit-rerun.log); skills-manager exit=0 (log: .codex/logs/final-install-skills-manager-rerun3.log); governance-kit exit=0 (log: .codex/logs/final-install-governance-kit.log)
+验证证据=ClassroomToolkit exit=0 (log: .codex/logs/final-install-classroomtoolkit-rerun.log); skills-manager exit=0 (log: .codex/logs/final-install-skills-manager-rerun3.log); repo-governance-hub exit=0 (log: .codex/logs/final-install-repo-governance-hub.log)
 供应链安全扫描=N/A(未新增依赖)
 发布后验证(指标/阈值/窗口)=一键安装后目标仓 target-precheck + target-hard-gate 成功率=100%(3/3), 观察窗口7天
 数据变更治理(迁移/回填/回滚)=N/A(无数据结构变更)

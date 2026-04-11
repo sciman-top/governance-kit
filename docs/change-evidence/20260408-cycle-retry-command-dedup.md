@@ -27,7 +27,7 @@
 
 ## Verification
 - `powershell -File scripts/verify-kit.ps1` -> pass
-- `powershell -File tests/governance-kit.optimization.tests.ps1` -> pass
+- `powershell -File tests/repo-governance-hub.optimization.tests.ps1` -> pass
 - `powershell -File scripts/validate-config.ps1` -> pass
 - `powershell -File scripts/verify.ps1` -> `ok=73 fail=0`
 - `powershell -File scripts/doctor.ps1` -> `HEALTH=GREEN`

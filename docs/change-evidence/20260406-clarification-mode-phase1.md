@@ -2,11 +2,11 @@
 规则版本=9.38
 兼容窗口(观察期/强制期)=observe -> enforce
 影响模块=config,scripts/governance,scripts/doctor,templates,tests
-当前落点=governance-kit
+当前落点=repo-governance-hub
 目标归宿=outer-ai-session 自动触发澄清模式
 迁移批次=phase1
 风险等级=medium
-issue_id=governance-kit-clarification-mode-phase1
+issue_id=repo-governance-hub-clarification-mode-phase1
 attempt_count=1
 clarification_mode(off|required|resolved)=resolved
 clarification_questions=N/A

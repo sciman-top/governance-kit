@@ -1,4 +1,4 @@
-param(
+﻿param(
   [ValidateSet("plan", "safe", "force")]
   [string]$Mode = "safe",
   [switch]$OverwriteCI,
@@ -50,7 +50,7 @@ function Copy-WithPolicy([string]$Src, [string]$Dst, [bool]$CanOverwrite, [strin
 function Get-HookBlock([string]$Kind) {
   $trackedScope = if ($Kind -eq "pre-push") { "outgoing" } else { "staged" }
   return @'
-# >>> governance-kit begin
+# >>> repo-governance-hub begin
 KIT_ROOT="$(git config --get governance.kitRoot)"
 if [ -z "$KIT_ROOT" ]; then
   KIT_ROOT="${GOVERNANCE_KIT_ROOT}"
@@ -64,7 +64,7 @@ if [ -n "$KIT_ROOT" ]; then
     exit $status
   fi
 fi
-# <<< governance-kit end
+# <<< repo-governance-hub end
 '@ -replace "__TRACKED_SCOPE__", $trackedScope
 }
 
@@ -92,7 +92,7 @@ function Ensure-Hook([string]$HookPath, [string]$Kind, [string]$TemplatePath) {
   }
 
   $existing = Get-Content -Path $HookPath -Raw
-  if ($existing -match "# >>> governance-kit begin") {
+  if ($existing -match "# >>> repo-governance-hub begin") {
     Write-Host "[SKIP] .git/hooks/$Kind governance block already exists"
     return
   }
@@ -220,3 +220,4 @@ foreach ($repo in $repos) {
 }
 
 Write-Host "install-extras done. mode=$Mode"
+

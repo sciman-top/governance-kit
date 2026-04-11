@@ -1,8 +1,8 @@
 规则ID=GK-CODEX-RUNTIME-OBS-004
 规则版本=3.83
 兼容窗口(观察期/强制期)=observe
-影响模块=scripts/status.ps1; scripts/verify-json-contract.ps1; tests/governance-kit.optimization.tests.ps1
-当前落点=governance-kit source
+影响模块=scripts/status.ps1; scripts/verify-json-contract.ps1; tests/repo-governance-hub.optimization.tests.ps1
+当前落点=repo-governance-hub source
 目标归宿=Status visibility for codex runtime policy and mappings
 迁移批次=2026-04-09-phase-observability
 风险等级=low
@@ -10,12 +10,12 @@
 豁免责任人=
 豁免到期=
 豁免回收计划=
-执行命令=powershell -File scripts/verify-json-contract.ps1; powershell -File tests/governance-kit.optimization.tests.ps1; powershell -File scripts/verify-kit.ps1; powershell -File scripts/validate-config.ps1; powershell -File scripts/verify.ps1; powershell -File scripts/doctor.ps1
+执行命令=powershell -File scripts/verify-json-contract.ps1; powershell -File tests/repo-governance-hub.optimization.tests.ps1; powershell -File scripts/verify-kit.ps1; powershell -File scripts/validate-config.ps1; powershell -File scripts/verify.ps1; powershell -File scripts/doctor.ps1
 验证证据=JSON contract pass; status includes codex_runtime fields; optimization tests pass including codex policy tests; full gate chain GREEN
 供应链安全扫描=N/A (script/test only)
 发布后验证(指标/阈值/窗口)=No schema regression in verify-json-contract; codex_runtime counters available in status output
 数据变更治理(迁移/回填/回滚)=No data migration required
-回滚动作=git revert scripts/status.ps1 scripts/verify-json-contract.ps1 tests/governance-kit.optimization.tests.ps1
+回滚动作=git revert scripts/status.ps1 scripts/verify-json-contract.ps1 tests/repo-governance-hub.optimization.tests.ps1
 
 learning_points_3=Expose policy state in status to reduce hidden config drift; update contract verifier whenever status schema expands; keep fixture stubs synchronized with schema expectations
 reusable_checklist=status enhancement + contract update + tests + full gates + evidence

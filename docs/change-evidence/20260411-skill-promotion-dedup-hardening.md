@@ -1,5 +1,5 @@
 issue_id=skill-promotion-dedup-hardening-20260411
-当前落点=E:/CODE/governance-kit/source/project/_common/custom/scripts/governance/promote-skill-candidates.ps1
+当前落点=E:/CODE/repo-governance-hub/source/project/_common/custom/scripts/governance/promote-skill-candidates.ps1
 目标归宿=source/project/_common/custom/scripts/governance/promote-skill-candidates.ps1 + source/project/_common/custom/.governance/skill-promotion-policy.json
 风险等级=medium
 执行模式=direct_fix
@@ -14,12 +14,12 @@ issue_id=skill-promotion-dedup-hardening-20260411
 修复动作=新增可选确认门槛策略 require_user_ack + env ack
 
 策略新增字段=summary_relative_path, write_summary_file, require_user_ack, user_ack_env_var, user_ack_expected_value
-命令=governance-kit install.ps1 -Mode safe; skills-manager promote-skill-candidates -AsJson; skills-manager doctor --strict
+命令=repo-governance-hub install.ps1 -Mode safe; skills-manager promote-skill-candidates -AsJson; skills-manager doctor --strict
 关键输出=grouped_signature_count=1, promoted_count=0, cleanup_removed_count=0（稳定状态下无新增无清理）
 关键输出=overrides 仅保留 custom-auto-pwsh-encoding-mojibake-l-a9b049cd + custom-windows-encoding-guard
 关键输出=skills-manager doctor --strict 通过
 
-回滚动作=git -C E:/CODE/governance-kit checkout -- source/project/_common/custom/scripts/governance/promote-skill-candidates.ps1 source/project/_common/custom/.governance/skill-promotion-policy.json
+回滚动作=git -C E:/CODE/repo-governance-hub checkout -- source/project/_common/custom/scripts/governance/promote-skill-candidates.ps1 source/project/_common/custom/.governance/skill-promotion-policy.json
 回滚动作=git -C E:/CODE/skills-manager checkout -- scripts/governance/promote-skill-candidates.ps1 .governance/skill-promotion-policy.json .governance/skill-candidates
 
 learning_points_3=1) 同类问题必须以 family 为主键 2) 自动创建必须伴随可见 summary 3) registry 缺失/分裂会放大重复创建风险

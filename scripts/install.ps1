@@ -1,4 +1,4 @@
-param(
+﻿param(
   [switch]$NoBackup,
   [ValidateSet("plan", "safe", "force")]
   [string]$Mode = "safe",
@@ -316,7 +316,7 @@ if ($modePlan) {
 
   if (-not $SkipPostGate) {
     $buildScript = Join-Path $PSScriptRoot "verify-kit.ps1"
-    $testScript = Join-Path $kitRoot "tests\governance-kit.optimization.tests.ps1"
+    $testScript = Join-Path $kitRoot "tests\repo-governance-hub.optimization.tests.ps1"
     $contractScript = Join-Path $PSScriptRoot "validate-config.ps1"
     $boundaryScript = Join-Path $PSScriptRoot "governance\check-boundary-classification.ps1"
     $hotspotScript = Join-Path $PSScriptRoot "doctor.ps1"
@@ -389,3 +389,4 @@ if ($FullCycle) {
     Invoke-ChildScript -ScriptPath $cycleScript -ScriptArgs $cycleArgs
   }
 }
+

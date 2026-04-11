@@ -1,4 +1,4 @@
-param(
+﻿param(
   [ValidateSet("plan", "safe")]
   [string]$Mode = "",
   [switch]$AsJson
@@ -196,7 +196,7 @@ function Write-Manifest([string]$ManifestPath, [string]$RepoRoot, [System.Collec
 
   $obj = [pscustomobject]@{
     version = 1
-    tool = "governance-kit"
+    tool = "repo-governance-hub"
     updated_at = (Get-Date).ToString("s")
     managed_count = $managed.Count
     managed_files = @($managed.ToArray())
@@ -389,3 +389,4 @@ if ($AsJson) {
     Write-Host "prune_target_orphans.should_fail_gate=true"
   }
 }
+

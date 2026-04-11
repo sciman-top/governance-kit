@@ -1,5 +1,5 @@
 #!/bin/sh
-# governance-kit global pre-commit
+# repo-governance-hub global pre-commit
 HOOK_DIR="$(cd "$(dirname "$0")" && pwd)"
 KIT_ROOT="$(cd "$HOOK_DIR/.." && pwd)"
 
@@ -7,8 +7,9 @@ if [ -f "$KIT_ROOT/scripts/verify-kit.ps1" ]; then
   powershell -NoProfile -ExecutionPolicy Bypass -File "$KIT_ROOT/scripts/verify-kit.ps1"
   status=$?
   if [ $status -ne 0 ]; then
-    echo "[BLOCK] governance-kit integrity check failed"
+    echo "[BLOCK] repo-governance-hub integrity check failed"
     exit $status
   fi
 fi
 exit 0
+

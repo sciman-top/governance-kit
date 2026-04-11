@@ -18,7 +18,7 @@
   - `powershell -NoProfile -ExecutionPolicy Bypass -File scripts/check-cli-capabilities.ps1 -AsJson`
   - `powershell -NoProfile -ExecutionPolicy Bypass -File scripts/check-cli-version-drift.ps1 -AsJson`
   - `powershell -NoProfile -ExecutionPolicy Bypass -File scripts/verify-kit.ps1`
-  - `powershell -NoProfile -ExecutionPolicy Bypass -File tests/governance-kit.optimization.tests.ps1`
+  - `powershell -NoProfile -ExecutionPolicy Bypass -File tests/repo-governance-hub.optimization.tests.ps1`
   - `powershell -NoProfile -ExecutionPolicy Bypass -File scripts/validate-config.ps1`
   - `powershell -NoProfile -ExecutionPolicy Bypass -File scripts/verify.ps1`
   - `powershell -NoProfile -ExecutionPolicy Bypass -File scripts/doctor.ps1`

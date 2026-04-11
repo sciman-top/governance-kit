@@ -2,7 +2,7 @@
 规则版本=9.38/3.85 compatible
 兼容窗口(观察期/强制期)=enforce
 影响模块=config, source/project/_common/custom, distribution targets, doctor summary
-当前落点=E:/CODE/governance-kit
+当前落点=E:/CODE/repo-governance-hub
 目标归宿=source/project/_common/custom/* + distributed target repos
 迁移批次=2026-04-11 batch-1,batch-2
 风险等级=中
@@ -10,7 +10,7 @@
 豁免责任人=
 豁免到期=
 豁免回收计划=
-执行命令=powershell -File scripts/refresh-targets.ps1 -AsJson; powershell -File scripts/install.ps1 -Mode safe; powershell -File scripts/verify-kit.ps1; powershell -File tests/governance-kit.optimization.tests.ps1; powershell -File scripts/validate-config.ps1; powershell -File scripts/verify.ps1; powershell -File scripts/doctor.ps1
+执行命令=powershell -File scripts/refresh-targets.ps1 -AsJson; powershell -File scripts/install.ps1 -Mode safe; powershell -File scripts/verify-kit.ps1; powershell -File tests/repo-governance-hub.optimization.tests.ps1; powershell -File scripts/validate-config.ps1; powershell -File scripts/verify.ps1; powershell -File scripts/doctor.ps1
 验证证据=verify-kit/test/validate-config/verify/doctor all PASS; targets=223 synced; practice-stack average_score=100; external-baselines pass_count=4(advisory_count=0,warn_count=0,should_fail_gate=false)
 供应链安全扫描=enforce phase enabled (all four baselines level=required, policy block_on_warn=true)
 发布后验证(指标/阈值/窗口)=doctor summary external_baseline_status/advisory_count/warn_count, weekly recurring review

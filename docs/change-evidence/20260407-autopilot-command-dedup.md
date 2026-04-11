@@ -29,7 +29,7 @@
   - `powershell -NoProfile -ExecutionPolicy Bypass -File scripts/automation/run-safe-autopilot.ps1 -RepoRoot . -DryRun -MaxCycles 1`
   - `powershell -NoProfile -ExecutionPolicy Bypass -File scripts/governance/run-target-autopilot.ps1 -RepoRoot . -GovernanceKitRoot . -DryRun -MaxCycles 1`
   - `powershell -NoProfile -ExecutionPolicy Bypass -File scripts/verify-kit.ps1`
-  - `powershell -NoProfile -ExecutionPolicy Bypass -File tests/governance-kit.optimization.tests.ps1`
+  - `powershell -NoProfile -ExecutionPolicy Bypass -File tests/repo-governance-hub.optimization.tests.ps1`
   - `powershell -NoProfile -ExecutionPolicy Bypass -File scripts/validate-config.ps1`
   - `powershell -NoProfile -ExecutionPolicy Bypass -File scripts/verify.ps1`
   - `powershell -NoProfile -ExecutionPolicy Bypass -File scripts/doctor.ps1`

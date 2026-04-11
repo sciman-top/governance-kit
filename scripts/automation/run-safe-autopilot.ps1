@@ -1,4 +1,4 @@
-param(
+﻿param(
   [string]$RepoRoot = ".",
   # Deprecated: remediation is now handled by the outer AI session.
   [string]$CodexCommand = "codex",
@@ -42,7 +42,7 @@ $failureSignatureCounts = [System.Collections.Generic.Dictionary[string, int]]::
 function Invoke-GovernanceGateChain {
   $steps = @(
     [pscustomobject]@{ name = "build.verify-kit"; workdir = $repoPath; action = { & $psExe -NoProfile -ExecutionPolicy Bypass -File (Join-Path $repoPath "scripts/verify-kit.ps1") } },
-    [pscustomobject]@{ name = "test.optimization"; workdir = $repoPath; action = { & $psExe -NoProfile -ExecutionPolicy Bypass -File (Join-Path $repoPath "tests/governance-kit.optimization.tests.ps1") } },
+    [pscustomobject]@{ name = "test.optimization"; workdir = $repoPath; action = { & $psExe -NoProfile -ExecutionPolicy Bypass -File (Join-Path $repoPath "tests/repo-governance-hub.optimization.tests.ps1") } },
     [pscustomobject]@{ name = "contract.validate-config"; workdir = $repoPath; action = { & $psExe -NoProfile -ExecutionPolicy Bypass -File (Join-Path $repoPath "scripts/validate-config.ps1") } },
     [pscustomobject]@{ name = "contract.boundary-classification"; workdir = $repoPath; action = { & $psExe -NoProfile -ExecutionPolicy Bypass -File (Join-Path $repoPath "scripts/governance/check-boundary-classification.ps1") } },
     [pscustomobject]@{ name = "contract.verify"; workdir = $repoPath; action = { & $psExe -NoProfile -ExecutionPolicy Bypass -File (Join-Path $repoPath "scripts/verify.ps1") } },
@@ -131,7 +131,7 @@ function Write-FailureContextAndThrow {
     retry_command = $RetryCommand
     policy_snapshot = $PolicySnapshot
     remediation_owner = "outer-ai-session"
-    remediation_scope = "governance-kit-first"
+    remediation_scope = "repo-governance-hub-first"
     rerun_owner = "outer-ai-session"
     timestamp = (Get-Date).ToString("o")
     stop_reason = $StopReason
@@ -146,7 +146,7 @@ function Write-FailureContextAndThrow {
     failure_signature = $FailureSignature
     failure_message = $FailureMessage
   }
-  Write-Host "[BLOCK] governance execution stopped by policy boundary; fix governance-kit first when the issue belongs to governance flow, then let outer AI session re-run."
+  Write-Host "[BLOCK] governance execution stopped by policy boundary; fix repo-governance-hub first when the issue belongs to governance flow, then let outer AI session re-run."
   Write-Host ("[FAILURE_CONTEXT_JSON] " + ($context | ConvertTo-Json -Depth 8 -Compress))
   throw $FailureMessage
 }
@@ -168,10 +168,10 @@ if ($PSBoundParameters.ContainsKey("CodexCommand") -or $PSBoundParameters.Contai
   Write-Host "[DEPRECATED] in-script auto remediation options are ignored (-CodexCommand/-MaxKitFixAttempts/-MaxTargetFixAttempts)."
   Write-Host "[POLICY] remediation owner=outer-ai-session (current chat agent), script role=gate orchestrator only."
 }
-Write-Host "[POLICY] when governance issue is found, fix governance-kit first, then let outer-ai-session re-run."
+Write-Host "[POLICY] when governance issue is found, fix repo-governance-hub first, then let outer-ai-session re-run."
 
 if (-not (Test-Path -LiteralPath (Join-Path $repoPath "scripts/verify-kit.ps1"))) { throw "Missing scripts/verify-kit.ps1" }
-if (-not (Test-Path -LiteralPath (Join-Path $repoPath "tests/governance-kit.optimization.tests.ps1"))) { throw "Missing tests/governance-kit.optimization.tests.ps1" }
+if (-not (Test-Path -LiteralPath (Join-Path $repoPath "tests/repo-governance-hub.optimization.tests.ps1"))) { throw "Missing tests/repo-governance-hub.optimization.tests.ps1" }
 if (-not (Test-Path -LiteralPath (Join-Path $repoPath "scripts/validate-config.ps1"))) { throw "Missing scripts/validate-config.ps1" }
 if (-not (Test-Path -LiteralPath (Join-Path $repoPath "scripts/governance/check-boundary-classification.ps1"))) { throw "Missing scripts/governance/check-boundary-classification.ps1" }
 if (-not (Test-Path -LiteralPath (Join-Path $repoPath "scripts/verify.ps1"))) { throw "Missing scripts/verify.ps1" }
@@ -315,3 +315,4 @@ try {
 finally {
   Release-ScriptLock -LockHandle $scriptLock
 }
+

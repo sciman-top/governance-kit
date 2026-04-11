@@ -1,4 +1,4 @@
-# Contributing to governance-kit
+# Contributing to repo-governance-hub
 
 中文说明见 [README.md](README.md)。English contributors can use this file as the primary collaboration guide.
 
@@ -29,7 +29,7 @@ Run gates in this exact order:
 
 ```powershell
 powershell -File scripts/verify-kit.ps1
-powershell -File tests/governance-kit.optimization.tests.ps1
+powershell -File tests/repo-governance-hub.optimization.tests.ps1
 powershell -File scripts/validate-config.ps1
 powershell -File scripts/verify.ps1
 powershell -File scripts/doctor.ps1
@@ -63,3 +63,4 @@ If you accidentally tracked them before, remove them from the Git index as part 
 ## Security
 
 Do not commit secrets, tokens, credentials, or private operational data. Report vulnerabilities through the private path documented in [SECURITY.md](SECURITY.md).
+

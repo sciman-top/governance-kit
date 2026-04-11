@@ -19,10 +19,10 @@
   - `scripts/optimize-project-rules.ps1`
   - 放宽空白与 `N/A` 写法匹配, 避免模板文档误判为 custom 并跳过。
 - 测试用例调用稳定性微调:
-  - `tests/governance-kit.optimization.tests.ps1` 中 `optimize-project-rules` 用例改为同进程脚本调用。
+  - `tests/repo-governance-hub.optimization.tests.ps1` 中 `optimize-project-rules` 用例改为同进程脚本调用。
 
 ## 命令与结果
-- `powershell -File tests/governance-kit.optimization.tests.ps1` -> pass
+- `powershell -File tests/repo-governance-hub.optimization.tests.ps1` -> pass
 - `powershell -File scripts/verify-kit.ps1` -> pass
 - `powershell -File scripts/validate-config.ps1` -> pass
 - `powershell -File scripts/verify.ps1` -> pass
@@ -44,7 +44,7 @@
   - `scripts/check-waivers.ps1`
   - `scripts/check-release-profile-coverage.ps1`
   - `scripts/optimize-project-rules.ps1`
-  - `tests/governance-kit.optimization.tests.ps1`
+  - `tests/repo-governance-hub.optimization.tests.ps1`
 - 全量回滚入口:
   - `powershell -File scripts/restore.ps1` + `backups/<timestamp>/`
 

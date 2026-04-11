@@ -13,6 +13,22 @@ if (-not (Test-Path -LiteralPath $commonPath -PathType Leaf)) {
   throw "Missing common helper: $commonPath"
 }
 . $commonPath
+function Get-BoundarySourceLayer([string]$Source) {
+  $s = ([string]$Source -replace '\\', '/')
+  if ($s.StartsWith("source/global/", [System.StringComparison]::OrdinalIgnoreCase)) {
+    return "global"
+  }
+  if ($s.StartsWith("source/template/project/", [System.StringComparison]::OrdinalIgnoreCase)) {
+    return "project"
+  }
+  if ($s.StartsWith("source/project/_common/", [System.StringComparison]::OrdinalIgnoreCase)) {
+    return "shared-template"
+  }
+  if ($s.StartsWith("source/project/", [System.StringComparison]::OrdinalIgnoreCase)) {
+    return "project"
+  }
+  return "unknown"
+}
 
 if ([string]::IsNullOrWhiteSpace($TargetsPath)) {
   $TargetsPath = Join-Path $kitRoot "config\targets.json"

@@ -2,7 +2,7 @@
 规则版本=3.83
 兼容窗口(观察期/强制期)=observe -> enforce
 影响模块=scripts/lib/common.ps1; scripts/install-full-stack.ps1; scripts/run-project-governance-cycle.ps1
-当前落点=E:/CODE/governance-kit
+当前落点=E:/CODE/repo-governance-hub
 目标归宿=统一 policy 摘要输出函数，减少跨脚本重复格式字符串
 迁移批次=2026-04-10-governance-common-dedup
 风险等级=low
@@ -10,7 +10,7 @@
 豁免责任人=
 豁免到期=
 豁免回收计划=
-执行命令=powershell -File scripts/verify-kit.ps1; powershell -File tests/governance-kit.optimization.tests.ps1; powershell -File scripts/validate-config.ps1; powershell -File scripts/verify.ps1; powershell -File scripts/doctor.ps1
+执行命令=powershell -File scripts/verify-kit.ps1; powershell -File tests/repo-governance-hub.optimization.tests.ps1; powershell -File scripts/validate-config.ps1; powershell -File scripts/verify.ps1; powershell -File scripts/doctor.ps1
 验证证据=verify-kit PASS; optimization tests PASS; validate-config PASS; verify ok=106 fail=0; doctor HEALTH=GREEN
 供应链安全扫描=N/A (no dependency changes)
 发布后验证(指标/阈值/窗口)=窗口到 2026-04-17；阈值: verify fail=0 且 doctor GREEN

@@ -6,7 +6,7 @@
 - 验收标准: 新测试通过且全门禁保持全绿。
 
 ## 变更内容
-- 在 `tests/governance-kit.optimization.tests.ps1` 新增:
+- 在 `tests/repo-governance-hub.optimization.tests.ps1` 新增:
   - `common Assert-Command and Invoke-LoggedCommand provide shared command guards`
 - 覆盖点:
   - `Assert-Command` 的存在/缺失命令判定。
@@ -15,7 +15,7 @@
 ## 执行命令与证据
 - 执行:
   - `powershell -File scripts/verify-kit.ps1`
-  - `powershell -File tests/governance-kit.optimization.tests.ps1`
+  - `powershell -File tests/repo-governance-hub.optimization.tests.ps1`
   - `powershell -File scripts/validate-config.ps1`
   - `powershell -File scripts/verify.ps1`
   - `powershell -File scripts/doctor.ps1`
@@ -25,7 +25,7 @@
 
 ## 回滚
 - 回滚文件:
-  - `tests/governance-kit.optimization.tests.ps1`
+  - `tests/repo-governance-hub.optimization.tests.ps1`
 - 全量回滚入口:
   - `powershell -File scripts/restore.ps1` + `backups/<timestamp>/`
 

@@ -1,4 +1,4 @@
-param(
+﻿param(
   [string]$RepoRoot = ".",
   [string]$GovernanceKitRoot = "",
   [string]$IssueId = "target-autopilot-default",
@@ -43,7 +43,7 @@ function Resolve-KitRoot {
     if ($null -ne $resolved) { return $resolved.Path }
   }
 
-  throw "Cannot resolve governance-kit root. Set git config governance.kitRoot or pass -GovernanceKitRoot."
+  throw "Cannot resolve repo-governance-hub root. Set git config governance.kitRoot or pass -GovernanceKitRoot."
 }
 
 $repoPath = (Resolve-Path -LiteralPath $RepoRoot).Path
@@ -86,3 +86,4 @@ if ($DryRun.IsPresent) { $invokeArgs += "-DryRun" }
 
 & $psExe @invokeArgs
 exit $LASTEXITCODE
+

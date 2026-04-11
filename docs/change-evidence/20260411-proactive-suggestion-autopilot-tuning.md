@@ -28,7 +28,7 @@
   - 关键输出: `HEALTH=GREEN`
 - `powershell -File scripts/verify-kit.ps1`
   - 关键输出: `[PASS] rule duplication check passed`
-- `powershell -File tests/governance-kit.optimization.tests.ps1`
+- `powershell -File tests/repo-governance-hub.optimization.tests.ps1`
   - 关键输出: 全量用例通过（Pester 全绿）
 - `powershell -File scripts/validate-config.ps1; powershell -File scripts/verify.ps1`
   - 关键输出: `Config validation passed`，`Verify done. ok=187 fail=0`

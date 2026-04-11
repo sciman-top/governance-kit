@@ -10,7 +10,7 @@
 豁免责任人=
 豁免到期=
 豁免回收计划=
-执行命令=powershell -File scripts/verify-kit.ps1; powershell -File tests/governance-kit.optimization.tests.ps1; powershell -File scripts/validate-config.ps1; powershell -File scripts/verify.ps1; powershell -File scripts/doctor.ps1
+执行命令=powershell -File scripts/verify-kit.ps1; powershell -File tests/repo-governance-hub.optimization.tests.ps1; powershell -File scripts/validate-config.ps1; powershell -File scripts/verify.ps1; powershell -File scripts/doctor.ps1
 验证证据=all gates pass; verify ok=73 fail=0; doctor HEALTH=GREEN
 供应链安全扫描=N/A(无新依赖)
 发布后验证(指标/阈值/窗口)=next bootstrap flow remains green

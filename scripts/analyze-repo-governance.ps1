@@ -1,4 +1,4 @@
-param(
+﻿param(
   [Parameter(Mandatory = $true)]
   [string]$RepoPath,
   [switch]$AsJson
@@ -48,7 +48,7 @@ $hasVerifyKitPs1 = Test-Path (Join-Path $repo "scripts\verify-kit.ps1")
 $hasVerifyPs1 = Test-Path (Join-Path $repo "scripts\verify.ps1")
 $hasValidateConfigPs1 = Test-Path (Join-Path $repo "scripts\validate-config.ps1")
 $hasDoctorPs1 = Test-Path (Join-Path $repo "scripts\doctor.ps1")
-$hasGovernanceKitTests = Test-Path (Join-Path $repo "tests\governance-kit.optimization.tests.ps1")
+$hasGovernanceKitTests = Test-Path (Join-Path $repo "tests\repo-governance-hub.optimization.tests.ps1")
 $hotspotRel = Get-FirstExistingRelativePath -Root $repo -Candidates @(
   "scripts/quality/check-hotspot-line-budgets.ps1",
   "scripts/validation/check-hotspot-line-budgets.ps1"
@@ -105,7 +105,7 @@ $buildCmd = if ($isGovernanceKitStyleRepo) {
 
 $testCmd = if ($isGovernanceKitStyleRepo) {
   if ($hasGovernanceKitTests) {
-    "powershell -File tests/governance-kit.optimization.tests.ps1"
+    "powershell -File tests/repo-governance-hub.optimization.tests.ps1"
   } else {
     "powershell -File scripts/verify.ps1 -SkipConfigValidation"
   }
@@ -151,7 +151,7 @@ $hooksPreCommit = Join-Path $repo ".git\hooks\pre-commit"
 $hooksPrePush = Join-Path $repo ".git\hooks\pre-push"
 $preCommitText = Read-TextIfExists -Path $hooksPreCommit
 $prePushText = Read-TextIfExists -Path $hooksPrePush
-$hookBlockInstalled = (($preCommitText -match "# >>> governance-kit begin") -and ($prePushText -match "# >>> governance-kit begin"))
+$hookBlockInstalled = (($preCommitText -match "# >>> repo-governance-hub begin") -and ($prePushText -match "# >>> repo-governance-hub begin"))
 
 $commitTemplateConfigured = $false
 $governanceKitRootConfigured = $false
@@ -237,3 +237,4 @@ Write-Host "recommended.contract_invariant=$($facts.recommended.contract_invaria
 Write-Host "recommended.hotspot=$($facts.recommended.hotspot)"
 Write-Host "recommended.quick_gate=$($facts.recommended.quick_gate)"
 Write-Host "recommended.evidence_dir=$($facts.recommended.evidence_dir)"
+

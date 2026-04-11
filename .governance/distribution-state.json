@@ -1,13 +1,13 @@
 ﻿{
     "version":  1,
-    "tool":  "governance-kit",
-    "updated_at":  "2026-04-11T23:59:26",
+    "tool":  "repo-governance-hub",
+    "updated_at":  "2026-04-12T02:20:38",
     "managed_count":  67,
     "managed_files":  [
                           {
                               "path":  ".agents/plugins/marketplace.json",
                               "source":  "source/project/_common/custom/.agents/plugins/marketplace.json",
-                              "sha256":  "296B2BCF87DCF0CDBAEE88AC5513845D1E5F1F43F16F3C1B07B6F1316574D808"
+                              "sha256":  "659A609E6C966703D84567987F660BA336BDB43A1FC0A547A8E2A2C0B99DC1A7"
                           },
                           {
                               "path":  ".agents/skills/governance-refactor-safe/SKILL.md",
@@ -57,7 +57,7 @@
                           {
                               "path":  ".governance/anti-bloat-policy.json",
                               "source":  "source/project/_common/custom/.governance/anti-bloat-policy.json",
-                              "sha256":  "716F0508B28F222F5963DD0275540CDFD28FADAB18510F0E4610B977548969C1"
+                              "sha256":  "60756DC85E191A080A2AFDE3264756A4B67B6C6E56C7F4DB062199C2F165A7C3"
                           },
                           {
                               "path":  ".governance/external-baseline-policy.json",
@@ -116,8 +116,8 @@
                           },
                           {
                               "path":  ".governance/release-profile.json",
-                              "source":  "source/project/governance-kit/custom/.governance/release-profile.json",
-                              "sha256":  "6BF2F0F4863EE39EE99206D68A6ADB54B600C39EC294A641F655448F7839CB06"
+                              "source":  "source/project/repo-governance-hub/custom/.governance/release-profile.json",
+                              "sha256":  "4814104ACAC9CA9E26EC0153F3250DB207A038603D487D75797F21DCC68C0B0B"
                           },
                           {
                               "path":  ".governance/skill-candidates/trigger-eval-runs.sample.jsonl",
@@ -167,17 +167,17 @@
                           {
                               "path":  ".governance/tracked-files-policy.json",
                               "source":  "source/project/_common/custom/.governance/tracked-files-policy.json",
-                              "sha256":  "FE717F882B779EBD5503BBF1B967F0A76E779554058C897C345AE237CFC37AFD"
+                              "sha256":  "101AE6C8D423613D33E8C90D2613A473CDB8BD7F1FD417E0FACF47BAED67B1B5"
                           },
                           {
                               "path":  "AGENTS.md",
-                              "source":  "source/project/governance-kit/AGENTS.md",
-                              "sha256":  "A0446EA6B1FA508182F01401D8A34A17A972D1A15DC25896CAF56D55244029C4"
+                              "source":  "source/project/repo-governance-hub/AGENTS.md",
+                              "sha256":  "BCDB3ED14191506F820E50D1B337733696176F3F9152E4F2B24BC372C4713AE8"
                           },
                           {
                               "path":  "CLAUDE.md",
-                              "source":  "source/project/governance-kit/CLAUDE.md",
-                              "sha256":  "73673D608A116E4AA49006704DE14145F4A8197735759D2317BB60E316C38ADB"
+                              "source":  "source/project/repo-governance-hub/CLAUDE.md",
+                              "sha256":  "983018AC6AE3B60D41491F8BED22101DE6E1F682F12A2293A18DBE439F121311"
                           },
                           {
                               "path":  "config/clarification-policy.json",
@@ -211,27 +211,27 @@
                           },
                           {
                               "path":  "docs/PLANS.md",
-                              "source":  "source/project/governance-kit/custom/docs/PLANS.md",
-                              "sha256":  "B79D36B796EFBD864166D2A7B51D5574541CC5EA0215FF783CCB5A70B68B2B47"
+                              "source":  "source/project/repo-governance-hub/custom/docs/PLANS.md",
+                              "sha256":  "986994398FDABE0E25D8992B3474EDAA3DC7DF70E8BE808CFCD14C50BEE369EB"
                           },
                           {
                               "path":  "GEMINI.md",
-                              "source":  "source/project/governance-kit/GEMINI.md",
-                              "sha256":  "762B304D27F0077E3EFFCDEE9A68980DC76325EF1B49286CAF649D5F38D5810A"
+                              "source":  "source/project/repo-governance-hub/GEMINI.md",
+                              "sha256":  "7067F541B808C2490AFAB69AB82BF99E8B9B22EFA0FC72B6816BC8F0AC2CB121"
                           },
                           {
-                              "path":  "plugins/governance-kit-internal/.codex-plugin/plugin.json",
-                              "source":  "source/project/_common/custom/plugins/governance-kit-internal/.codex-plugin/plugin.json",
-                              "sha256":  "4364AC31CBB454E81BAA5E16D39787B27CBF5AD228ED25D0BB6DAD43DB8A7E60"
+                              "path":  "plugins/repo-governance-hub-internal/.codex-plugin/plugin.json",
+                              "source":  "source/project/_common/custom/plugins/repo-governance-hub-internal/.codex-plugin/plugin.json",
+                              "sha256":  "3CBDC5626A39C55B3D61DAE8567C9850FB25E374D8A7FA3119A1A65058B69068"
                           },
                           {
-                              "path":  "plugins/governance-kit-internal/skills/governance-refactor-safe/SKILL.md",
-                              "source":  "source/project/_common/custom/plugins/governance-kit-internal/skills/governance-refactor-safe/SKILL.md",
+                              "path":  "plugins/repo-governance-hub-internal/skills/governance-refactor-safe/SKILL.md",
+                              "source":  "source/project/_common/custom/plugins/repo-governance-hub-internal/skills/governance-refactor-safe/SKILL.md",
                               "sha256":  "E56E4C122DB3DB9F9A82B1A024708B085872C2F37EDF07EA142FE0489E38D82B"
                           },
                           {
-                              "path":  "plugins/governance-kit-internal/skills/governance-reuse-analyst/SKILL.md",
-                              "source":  "source/project/_common/custom/plugins/governance-kit-internal/skills/governance-reuse-analyst/SKILL.md",
+                              "path":  "plugins/repo-governance-hub-internal/skills/governance-reuse-analyst/SKILL.md",
+                              "source":  "source/project/_common/custom/plugins/repo-governance-hub-internal/skills/governance-reuse-analyst/SKILL.md",
                               "sha256":  "F65AB56780A55B7FCEA980B4280B26C52C62939CEAB285C17B85132D405D54F7"
                           },
                           {
@@ -271,7 +271,7 @@
                           },
                           {
                               "path":  "scripts/governance/check-update-triggers.ps1",
-                              "source":  "source/project/governance-kit/custom/scripts/governance/check-update-triggers.ps1",
+                              "source":  "source/project/repo-governance-hub/custom/scripts/governance/check-update-triggers.ps1",
                               "sha256":  "B11668F44AD67A67E935EE2BCA833BF8F6CFA5610C179CA630589349486CB80E"
                           },
                           {
@@ -296,23 +296,23 @@
                           },
                           {
                               "path":  "scripts/governance/run-monthly-policy-review.ps1",
-                              "source":  "source/project/governance-kit/custom/scripts/governance/run-monthly-policy-review.ps1",
+                              "source":  "source/project/repo-governance-hub/custom/scripts/governance/run-monthly-policy-review.ps1",
                               "sha256":  "478E58356AA5B9150B4FEFFC5B1B09616C13EAA088FF100A3B2552560A4FB425"
                           },
                           {
                               "path":  "scripts/governance/run-project-governance-cycle.ps1",
                               "source":  "source/project/_common/custom/scripts/governance/run-project-governance-cycle.ps1",
-                              "sha256":  "3C3C55CA68A8BE297596D5DC915B1191BCD925943E0F9FF3BC5694624E896C7E"
+                              "sha256":  "FC21A5707B8299C4C7E3B0FE7880AC7A7C45348DF8F025C1328B843D2ABB5930"
                           },
                           {
                               "path":  "scripts/governance/run-recurring-review.ps1",
-                              "source":  "source/project/governance-kit/custom/scripts/governance/run-recurring-review.ps1",
+                              "source":  "source/project/repo-governance-hub/custom/scripts/governance/run-recurring-review.ps1",
                               "sha256":  "FB9322964A3DA7119998654793A9E3F8AAB0700AFB81A1EDC6500CF1494F7D3B"
                           },
                           {
                               "path":  "scripts/governance/run-target-autopilot.ps1",
                               "source":  "source/project/_common/custom/scripts/governance/run-target-autopilot.ps1",
-                              "sha256":  "42BA674E253EC7593BC9B802E47E6B3BE82037E6C6D38161763C0DDA58571D58"
+                              "sha256":  "E636FE91D0BF50E8FD477B580F79F90E8F361AE7DB5737F9950F038D4282199A"
                           },
                           {
                               "path":  "scripts/governance/verify-growth-pack.ps1",

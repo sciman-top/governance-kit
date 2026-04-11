@@ -1,4 +1,4 @@
-param(
+﻿param(
   [Parameter(Mandatory = $true)]
   [string]$RepoPath,
   [ValidateSet("plan", "safe", "force")]
@@ -299,7 +299,7 @@ if (-not (Test-Path -LiteralPath $doctorScript)) { throw "Missing script: $docto
 
 Write-RepoAutomationPolicySummary -Policy $repoPolicy
 Write-Host "[POLICY] remediation owner=outer-ai-session (script does not invoke model CLI for auto-fix)."
-Write-Host "[POLICY] if governance issue is discovered during install, repair governance-kit first and then let outer-ai-session re-run."
+Write-Host "[POLICY] if governance issue is discovered during install, repair repo-governance-hub first and then let outer-ai-session re-run."
 if ($SkipTargetPrecheck.IsPresent) { Write-Host "[WARN] SkipTargetPrecheck enabled; target precheck and codex diagnostics are skipped." }
 if ($SkipTargetGate.IsPresent) { Write-Host "[WARN] SkipTargetGate enabled; target hard gate chain is skipped." }
 
@@ -374,3 +374,4 @@ if ($Mode -ne "plan") {
 }
 
 Write-Host "install-full-stack completed: repo=$($repo -replace '\\','/') mode=$Mode"
+

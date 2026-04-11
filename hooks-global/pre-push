@@ -1,5 +1,5 @@
 #!/bin/sh
-# governance-kit global pre-push
+# repo-governance-hub global pre-push
 HOOK_DIR="$(cd "$(dirname "$0")" && pwd)"
 KIT_ROOT="$(cd "$HOOK_DIR/.." && pwd)"
 
@@ -12,3 +12,4 @@ if [ -f "$KIT_ROOT/scripts/verify.ps1" ]; then
   fi
 fi
 exit 0
+

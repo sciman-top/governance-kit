@@ -1,4 +1,4 @@
-# JSON Contract Schema v1.0
+﻿# JSON Contract Schema v1.0
 
 ## Scope
 - `scripts/status.ps1 -AsJson`
@@ -48,5 +48,7 @@
 ## Validation
 - Local validation command:
 ```powershell
-powershell -File E:\CODE\governance-kit\scripts\verify-json-contract.ps1
+powershell -File E:\CODE\repo-governance-hub\scripts\verify-json-contract.ps1
 ```
+
+

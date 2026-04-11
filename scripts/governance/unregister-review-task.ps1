@@ -1,5 +1,5 @@
-param(
-  [string]$TaskName = "governance-kit-recurring-review",
+﻿param(
+  [string]$TaskName = "repo-governance-hub-recurring-review",
   [switch]$DryRun
 )
 
@@ -28,3 +28,4 @@ Unregister-ScheduledTask -TaskName $TaskName -Confirm:$false
 
 Write-Host "UNREGISTER_REVIEW_TASK_DONE"
 Write-Host ("task_name={0}" -f $TaskName)
+

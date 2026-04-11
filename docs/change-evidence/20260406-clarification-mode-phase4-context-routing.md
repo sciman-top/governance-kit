@@ -4,7 +4,7 @@ rule_id=R2/R3/R8
 risk_level=medium
 owner=codex
 status=done
-scope=governance-kit + distributed target scripts
+scope=repo-governance-hub + distributed target scripts
 
 ## Goal
 - Add a bridge so outer AI can provide semantic stage judgment to governance scripts.
@@ -27,7 +27,7 @@ scope=governance-kit + distributed target scripts
 
 ## Verification
 - `powershell -File tests/clarification-mode.tests.ps1`
-- `powershell -File tests/governance-kit.optimization.tests.ps1`
+- `powershell -File tests/repo-governance-hub.optimization.tests.ps1`
 - `powershell -File scripts/validate-config.ps1`
 - `powershell -File scripts/install.ps1 -Mode safe`
 - `powershell -File scripts/verify-kit.ps1`
@@ -36,7 +36,7 @@ scope=governance-kit + distributed target scripts
 - Smoke:
   - ClassroomToolkit: `run-target-autopilot ... -ClarificationScenario auto -ClarificationContextFile .codex/clarification-context.json -DryRun`
   - skills-manager: same as above
-  - governance-kit: `run-project-governance-cycle ... -Mode plan -ClarificationContextFile ...`
+  - repo-governance-hub: `run-project-governance-cycle ... -Mode plan -ClarificationContextFile ...`
 
 ## Result
 - Outer AI can inject stage semantics.

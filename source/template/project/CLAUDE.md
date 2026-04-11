@@ -1,4 +1,4 @@
-# CLAUDE.md — Generic Repo Baseline（governance-kit template）
+# CLAUDE.md — Generic Repo Baseline（repo-governance-hub template）
 **模板版本**: 1.5  
 **适用范围**: 项目级模板（无仓库专属规则时）  
 **最后更新**: 2026-04-10
@@ -80,11 +80,11 @@
 - 策略阻断：当 `.governance/tracked-files-policy.json` 启用 `block_on_test_file_review_required=true` 时，存在 `review_required` 将直接阻断提交/推送。
 
 ### C.5 治理问题优先修复顺序
-- 发现治理链路（规则/脚本/配置）问题时，先修 governance-kit source of truth，再执行目标仓命令。
+- 发现治理链路（规则/脚本/配置）问题时，先修 repo-governance-hub source of truth，再执行目标仓命令。
 - 修复后按固定顺序复验：`build -> test -> contract/invariant -> hotspot`，通过后再继续分发、提交或推送。
 - 禁止带着已知治理问题继续执行发布动作。
 ### C.6 子代理并行触发矩阵（默认）
-- 策略文件：`.governance/subagent-trigger-policy.json`（缺失时回退到 governance-kit 内置默认策略）。
+- 策略文件：`.governance/subagent-trigger-policy.json`（缺失时回退到 repo-governance-hub 内置默认策略）。
 - 判定模型：`hard_guard + score`；先过硬约束（显式并行意图/可证明写集互斥/非高风险/非关键路径阻塞），再按分数阈值决定 `spawn`。
 - 证据字段最少包含：`spawn_parallel_subagents`、`max_parallel_agents`、`decision_score`、`reason_codes`、`hard_guard_hits`、`policy_path`。
 - 执行边界：仓内脚本只输出“并行建议与证据”；真正 `spawn` 仍由外层 AI 会话执行，不在脚本中调用模型 CLI 套娃。
@@ -93,5 +93,6 @@
 - A/C/D 三文件同构，仅 B 允许平台差异。
 - 文档精简优先，删除不改变语义的重复描述。
 - 规则更新后同步校验版本、日期、映射与门禁命令一致性。
+
 
 

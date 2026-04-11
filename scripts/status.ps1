@@ -1,4 +1,4 @@
-param(
+﻿param(
   [switch]$AsJson
 )
 
@@ -204,7 +204,7 @@ if ($AsJson) {
   return
 }
 
-Write-Host "governance-kit status"
+Write-Host "repo-governance-hub status"
 Write-Host "repositories=$($repos.Count)"
 Write-Host "targets=$($targets.Count)"
 foreach ($repoItem in $repoSummaries) {
@@ -238,3 +238,4 @@ if ($null -ne $codexRuntimeSummary) {
   Write-Host "codex_runtime.home_target_mappings=$($codexRuntimeSummary.codex_home_target_mappings)"
   Write-Host "codex_runtime.repo_target_mappings=$($codexRuntimeSummary.codex_repo_target_mappings)"
 }
+

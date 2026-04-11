@@ -1,6 +1,6 @@
 {
   "schema_version": "v1",
-  "owner": "governance-kit",
+  "owner": "repo-governance-hub",
   "description": "Tracked files policy for staging/push filtering. Block transient artifacts and local-only configs.",
   "enforcement": {
     "block_on_must_ignore": true,
@@ -238,3 +238,4 @@
     ]
   }
 }
+

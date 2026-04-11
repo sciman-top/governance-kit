@@ -1,4 +1,4 @@
-param(
+﻿param(
   [string]$RepoRoot = ".",
   [ValidateSet("recurring", "monthly-review")]
   [string]$TaskType = "recurring",
@@ -25,12 +25,12 @@ if ($TaskType -eq "monthly-review") {
     $Cadence = "Monthly"
   }
   if ([string]::IsNullOrWhiteSpace($TaskName)) {
-    $TaskName = "governance-kit-monthly-policy-review"
+    $TaskName = "repo-governance-hub-monthly-policy-review"
   }
 } else {
   $reviewScript = Join-Path $repoPath "scripts\governance\run-recurring-review.ps1"
   if ([string]::IsNullOrWhiteSpace($TaskName)) {
-    $TaskName = "governance-kit-recurring-review"
+    $TaskName = "repo-governance-hub-recurring-review"
   }
 }
 if (-not (Test-Path -LiteralPath $reviewScript -PathType Leaf)) {
@@ -120,10 +120,11 @@ if ($useSchtasksMonthly) {
   if ($null -ne $existing -and $Force.IsPresent) {
     Unregister-ScheduledTask -TaskName $TaskName -Confirm:$false
   }
-  Register-ScheduledTask -TaskName $TaskName -Action $action -Trigger $trigger -Settings $settings -Description "Run governance-kit recurring review and reminders"
+  Register-ScheduledTask -TaskName $TaskName -Action $action -Trigger $trigger -Settings $settings -Description "Run repo-governance-hub recurring review and reminders"
 }
 
 Write-Host "REGISTER_REVIEW_TASK_DONE"
 Write-Host ("task_name={0}" -f $TaskName)
 Write-Host ("cadence={0}" -f $Cadence)
 Write-Host ("at={0}" -f $At)
+

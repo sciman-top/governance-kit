@@ -2,16 +2,16 @@
 规则版本=3.83
 兼容窗口(观察期/强制期)=observe -> enforce (no policy flip in this change)
 影响模块=source/project/_common/custom; config/project-custom-files.json; config/targets.json; scripts/validate-config.ps1; docs/PLANS.md
-当前落点=governance-kit source + configured target repos (ClassroomToolkit, skills-manager, governance-kit)
-目标归宿=Codex-first reusable runtime assets distributed by governance-kit mapping pipeline
+当前落点=repo-governance-hub source + configured target repos (ClassroomToolkit, skills-manager, repo-governance-hub)
+目标归宿=Codex-first reusable runtime assets distributed by repo-governance-hub mapping pipeline
 迁移批次=2026-04-09-phase-bootstrap
 风险等级=medium
 是否豁免(Waiver)=no
 豁免责任人=
 豁免到期=
 豁免回收计划=
-执行命令=codex --version; codex --help; codex status; powershell -File scripts/refresh-targets.ps1 -Mode safe; powershell -File scripts/install.ps1 -Mode safe; powershell -File scripts/verify-kit.ps1; powershell -File tests/governance-kit.optimization.tests.ps1; powershell -File scripts/validate-config.ps1; powershell -File scripts/verify.ps1; powershell -File scripts/doctor.ps1
-验证证据=targets_count=94; install copied=21 (+1 governance-kit specific PLANS override); verify ok=94 fail=0; doctor HEALTH=GREEN; full gate chain passed
+执行命令=codex --version; codex --help; codex status; powershell -File scripts/refresh-targets.ps1 -Mode safe; powershell -File scripts/install.ps1 -Mode safe; powershell -File scripts/verify-kit.ps1; powershell -File tests/repo-governance-hub.optimization.tests.ps1; powershell -File scripts/validate-config.ps1; powershell -File scripts/verify.ps1; powershell -File scripts/doctor.ps1
+验证证据=targets_count=94; install copied=21 (+1 repo-governance-hub specific PLANS override); verify ok=94 fail=0; doctor HEALTH=GREEN; full gate chain passed
 供应链安全扫描=N/A (no new package/dependency introduced)
 发布后验证(指标/阈值/窗口)=Gate pass rate 100% in this run; recurring review follows existing weekly/monthly cadence
 数据变更治理(迁移/回填/回滚)=config mapping expansion only; rollback via source revert + install safe + scripts/restore.ps1 backup snapshot

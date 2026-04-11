@@ -1,4 +1,4 @@
-param(
+﻿param(
   [Parameter(Mandatory=$true)]
   [string]$RepoPath,
   [switch]$SkipInstallGlobalGit,
@@ -46,7 +46,7 @@ if ($NoOverwriteRules) { $installArgs += '-NoOverwriteRules' }
 if ($Mode -ne "force" -and -not $skipRepoOverwriteProtection) {
   $installArgs += @('-NoOverwriteUnderRepo', $RepoPath)
 } elseif ($skipRepoOverwriteProtection) {
-  Write-Host "[INFO] bootstrap target is governance-kit itself; skip -NoOverwriteUnderRepo self-protection."
+  Write-Host "[INFO] bootstrap target is repo-governance-hub itself; skip -NoOverwriteUnderRepo self-protection."
 }
 Run-Step "install" { Invoke-ChildScript -ScriptPath (Join-Path $scriptRoot 'install.ps1') -ScriptArgs $installArgs }
 if ($Mode -eq "plan") {
@@ -56,3 +56,4 @@ if ($Mode -eq "plan") {
 }
 
 Write-Host "bootstrap-repo completed: $RepoPath"
+

@@ -8,12 +8,12 @@
 ## 变更内容
 - `scripts/lib/common.ps1`
   - 在 `Invoke-LoggedCommand` 中新增 `LogRoot` 目录存在性检查与自动创建。
-- `tests/governance-kit.optimization.tests.ps1`
+- `tests/repo-governance-hub.optimization.tests.ps1`
   - 新增测试: `common Invoke-LoggedCommand creates missing log directory automatically`。
 
 ## 命令与结果
 - `powershell -File scripts/verify-kit.ps1` -> pass
-- `powershell -File tests/governance-kit.optimization.tests.ps1` -> pass
+- `powershell -File tests/repo-governance-hub.optimization.tests.ps1` -> pass
 - `powershell -File scripts/validate-config.ps1` -> pass
 - `powershell -File scripts/verify.ps1` -> pass
 - `powershell -File scripts/doctor.ps1` -> pass
@@ -21,7 +21,7 @@
 ## 回滚
 - 回滚文件:
   - `scripts/lib/common.ps1`
-  - `tests/governance-kit.optimization.tests.ps1`
+  - `tests/repo-governance-hub.optimization.tests.ps1`
 - 全量回滚入口:
   - `powershell -File scripts/restore.ps1` + `backups/<timestamp>/`
 

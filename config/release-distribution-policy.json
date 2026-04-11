@@ -70,7 +70,7 @@
       }
     },
     {
-      "repoName": "governance-kit",
+      "repoName": "repo-governance-hub",
       "signing": {
         "required": false,
         "mode": "none-personal",
@@ -93,3 +93,4 @@
     }
   ]
 }
+

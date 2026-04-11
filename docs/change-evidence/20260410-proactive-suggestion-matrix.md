@@ -22,9 +22,9 @@
 - `source/project/ClassroomToolkit/AGENTS.md`
 - `source/project/ClassroomToolkit/CLAUDE.md`
 - `source/project/ClassroomToolkit/GEMINI.md`
-- `source/project/governance-kit/AGENTS.md`
-- `source/project/governance-kit/CLAUDE.md`
-- `source/project/governance-kit/GEMINI.md`
+- `source/project/repo-governance-hub/AGENTS.md`
+- `source/project/repo-governance-hub/CLAUDE.md`
+- `source/project/repo-governance-hub/GEMINI.md`
 - `source/project/_common/custom/.governance/proactive-suggestion-policy.json`（新增）
 - `config/project-custom-files.json`（默认分发清单新增策略文件）
 
@@ -38,7 +38,7 @@
 ## 分发与验证命令
 1. `powershell -File scripts/install.ps1 -Mode safe`
 2. `powershell -File scripts/verify-kit.ps1`
-3. `powershell -File tests/governance-kit.optimization.tests.ps1`
+3. `powershell -File tests/repo-governance-hub.optimization.tests.ps1`
 4. `powershell -File scripts/validate-config.ps1`
 5. `powershell -File scripts/verify.ps1`
 6. `powershell -File scripts/doctor.ps1`

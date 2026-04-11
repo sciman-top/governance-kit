@@ -1,4 +1,4 @@
-param(
+﻿param(
   [Parameter(Mandatory = $true)]
   [string]$RepoPath,
   [ValidateSet("plan", "safe")]
@@ -94,9 +94,9 @@ $installItems = @(
 
 $c7Block = @"
 ### C.7 Target-repo direct edit backflow policy
-- source of truth: E:/CODE/governance-kit/source/project/$repoName/*.
+- source of truth: E:/CODE/repo-governance-hub/source/project/$repoName/*.
 - temporary direct edits in target repo are allowed for fast trial, but must backflow to source the same day with evidence.
-- after backflow, run powershell -File E:/CODE/governance-kit/scripts/install.ps1 -Mode safe to re-sync source and target.
+- after backflow, run powershell -File E:/CODE/repo-governance-hub/scripts/install.ps1 -Mode safe to re-sync source and target.
 - before backflow completion, do not run sync/install again to avoid overwriting unsaved target edits.
 
 ### C.8 CI entry differences
@@ -197,3 +197,5 @@ if ($modePlan) {
 } else {
   Write-Host "Done. files_updated=$updated"
 }
+
+

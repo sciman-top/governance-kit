@@ -9,7 +9,7 @@
         ".agents/skills/governance-refactor-safe/SKILL.md",
         ".agents/skills/governance-reuse-analyst/SKILL.md",
         ".agents/plugins/marketplace.json",
-        "plugins/governance-kit-internal/.codex-plugin/plugin.json"
+        "plugins/repo-governance-hub-internal/.codex-plugin/plugin.json"
       ],
       "optional_artifacts": [
         ".codex/config.toml",
@@ -36,3 +36,4 @@
     }
   ]
 }
+

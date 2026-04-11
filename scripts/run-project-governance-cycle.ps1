@@ -64,7 +64,7 @@ if ($AutoRemediate.IsPresent -or $NoAutoRemediate.IsPresent -or $PSBoundParamete
   Write-Host "[DEPRECATED] in-script auto remediation options are ignored (-AutoRemediate/-NoAutoRemediate/-MaxAutoFixAttempts/-CodexCommand)."
   Write-Host "[POLICY] remediation owner=outer-ai-session (current chat agent), script role=gate orchestrator only."
 }
-Write-Host "[POLICY] when governance issue is found, fix governance-kit first, then let outer-ai-session re-run the cycle."
+Write-Host "[POLICY] when governance issue is found, fix repo-governance-hub first, then let outer-ai-session re-run the cycle."
 
 if (-not $allowProjectRules) {
   if ($allowLocalOptimizeWithoutBackflow) {
@@ -152,7 +152,7 @@ function Write-FailureContext([string]$StepName, [string]$FailureMessage, [strin
       auto_commit_message_prefix = $autoCommitMessagePrefix
     }
     remediation_owner = "outer-ai-session"
-    remediation_scope = "governance-kit-first"
+    remediation_scope = "repo-governance-hub-first"
     rerun_owner = "outer-ai-session"
     timestamp = (Get-Date).ToString("o")
     failure_message = $FailureMessage
@@ -183,7 +183,7 @@ function Step-OrFail([string]$Name, [string]$RetryCommand, [scriptblock]$Action)
   } catch {
     $failure = $_.Exception.Message
     $clarificationState = Invoke-ClarificationTracker -TrackerScript $clarificationTrackerScript -RepoPath $repo -IssueId $IssueId -Scenario $effectiveClarificationScenario -Mode "record" -Outcome "failure" -Reason ("step={0}; {1}" -f $Name, $failure) -PowerShellPath $psExe
-    Write-Host "[BLOCK] step failed; fix governance-kit first when the issue belongs to governance flow, then let outer AI session re-run."
+    Write-Host "[BLOCK] step failed; fix repo-governance-hub first when the issue belongs to governance flow, then let outer AI session re-run."
     if ($clarificationState.clarification_required -eq $true) {
       Write-Host ("CLARIFICATION_REQUIRED issue_id={0} attempt_count={1} scenario={2}" -f $IssueId, $clarificationState.attempt_count, $clarificationState.scenario)
       Write-Host ("[CLARIFICATION_STATE_JSON] " + ($clarificationState | ConvertTo-Json -Depth 8 -Compress))
@@ -379,3 +379,4 @@ Assert-CleanCheckpoint -Checkpoint "cycle_complete"
 
 Write-Host "run-project-governance-cycle completed: repo=$($repo -replace '\\','/') mode=$Mode"
 Invoke-ClarificationTracker -TrackerScript $clarificationTrackerScript -RepoPath $repo -IssueId $IssueId -Scenario $effectiveClarificationScenario -Mode "record" -Outcome "success" -PowerShellPath $psExe | Out-Null
+

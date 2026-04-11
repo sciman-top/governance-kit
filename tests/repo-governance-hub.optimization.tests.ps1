@@ -186,7 +186,7 @@ function Initialize-ClarificationTrackerFixture {
 "@ | Set-Content -Path (Join-Path $TmpRoot "config\clarification-policy.json") -Encoding UTF8
 }
 
-describe "governance-kit optimization guardrails" {
+describe "repo-governance-hub optimization guardrails" {
   it "has shared common script for cross-script helpers" {
     $commonPath = Join-Path $repoRoot "scripts\lib\common.ps1"
     (Test-Path $commonPath) | should be $true
@@ -391,14 +391,14 @@ exit 0
 
       Set-StubScript -Path (Join-Path $tmp "scripts\verify.ps1") -Message "ok" -ExitCode 0
 
-      New-Item -ItemType Directory -Path (Join-Path $tmp "source\project\governance-kit") -Force | Out-Null
+      New-Item -ItemType Directory -Path (Join-Path $tmp "source\project\repo-governance-hub") -Force | Out-Null
 
-      $src = Join-Path $tmp "source\project\governance-kit\AGENTS.md"
+      $src = Join-Path $tmp "source\project\repo-governance-hub\AGENTS.md"
       $dst = Join-Path $tmp "target\AGENTS.md"
       Set-Content -Path $src -Value "new-content" -Encoding UTF8
       Set-Content -Path $dst -Value "old-content" -Encoding UTF8
 
-      @(@{ source = "source/project/governance-kit/AGENTS.md"; target = $dst }) | ConvertTo-Json -Depth 4 | Set-Content -Path (Join-Path $tmp "config\targets.json") -Encoding UTF8
+      @(@{ source = "source/project/repo-governance-hub/AGENTS.md"; target = $dst }) | ConvertTo-Json -Depth 4 | Set-Content -Path (Join-Path $tmp "config\targets.json") -Encoding UTF8
       @($tmp) | ConvertTo-Json -Depth 3 | Set-Content -Path (Join-Path $tmp "config\repositories.json") -Encoding UTF8
 
       $output = & powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $tmp "scripts\install.ps1") -Mode safe -NoBackup -FullCycle 2>&1 | Out-String
@@ -1391,7 +1391,7 @@ exit 0
     }
   }
 
-  it "bootstrap-repo skips no-overwrite self-protection for governance-kit itself" {
+  it "bootstrap-repo skips no-overwrite self-protection for repo-governance-hub itself" {
     $tmp = Join-Path $env:TEMP ("govkit-test-" + [guid]::NewGuid().ToString("N"))
     try {
       New-Item -ItemType Directory -Path (Join-Path $tmp "scripts\lib") -Force | Out-Null
@@ -1811,7 +1811,7 @@ exit 0
           allow_project_rules = $false
         }
         remediation_owner = "outer-ai-session"
-        remediation_scope = "governance-kit-first"
+        remediation_scope = "repo-governance-hub-first"
         rerun_owner = "outer-ai-session"
         timestamp = "2026-04-03T12:00:00+08:00"
       } | ConvertTo-Json -Depth 6 -Compress
@@ -1869,7 +1869,7 @@ exit 0
       } | ConvertTo-Json -Depth 8 | Set-Content -Path (Join-Path $tmp "config\project-rule-policy.json") -Encoding UTF8
 
       Set-StubScript -Path (Join-Path $tmp "scripts\verify-kit.ps1")
-      Set-StubScript -Path (Join-Path $tmp "tests\governance-kit.optimization.tests.ps1")
+      Set-StubScript -Path (Join-Path $tmp "tests\repo-governance-hub.optimization.tests.ps1")
       Set-StubScript -Path (Join-Path $tmp "scripts\validate-config.ps1")
       Set-StubScript -Path (Join-Path $tmp "scripts\governance\check-boundary-classification.ps1")
       Set-StubScript -Path (Join-Path $tmp "scripts\verify.ps1")
@@ -1913,7 +1913,7 @@ exit 0
       } | ConvertTo-Json -Depth 8 | Set-Content -Path (Join-Path $tmp "config\project-rule-policy.json") -Encoding UTF8
 
       Set-StubScript -Path (Join-Path $tmp "scripts\verify-kit.ps1") -Message "fail" -ExitCode 1
-      Set-StubScript -Path (Join-Path $tmp "tests\governance-kit.optimization.tests.ps1")
+      Set-StubScript -Path (Join-Path $tmp "tests\repo-governance-hub.optimization.tests.ps1")
       Set-StubScript -Path (Join-Path $tmp "scripts\validate-config.ps1")
       Set-StubScript -Path (Join-Path $tmp "scripts\governance\check-boundary-classification.ps1")
       Set-StubScript -Path (Join-Path $tmp "scripts\verify.ps1")
@@ -1924,7 +1924,7 @@ exit 0
       $output | should match "AUTO-RETRY"
       $output | should match "REPEATED_FAILURE_LIMIT"
       $output | should match "\[FAILURE_CONTEXT_JSON\]"
-      $output | should match "governance-kit-first"
+      $output | should match "repo-governance-hub-first"
     } finally {
       if (Test-Path $tmp) { Remove-Item -LiteralPath $tmp -Recurse -Force }
     }
@@ -1958,7 +1958,7 @@ exit 0
       } | ConvertTo-Json -Depth 8 | Set-Content -Path (Join-Path $tmp "config\project-rule-policy.json") -Encoding UTF8
 
       Set-StubScript -Path (Join-Path $tmp "scripts\verify-kit.ps1") -Message "fail" -ExitCode 1
-      Set-StubScript -Path (Join-Path $tmp "tests\governance-kit.optimization.tests.ps1")
+      Set-StubScript -Path (Join-Path $tmp "tests\repo-governance-hub.optimization.tests.ps1")
       Set-StubScript -Path (Join-Path $tmp "scripts\validate-config.ps1")
       Set-StubScript -Path (Join-Path $tmp "scripts\governance\check-boundary-classification.ps1")
       Set-StubScript -Path (Join-Path $tmp "scripts\verify.ps1")
@@ -1998,7 +1998,7 @@ exit 0
       } | ConvertTo-Json -Depth 8 | Set-Content -Path (Join-Path $tmp "config\project-rule-policy.json") -Encoding UTF8
 
       Set-StubScript -Path (Join-Path $tmp "scripts\verify-kit.ps1")
-      Set-StubScript -Path (Join-Path $tmp "tests\governance-kit.optimization.tests.ps1")
+      Set-StubScript -Path (Join-Path $tmp "tests\repo-governance-hub.optimization.tests.ps1")
       Set-StubScript -Path (Join-Path $tmp "scripts\validate-config.ps1") -Message "fail" -ExitCode 1
       Set-StubScript -Path (Join-Path $tmp "scripts\governance\check-boundary-classification.ps1")
       Set-StubScript -Path (Join-Path $tmp "scripts\verify.ps1")
@@ -2008,7 +2008,7 @@ exit 0
       $LASTEXITCODE | should be 1
       $output | should match "IRREVERSIBLE_RISK_BOUNDARY"
       $output | should match "\[FAILURE_CONTEXT_JSON\]"
-      $output | should match "governance-kit-first"
+      $output | should match "repo-governance-hub-first"
     } finally {
       if (Test-Path $tmp) { Remove-Item -LiteralPath $tmp -Recurse -Force }
     }
@@ -2080,7 +2080,7 @@ exit 0
     }
   }
 
-  it "analyze-repo-governance prefers governance-kit PowerShell gate recommendations for script-first repos" {
+  it "analyze-repo-governance prefers repo-governance-hub PowerShell gate recommendations for script-first repos" {
     $tmp = Join-Path $env:TEMP ("govkit-test-" + [guid]::NewGuid().ToString("N"))
     $repo = Join-Path $tmp "GovRepo"
     try {
@@ -2093,14 +2093,14 @@ exit 0
       Set-Content -Path (Join-Path $repo "scripts\validate-config.ps1") -Value "param(); Write-Host ok" -Encoding UTF8
       Set-Content -Path (Join-Path $repo "scripts\doctor.ps1") -Value "param(); Write-Host ok" -Encoding UTF8
       Set-Content -Path (Join-Path $repo "scripts\quality\run-local-quality-gates.ps1") -Value "param(); Write-Host ok" -Encoding UTF8
-      Set-Content -Path (Join-Path $repo "tests\governance-kit.optimization.tests.ps1") -Value "describe 'x' { it 'y' { $true | should be $true } }" -Encoding UTF8
+      Set-Content -Path (Join-Path $repo "tests\repo-governance-hub.optimization.tests.ps1") -Value "describe 'x' { it 'y' { $true | should be $true } }" -Encoding UTF8
 
       $json = & powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $repoRoot "scripts\analyze-repo-governance.ps1") -RepoPath $repo -AsJson
       if ($LASTEXITCODE -ne 0) { throw "analyze-repo-governance.ps1 failed with exit code $LASTEXITCODE" }
       $obj = $json | ConvertFrom-Json
 
       $obj.recommended.build | should be "powershell -File scripts/verify-kit.ps1"
-      $obj.recommended.test | should be "powershell -File tests/governance-kit.optimization.tests.ps1"
+      $obj.recommended.test | should be "powershell -File tests/repo-governance-hub.optimization.tests.ps1"
       $obj.recommended.contract_invariant | should be "powershell -File scripts/validate-config.ps1; powershell -File scripts/verify.ps1"
       $obj.recommended.hotspot | should be "powershell -File scripts/doctor.ps1"
       $obj.recommended.quick_gate | should be "powershell -File scripts/quality/run-local-quality-gates.ps1 -Profile quick"
@@ -3103,7 +3103,7 @@ exit 7
 
       @'
 param()
-Write-Host "governance-kit integrity OK"
+Write-Host "repo-governance-hub integrity OK"
 exit 0
 '@ | Set-Content -Path (Join-Path $tmp "scripts\verify-kit.ps1") -Encoding UTF8
 
@@ -3157,7 +3157,7 @@ exit 0
 '@ | Set-Content -Path (Join-Path $tmp "scripts\rollout-status.ps1") -Encoding UTF8
 
       New-Item -ItemType Directory -Path (Join-Path $tmp "config") -Force | Out-Null
-      @('E:/CODE/governance-kit') | ConvertTo-Json | Set-Content -Path (Join-Path $tmp "config\repositories.json") -Encoding UTF8
+      @('E:/CODE/repo-governance-hub') | ConvertTo-Json | Set-Content -Path (Join-Path $tmp "config\repositories.json") -Encoding UTF8
 
       $out = & powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $tmp "scripts\doctor.ps1") 2>&1 | Out-String
       $LASTEXITCODE | should be 0
@@ -4039,6 +4039,8 @@ param(
     }
   }
 }
+
+
 
 
 

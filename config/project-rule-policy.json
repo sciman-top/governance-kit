@@ -2,7 +2,7 @@
   "allowProjectRulesForRepos": [
     "E:/CODE/ClassroomToolkit",
     "E:/CODE/skills-manager",
-    "E:/CODE/governance-kit"
+    "E:/CODE/repo-governance-hub"
   ],
   "defaults": {
     "allow_auto_fix": true,
@@ -46,7 +46,7 @@
       "auto_commit_message_prefix": "\u6cbb\u7406\u91cc\u7a0b\u7891\u81ea\u52a8\u63d0\u4ea4"
     },
     {
-      "repoName": "governance-kit",
+      "repoName": "repo-governance-hub",
       "max_autonomous_iterations": 6,
       "token_budget_mode": "deep",
       "auto_commit_enabled": true,
@@ -59,3 +59,5 @@
     }
   ]
 }
+
+

@@ -1,8 +1,8 @@
-# governance-kit
+﻿# repo-governance-hub
 
 [中文](README.md) | English
 
-`governance-kit` is a source-of-truth repository for multi-repository governance. It maintains global and project-level rule documents, then distributes them to target repositories through audited configuration and PowerShell automation.
+`repo-governance-hub` is a source-of-truth repository for multi-repository governance. It maintains global and project-level rule documents, then distributes them to target repositories through audited configuration and PowerShell automation.
 
 This repository is not only about authoring rules. It is about keeping rules, templates, hooks, CI entrypoints, evidence, and rollback paths consistent across multiple repositories.
 
@@ -29,13 +29,13 @@ This repository is not only about authoring rules. It is about keeping rules, te
 Recommended public entrypoint:
 
 ```powershell
-powershell -File E:\CODE\governance-kit\scripts\install-full-stack.ps1 -RepoPath E:\CODE\NewRepo -Mode safe
+powershell -File E:\CODE\repo-governance-hub\scripts\install-full-stack.ps1 -RepoPath E:\CODE\NewRepo -Mode safe
 ```
 
 Preview only:
 
 ```powershell
-powershell -File E:\CODE\governance-kit\scripts\install-full-stack.ps1 -RepoPath E:\CODE\NewRepo -Mode plan
+powershell -File E:\CODE\repo-governance-hub\scripts\install-full-stack.ps1 -RepoPath E:\CODE\NewRepo -Mode plan
 ```
 
 ## Standard Workflow
@@ -43,7 +43,7 @@ powershell -File E:\CODE\governance-kit\scripts\install-full-stack.ps1 -RepoPath
 ### Onboard or reinstall a target repository
 
 ```powershell
-powershell -File E:\CODE\governance-kit\scripts\install-full-stack.ps1 -RepoPath E:\CODE\TargetRepo -Mode safe
+powershell -File E:\CODE\repo-governance-hub\scripts\install-full-stack.ps1 -RepoPath E:\CODE\TargetRepo -Mode safe
 ```
 
 Default flow:
@@ -53,13 +53,13 @@ Default flow:
 ### Run only the project-rule closed loop
 
 ```powershell
-powershell -File E:\CODE\governance-kit\scripts\run-project-governance-cycle.ps1 -RepoPath E:\CODE\TargetRepo -RepoName TargetRepo -Mode safe
+powershell -File E:\CODE\repo-governance-hub\scripts\run-project-governance-cycle.ps1 -RepoPath E:\CODE\TargetRepo -RepoName TargetRepo -Mode safe
 ```
 
 ### Backflow only the target repository project rules
 
 ```powershell
-powershell -File E:\CODE\governance-kit\scripts\backflow-project-rules.ps1 -RepoPath E:\CODE\TargetRepo -RepoName TargetRepo -Mode safe
+powershell -File E:\CODE\repo-governance-hub\scripts\backflow-project-rules.ps1 -RepoPath E:\CODE\TargetRepo -RepoName TargetRepo -Mode safe
 ```
 
 ## Repository Layout
@@ -82,7 +82,7 @@ powershell -File E:\CODE\governance-kit\scripts\backflow-project-rules.ps1 -Repo
 This repository uses a fixed validation order:
 
 1. `build`: `powershell -File scripts/verify-kit.ps1`
-2. `test`: `powershell -File tests/governance-kit.optimization.tests.ps1`
+2. `test`: `powershell -File tests/repo-governance-hub.optimization.tests.ps1`
 3. `contract/invariant`: `powershell -File scripts/validate-config.ps1` then `powershell -File scripts/verify.ps1`
 4. `hotspot`: `powershell -File scripts/doctor.ps1`
 
@@ -117,3 +117,5 @@ If any of these are already tracked, adding `.gitignore` is not enough. They als
 ## License
 
 This project is licensed under the [`MIT`](LICENSE) License.
+
+

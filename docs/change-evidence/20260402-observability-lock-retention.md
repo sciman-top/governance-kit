@@ -12,8 +12,8 @@
 - scripts/prune-backups.ps1 (new)
 - scripts/verify-kit.ps1
 - README.md
-- tests/governance-kit.optimization.tests.ps1
-当前落点=E:/CODE/governance-kit/{scripts,tests,README}
+- tests/repo-governance-hub.optimization.tests.ps1
+当前落点=E:/CODE/repo-governance-hub/{scripts,tests,README}
 目标归宿=治理脚本可观测性增强、并发写保护、备份生命周期管理
 迁移批次=2026-04-02-observability-lock-retention
 风险等级=Medium (多脚本联动改动，但已全链路复验)
@@ -28,7 +28,7 @@
 - powershell -File scripts/install.ps1 -Mode plan
 - powershell -File scripts/backflow-project-rules.ps1 -RepoPath E:/CODE/ClassroomToolkit -RepoName ClassroomToolkit -Mode plan -SkipCustomFiles
 - powershell -File scripts/prune-backups.ps1 -Mode plan -RetainDays 30 -RetainCount 10
-- powershell -File tests/governance-kit.optimization.tests.ps1
+- powershell -File tests/repo-governance-hub.optimization.tests.ps1
 - powershell -File scripts/verify-kit.ps1
 - powershell -File scripts/validate-config.ps1; powershell -File scripts/verify.ps1
 - powershell -File scripts/doctor.ps1
@@ -48,5 +48,5 @@
 - backups 清理按 RetainDays/RetainCount 可控
 数据变更治理(迁移/回填/回滚)=N/A (无数据结构变更)
 回滚动作=
-- git checkout -- scripts/status.ps1 scripts/rollout-status.ps1 scripts/doctor.ps1 scripts/lib/common.ps1 scripts/install.ps1 scripts/backflow-project-rules.ps1 scripts/restore.ps1 scripts/verify-kit.ps1 tests/governance-kit.optimization.tests.ps1 README.md
+- git checkout -- scripts/status.ps1 scripts/rollout-status.ps1 scripts/doctor.ps1 scripts/lib/common.ps1 scripts/install.ps1 scripts/backflow-project-rules.ps1 scripts/restore.ps1 scripts/verify-kit.ps1 tests/repo-governance-hub.optimization.tests.ps1 README.md
 - git clean -f scripts/prune-backups.ps1 docs/change-evidence/20260402-observability-lock-retention.md

@@ -15,7 +15,7 @@ status=PASS
 readiness_score=100
 coverage=9/9
 
-## governance-kit
+## repo-governance-hub
 status=PASS
 readiness_score=100
 coverage=11/11

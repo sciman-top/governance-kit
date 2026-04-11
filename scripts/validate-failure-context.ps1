@@ -1,4 +1,4 @@
-param(
+﻿param(
   [string]$FailureContextJson = "",
   [string]$LogPath = "",
   [switch]$AsJson
@@ -76,8 +76,8 @@ if ($missing.Count -gt 0) {
 if ($obj.remediation_owner -ne "outer-ai-session") {
   $issues += "remediation_owner must be outer-ai-session"
 }
-if ($obj.remediation_scope -ne "governance-kit-first") {
-  $issues += "remediation_scope must be governance-kit-first"
+if ($obj.remediation_scope -ne "repo-governance-hub-first") {
+  $issues += "remediation_scope must be repo-governance-hub-first"
 }
 if ($obj.rerun_owner -ne "outer-ai-session") {
   $issues += "rerun_owner must be outer-ai-session"
@@ -111,3 +111,4 @@ foreach ($i in $issues) {
 }
 Write-Host "Failure context validation failed."
 exit 1
+

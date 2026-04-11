@@ -1,8 +1,8 @@
 规则ID=R2/R6/R8 (rollout 日期解析一致性与可观测性增强)
 规则版本=3.79
 兼容窗口(观察期/强制期)=observe / planned_enforce_date=2026-04-15
-影响模块=scripts/status.ps1, scripts/rollout-status.ps1, tests/governance-kit.optimization.tests.ps1
-当前落点=E:/CODE/governance-kit/scripts + tests
+影响模块=scripts/status.ps1, scripts/rollout-status.ps1, tests/repo-governance-hub.optimization.tests.ps1
+当前落点=E:/CODE/repo-governance-hub/scripts + tests
 目标归宿=rollout 状态计算与校验口径一致（严格 yyyy-MM-dd）
 迁移批次=2026-04-02-rollout-date-consistency
 风险等级=Low (解析口径统一 + 回归测试)
@@ -11,7 +11,7 @@
 豁免到期=N/A
 豁免回收计划=N/A
 执行命令=
-- powershell -File tests/governance-kit.optimization.tests.ps1
+- powershell -File tests/repo-governance-hub.optimization.tests.ps1
 - powershell -File scripts/verify-kit.ps1
 - powershell -File scripts/validate-config.ps1; powershell -File scripts/verify.ps1
 - powershell -File scripts/doctor.ps1
@@ -27,4 +27,4 @@
 发布后验证(指标/阈值/窗口)=持续观察至 2026-04-15；目标：rollout.observe_overdue 仅由合法 ISO 日期计算
 数据变更治理(迁移/回填/回滚)=N/A
 回滚动作=
-- git checkout -- scripts/status.ps1 scripts/rollout-status.ps1 tests/governance-kit.optimization.tests.ps1
+- git checkout -- scripts/status.ps1 scripts/rollout-status.ps1 tests/repo-governance-hub.optimization.tests.ps1

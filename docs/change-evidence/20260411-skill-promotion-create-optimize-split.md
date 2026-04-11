@@ -19,7 +19,7 @@
 
 ## Verification
 ### Scenario tests (local synthetic)
-- Script: `E:/CODE/governance-kit/tmp/run-skill-promo-scenarios.ps1`
+- Script: `E:/CODE/repo-governance-hub/tmp/run-skill-promo-scenarios.ps1`
 - Case A (create only, no ack)
   - `status=awaiting_user_ack`
   - `promoted_count=0`
@@ -39,7 +39,7 @@
 
 ### Repo gates
 - `powershell -File scripts/verify-kit.ps1` => PASS
-- `powershell -File tests/governance-kit.optimization.tests.ps1` => PASS
+- `powershell -File tests/repo-governance-hub.optimization.tests.ps1` => PASS
 - `powershell -File scripts/validate-config.ps1; powershell -File scripts/verify.ps1` => PASS
 - `powershell -File scripts/doctor.ps1` => PASS (HEALTH=GREEN)
 - `powershell -File scripts/install.ps1 -Mode safe` => 分发成功，`Verify done. ok=187 fail=0`

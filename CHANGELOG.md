@@ -11,7 +11,7 @@
 - Kept `-AutoRemediate/-NoAutoRemediate/-MaxAutoFixAttempts/-CodexCommand` compatibility parameters as deprecated no-op flags with warning logs.
 - Updated `scripts/install.ps1` and `scripts/install-full-stack.ps1` to stop forwarding in-script auto-remediation flags.
 - Added remediation handoff contract document: `docs/governance/agent-remediation-contract.md`.
-- Updated governance-kit project-level rules (`AGENTS.md`/`CLAUDE.md`/`GEMINI.md`) to explicitly forbid script-level model CLI remediation and require outer AI session execution.
+- Updated repo-governance-hub project-level rules (`AGENTS.md`/`CLAUDE.md`/`GEMINI.md`) to explicitly forbid script-level model CLI remediation and require outer AI session execution.
 - Updated generic project templates under `source/template/project/*` with the same remediation boundary.
 - Updated README guidance to align with outer AI session remediation workflow.
 
@@ -57,7 +57,7 @@
 - Added `verify.ps1` optional switch `-SkipConfigValidation` (default behavior unchanged).
 - Added regression tests for skip-validation path and doctor pass-through behavior.
 - Simplified `doctor.ps1` step orchestration from repeated blocks to a single ordered step table loop (same output contract).
-- Reduced test duplication in `tests/governance-kit.optimization.tests.ps1` by adding reusable stub-script helpers for doctor/verify scenarios.
+- Reduced test duplication in `tests/repo-governance-hub.optimization.tests.ps1` by adding reusable stub-script helpers for doctor/verify scenarios.
 - Added `doctor.ps1 -SkipVerifyTargets` for local structural health checks that intentionally skip target consistency verification.
 - Added regression coverage for `-SkipVerifyTargets` and documented usage in README.
 - Added self-check CI workflow: `.github/workflows/governance-self-check.yml`.
@@ -74,3 +74,4 @@
 - Refined global rule documents (`source/global/*`) for clearer platform-specific diagnostics and fallback behavior.
 - Refined project rule documents (`source/project/*`) with explicit scope boundary and `E1/E2/E4/E5/E6` mapping.
 - Synced updated rule sources to all configured targets and verified `ok=9 fail=0`.
+

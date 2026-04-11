@@ -2,7 +2,7 @@
 规则版本=3.83
 兼容窗口(观察期/强制期)=observe -> enforce
 影响模块=source/project/ClassroomToolkit/custom/docs/PLANS.md; source/project/skills-manager/custom/docs/PLANS.md; config/project-custom-files.json; config/targets.json
-当前落点=E:/CODE/governance-kit
+当前落点=E:/CODE/repo-governance-hub
 目标归宿=ClassroomToolkit 与 skills-manager 的 PLANS 均收敛到 repo-scoped source，并通过分发链路保持一致
 迁移批次=2026-04-10-plan-alignment
 风险等级=low
@@ -10,9 +10,9 @@
 豁免责任人=
 豁免到期=
 豁免回收计划=
-任务理解快照=目标: 修复 governance-kit verify 对 ClassroomToolkit PLANS 的漂移，并让 skills-manager 拥有可判定的目标与验收标准; 非目标: 修改门禁语义或扩展默认分发范围; 验收标准: install 后 verify fail=0 且 doctor GREEN，skills-manager/docs/PLANS.md 非空模板; 关键假设: 两仓 PLANS 都应由 repo-scoped custom source 管理
+任务理解快照=目标: 修复 repo-governance-hub verify 对 ClassroomToolkit PLANS 的漂移，并让 skills-manager 拥有可判定的目标与验收标准; 非目标: 修改门禁语义或扩展默认分发范围; 验收标准: install 后 verify fail=0 且 doctor GREEN，skills-manager/docs/PLANS.md 非空模板; 关键假设: 两仓 PLANS 都应由 repo-scoped custom source 管理
 术语解释点=repo-scoped PLANS: 指 source/project/<RepoName>/custom/docs/PLANS.md 作为该仓计划源; 本次示例是 ClassroomToolkit 和 skills-manager; 常见误解是把所有仓的 PLANS 固定映射到 _common 模板
-可观测信号=现象: governance-kit verify 出现 ClassroomToolkit PLANS DIFF 且 doctor RED; 假设: source phase 信息落后且 skills-manager 缺 repo-scoped PLANS; 验证命令: refresh-targets + install safe + verify + doctor; 预期结果: verify ok=106 fail=0 且 doctor GREEN; 下一步: 持续按 repo-scoped PLANS 维护目标变更
+可观测信号=现象: repo-governance-hub verify 出现 ClassroomToolkit PLANS DIFF 且 doctor RED; 假设: source phase 信息落后且 skills-manager 缺 repo-scoped PLANS; 验证命令: refresh-targets + install safe + verify + doctor; 预期结果: verify ok=106 fail=0 且 doctor GREEN; 下一步: 持续按 repo-scoped PLANS 维护目标变更
 排障路径=1) 对比 ClassroomToolkit target/source PLANS 发现 Current phase 不一致 2) 同步 ClassroomToolkit source phase 3) 新增 skills-manager repo-scoped PLANS 并将 docs/PLANS.md 注册到 repo custom files 4) refresh-targets 更新映射 5) install safe 分发并跑全链路门禁
 未确认假设与纠偏结论=未确认: skills-manager 是否需要独立 PLANS 管理; 纠偏: 当前已通过 repo-scoped source 下发，目标仓 PLANS 由该源直接管理
 执行命令=powershell -File scripts/refresh-targets.ps1 -Mode safe; powershell -File scripts/install.ps1 -Mode safe; powershell -File scripts/verify.ps1; powershell -File scripts/doctor.ps1

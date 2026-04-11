@@ -1,7 +1,7 @@
-# 外部基线对标与差距矩阵（governance-kit）
+﻿# 外部基线对标与差距矩阵（repo-governance-hub）
 
 更新时间：2026-04-11  
-适用范围：`E:/CODE/governance-kit` 与当前目标仓（`ClassroomToolkit`、`skills-manager`、`governance-kit`）  
+适用范围：`E:/CODE/repo-governance-hub` 与当前目标仓（`ClassroomToolkit`、`skills-manager`、`repo-governance-hub`）  
 状态：Draft v1（用于 `observe -> enforce` 迁移执行）
 
 ## 1. 目标与非目标
@@ -33,7 +33,7 @@
 1. 新增 `SSDF/SLSA/SBOM/Scorecard` 的策略字段与证据字段（先 `warn/advisory`）。
 2. 在 `scripts/quality` 或 `scripts/governance` 增加占位检查脚本与统一输出格式。
 3. 在 `docs/governance/metrics-template.md` 扩展对应指标项（可空值但必须有字段）。
-4. 在 1 个仓（建议 `governance-kit`）运行 3 次周期验证，统计误报率。
+4. 在 1 个仓（建议 `repo-governance-hub`）运行 3 次周期验证，统计误报率。
 
 验收标准：
 1. 新增字段均能被 `verify-kit + validate-config + doctor` 正常读取。
@@ -53,7 +53,7 @@
 
 ## 5. enforce 迁移检查清单（可直接执行）
 1. 运行门禁基线：`powershell -File scripts/verify-kit.ps1`
-2. 运行测试门禁：`powershell -File tests/governance-kit.optimization.tests.ps1`
+2. 运行测试门禁：`powershell -File tests/repo-governance-hub.optimization.tests.ps1`
 3. 运行契约门禁：`powershell -File scripts/validate-config.ps1; powershell -File scripts/verify.ps1`
 4. 运行热点门禁：`powershell -File scripts/doctor.ps1`
 5. 运行实践栈：`powershell -File scripts/governance/check-practice-stack.ps1 -RepoRoot . -AsJson`
@@ -75,3 +75,5 @@
 - SPDX: https://spdx.dev/use/specifications/
 - CycloneDX: https://cyclonedx.org/specification/overview/
 - OpenTelemetry Spec: https://opentelemetry.io/docs/specs/otel/
+
+

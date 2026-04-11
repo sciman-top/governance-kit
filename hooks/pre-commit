@@ -1,5 +1,5 @@
 #!/bin/sh
-# governance-kit pre-commit hook
+# repo-governance-hub pre-commit hook
 KIT_ROOT="$(git config --get governance.kitRoot)"
 if [ -z "$KIT_ROOT" ]; then
   KIT_ROOT="${GOVERNANCE_KIT_ROOT}"
@@ -17,3 +17,4 @@ if [ $status -ne 0 ]; then
   exit $status
 fi
 exit 0
+

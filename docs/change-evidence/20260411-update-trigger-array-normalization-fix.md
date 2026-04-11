@@ -2,7 +2,7 @@
 规则版本=1.0
 兼容窗口(观察期/强制期)=observe
 影响模块=scripts/governance/check-update-triggers.ps1, scripts/governance/run-recurring-review.ps1, source/project/*/custom/scripts/governance
-当前落点=E:/CODE/governance-kit/scripts/governance/check-update-triggers.ps1
+当前落点=E:/CODE/repo-governance-hub/scripts/governance/check-update-triggers.ps1
 目标归宿=消除 release_distribution_policy_drift 的单元素数组误报；保留真实 cli_version_drift 告警
 迁移批次=2026-04-11 batch-4
 风险等级=low

@@ -1,8 +1,8 @@
 规则ID=GK-20260407-LEARNING-LOOP-ENFORCE
 规则版本=3.83
 兼容窗口(观察期/强制期)=observe=2026-04-07~2026-04-14; enforce>=2026-04-15
-影响模块=templates/change-evidence.md; docs/change-evidence/template.md; scripts/verify-kit.ps1; scripts/collect-governance-metrics.ps1; templates/governance-metrics.md; docs/governance/metrics-template.md; source/project/governance-kit/*
-当前落点=E:/CODE/governance-kit
+影响模块=templates/change-evidence.md; docs/change-evidence/template.md; scripts/verify-kit.ps1; scripts/collect-governance-metrics.ps1; templates/governance-metrics.md; docs/governance/metrics-template.md; source/project/repo-governance-hub/*
+当前落点=E:/CODE/repo-governance-hub
 目标归宿=规则/模板/指标三处一致，学习闭环字段可被模板引导、门禁检测与指标统计
 迁移批次=2026-04-07-learning-loop-enforcement
 风险等级=低
@@ -15,7 +15,7 @@
 供应链安全扫描=gate_na; reason=仅文档模板与本地脚本逻辑变更，无新增依赖; alternative_verification=verify-kit/tests/validate-config/verify/doctor; evidence_link=docs/change-evidence/20260407-learning-loop-enforcement.md; expires_at=2026-04-30
 发布后验证(指标/阈值/窗口)=新增 learning_loop_evidence_rate，观察4周
 数据变更治理(迁移/回填/回滚)=无结构化数据迁移
-回滚动作=git restore templates/change-evidence.md docs/change-evidence/template.md scripts/verify-kit.ps1 scripts/collect-governance-metrics.ps1 templates/governance-metrics.md docs/governance/metrics-template.md AGENTS.md CLAUDE.md GEMINI.md source/project/governance-kit/AGENTS.md source/project/governance-kit/CLAUDE.md source/project/governance-kit/GEMINI.md
+回滚动作=git restore templates/change-evidence.md docs/change-evidence/template.md scripts/verify-kit.ps1 scripts/collect-governance-metrics.ps1 templates/governance-metrics.md docs/governance/metrics-template.md AGENTS.md CLAUDE.md GEMINI.md source/project/repo-governance-hub/AGENTS.md source/project/repo-governance-hub/CLAUDE.md source/project/repo-governance-hub/GEMINI.md
 
 本次学到的3点=
 1) 仅有规则条款不足以形成行为约束，必须配套模板与校验脚本。

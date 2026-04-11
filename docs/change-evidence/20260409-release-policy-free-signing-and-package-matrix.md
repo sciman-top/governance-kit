@@ -1,8 +1,8 @@
 规则ID=GK-RELEASE-POLICY-FREE-SIGNING-20260409-001
 规则版本=3.83
 兼容窗口(观察期/强制期)=observe
-影响模块=templates/release-profile.template.json; scripts/suggest-release-profile.ps1; scripts/verify-release-profile.ps1; source/project/*/custom/.governance/release-profile.json; tests/governance-kit.optimization.tests.ps1
-当前落点=E:/CODE/governance-kit
+影响模块=templates/release-profile.template.json; scripts/suggest-release-profile.ps1; scripts/verify-release-profile.ps1; source/project/*/custom/.governance/release-profile.json; tests/repo-governance-hub.optimization.tests.ps1
+当前落点=E:/CODE/repo-governance-hub
 目标归宿=三目标仓 release-profile 策略统一：支持 installer/portable 与 online/offline 组合；禁止付费签名
 迁移批次=2026-04-09-release-policy-matrix
 风险等级=low
@@ -15,7 +15,7 @@
 可观测信号=release-profile 增加 policies.signing.allow_paid_signing=false; packaging 增加 distribution_forms + network_modes
 排障路径=新增 suggest/verify 后测试失败 -> 修复 suggest-release-profile AsJson 转换缺陷 -> 调整 Pester 断言为布尔包含判断 -> 全量测试通过
 未确认假设与纠偏结论=未确认: 新策略会否对无发布信号仓造成阻断; 纠偏: 对 release_enabled=false 仓默认 portable+online、channels=['none']，coverage 全通过
-执行命令=powershell -File scripts/install.ps1 -Mode safe; powershell -File tests/governance-kit.optimization.tests.ps1; powershell -File scripts/verify-release-profile.ps1 -RepoPath E:/CODE/ClassroomToolkit; powershell -File scripts/check-release-profile-coverage.ps1; powershell -File scripts/verify-kit.ps1; powershell -File scripts/validate-config.ps1; powershell -File scripts/verify.ps1; powershell -File scripts/doctor.ps1
+执行命令=powershell -File scripts/install.ps1 -Mode safe; powershell -File tests/repo-governance-hub.optimization.tests.ps1; powershell -File scripts/verify-release-profile.ps1 -RepoPath E:/CODE/ClassroomToolkit; powershell -File scripts/check-release-profile-coverage.ps1; powershell -File scripts/verify-kit.ps1; powershell -File scripts/validate-config.ps1; powershell -File scripts/verify.ps1; powershell -File scripts/doctor.ps1
 验证证据=新增测试 verify-release-profile rejects paid signing mode + suggest-release-profile emits packaging forms and no-paid-signing policy 通过；release-profile coverage PASS；verify ok=106 fail=0；doctor HEALTH=GREEN
 供应链安全扫描=N/A (policy/script/test/document changes)
 发布后验证(指标/阈值/窗口)=每次 release-profile 变更后 coverage=PASS；付费签名策略违例应被 verify-release-profile 阻断

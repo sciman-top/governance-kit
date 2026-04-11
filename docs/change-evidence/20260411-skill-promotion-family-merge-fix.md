@@ -1,5 +1,5 @@
 issue_id=skill-promotion-family-merge-fix-20260411
-当前落点=E:/CODE/governance-kit/source/project/_common/custom/scripts/governance/promote-skill-candidates.ps1
+当前落点=E:/CODE/repo-governance-hub/source/project/_common/custom/scripts/governance/promote-skill-candidates.ps1
 目标归宿=source/project/_common/custom/scripts/governance/promote-skill-candidates.ps1 + source/project/_common/custom/.governance/skill-promotion-policy.json
 风险等级=medium
 执行模式=direct_fix
@@ -13,13 +13,13 @@ issue_id=skill-promotion-family-merge-fix-20260411
 修复动作=registry 增加 `signature_variants` 字段，技能内容写入 variants
 修复动作=策略模板新增 `collapse_suffix_pattern` 与 `exclude_signature_patterns`
 
-命令=governance-kit install safe; governance-kit promote-skill-candidates -AsJson; skills-manager doctor --strict; skills-manager 构建生效
+命令=repo-governance-hub install safe; repo-governance-hub promote-skill-candidates -AsJson; skills-manager doctor --strict; skills-manager 构建生效
 关键输出=promote 结果 grouped_signature_count=1, promoted_count=1, issue_signature=pwsh-encoding-mojibake-loop-20260411
 关键输出=skills-manager overrides 仅保留 custom-auto-pwsh-encoding-mojibake-l-a9b049cd + custom-windows-encoding-guard
 关键输出=skills-manager 构建生效通过（Result: PASS with WARN）
 
 清理动作=删除 skills-manager/overrides 下旧目录 custom-auto-autopilot-utf8-smoke-20260411, custom-auto-pwsh-encoding-mojibake-l-7453de8b, custom-auto-pwsh-encoding-mojibake-l-d3bde4eb
-回滚动作=git -C E:/CODE/governance-kit checkout -- source/project/_common/custom/scripts/governance/promote-skill-candidates.ps1 source/project/_common/custom/.governance/skill-promotion-policy.json
+回滚动作=git -C E:/CODE/repo-governance-hub checkout -- source/project/_common/custom/scripts/governance/promote-skill-candidates.ps1 source/project/_common/custom/.governance/skill-promotion-policy.json
 回滚动作=git -C E:/CODE/skills-manager checkout -- overrides .governance/skill-candidates
 
 learning_points_3=1) 自动晋升应基于问题族而非原始签名 2) smoke 事件必须显式过滤 3) registry 不存在会导致重复再生成

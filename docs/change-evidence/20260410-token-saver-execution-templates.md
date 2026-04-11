@@ -45,7 +45,7 @@
   - 证据: 新文件已复制到三仓 `.governance/`（含 `token-saver-policy.json` 与 `templates/*`）
 - `powershell -File scripts/verify-kit.ps1`
   - 证据: `[PASS] rule duplication check passed`
-- `powershell -File tests/governance-kit.optimization.tests.ps1`
+- `powershell -File tests/repo-governance-hub.optimization.tests.ps1`
   - 证据: 全部测试通过
 - `powershell -File scripts/validate-config.ps1; powershell -File scripts/verify.ps1`
   - 证据: `Verify done. ok=127 fail=0`

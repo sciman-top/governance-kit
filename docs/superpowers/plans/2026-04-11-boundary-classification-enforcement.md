@@ -166,7 +166,7 @@ Expected: boundary checks pass and the scope remains unchanged.
 ### Task 4: Add focused regression coverage
 
 **Files:**
-- Modify: `tests\governance-kit.optimization.tests.ps1`
+- Modify: `tests\repo-governance-hub.optimization.tests.ps1`
 
 - [ ] **Step 1: Add a test for allowed global-user targets**
 
@@ -194,7 +194,7 @@ it "rejects unexpected user-level files" {
 
 - [ ] **Step 3: Run the focused test file**
 
-Run: `powershell -NoProfile -ExecutionPolicy Bypass -File tests\governance-kit.optimization.tests.ps1`
+Run: `powershell -NoProfile -ExecutionPolicy Bypass -File tests\repo-governance-hub.optimization.tests.ps1`
 Expected: pass.
 
 ### Task 5: Document the boundary policy
@@ -224,4 +224,5 @@ Run:
 `powershell -NoProfile -ExecutionPolicy Bypass -File scripts\validate-config.ps1`
 `powershell -NoProfile -ExecutionPolicy Bypass -File scripts\verify.ps1`
 Expected: both pass.
+
 

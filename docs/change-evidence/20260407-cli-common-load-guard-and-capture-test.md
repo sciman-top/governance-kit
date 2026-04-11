@@ -10,13 +10,13 @@
   - 增加 `common.ps1` 缺失时的显式报错保护。
 - `scripts/check-cli-version-drift.ps1`
   - 增加 `common.ps1` 缺失时的显式报错保护。
-- `tests/governance-kit.optimization.tests.ps1`
+- `tests/repo-governance-hub.optimization.tests.ps1`
   - 新增 `common Invoke-CommandCapture returns stable fields for success and failure probes`。
   - 修正失败路径断言为“非 0 即失败”（避免环境差异导致误判）。
 
 ## 命令与结果
 - `powershell -File scripts/verify-kit.ps1` -> pass
-- `powershell -File tests/governance-kit.optimization.tests.ps1` -> pass
+- `powershell -File tests/repo-governance-hub.optimization.tests.ps1` -> pass
 - `powershell -File scripts/validate-config.ps1` -> pass
 - `powershell -File scripts/verify.ps1` -> pass
 - `powershell -File scripts/doctor.ps1` -> pass
@@ -25,7 +25,7 @@
 - 回滚文件:
   - `scripts/check-cli-capabilities.ps1`
   - `scripts/check-cli-version-drift.ps1`
-  - `tests/governance-kit.optimization.tests.ps1`
+  - `tests/repo-governance-hub.optimization.tests.ps1`
 - 全量回滚入口:
   - `powershell -File scripts/restore.ps1` + `backups/<timestamp>/`
 

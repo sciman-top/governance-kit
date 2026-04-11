@@ -2,7 +2,7 @@
 规则版本=1.0
 兼容窗口(观察期/强制期)=observe
 影响模块=config, source/project/_common/custom, scripts/governance, docs/governance
-当前落点=E:/CODE/governance-kit/config/practice-stack-policy.json
+当前落点=E:/CODE/repo-governance-hub/config/practice-stack-policy.json
 目标归宿=将 ssdf/slsa/sbom/scorecard 纳入 practice-stack，先 advisory 后 enforce
 迁移批次=2026-04-11 batch-2
 风险等级=low

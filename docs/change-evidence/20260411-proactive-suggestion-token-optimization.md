@@ -34,14 +34,14 @@
 
 ## commands
 1. `powershell -NoProfile -ExecutionPolicy Bypass -File scripts/verify-kit.ps1`
-2. `powershell -NoProfile -ExecutionPolicy Bypass -File tests/governance-kit.optimization.tests.ps1`
+2. `powershell -NoProfile -ExecutionPolicy Bypass -File tests/repo-governance-hub.optimization.tests.ps1`
 3. `powershell -NoProfile -ExecutionPolicy Bypass -File scripts/validate-config.ps1`
 4. `powershell -NoProfile -ExecutionPolicy Bypass -File scripts/verify.ps1`
 5. `powershell -NoProfile -ExecutionPolicy Bypass -File scripts/install.ps1 -Mode safe`
 6. `powershell -NoProfile -ExecutionPolicy Bypass -File scripts/doctor.ps1`
 
 ## key_output
-- verify-kit: `governance-kit integrity OK`
+- verify-kit: `repo-governance-hub integrity OK`
 - tests: optimization test suite passed (full suite green)
 - verify(before install): found DIFF against `ClassroomToolkit/skills-manager` proactive/token policy files
 - install safe: copied updated policy files to target repos

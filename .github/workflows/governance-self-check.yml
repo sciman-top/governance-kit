@@ -23,4 +23,5 @@ jobs:
 
       - name: Pester
         shell: powershell
-        run: powershell -NoProfile -ExecutionPolicy Bypass -Command "Invoke-Pester -Path tests/governance-kit.optimization.tests.ps1"
+        run: powershell -NoProfile -ExecutionPolicy Bypass -Command "Invoke-Pester -Path tests/repo-governance-hub.optimization.tests.ps1"
+

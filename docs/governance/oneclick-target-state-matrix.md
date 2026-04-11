@@ -41,7 +41,7 @@
 
 ## Exit Criteria (Release Gate)
 - `verify-kit` pass
-- `tests/governance-kit.optimization.tests.ps1` pass
+- `tests/repo-governance-hub.optimization.tests.ps1` pass
 - `validate-config` pass
 - `verify` pass
 - `doctor` pass
@@ -51,3 +51,4 @@
 - `max_autonomous_iterations`: cap autonomous cycles in one run.
 - `max_repeated_failure_per_step`: stop after repeated failures on same step.
 - `stop_on_irreversible_risk`: immediate stop on irreversible-risk boundaries (default for `contract.*` failures).
+
