@@ -554,5 +554,197 @@
     {
         "source":  "source/project/_common/custom/.governance/external-baseline-policy.json",
         "target":  "E:/CODE/governance-kit/.governance/external-baseline-policy.json"
+    },
+    {
+        "source":  "source/project/_common/custom/.governance/growth-pack/README.template.md",
+        "target":  "E:/CODE/ClassroomToolkit/.governance/growth-pack/README.template.md"
+    },
+    {
+        "source":  "source/project/_common/custom/.governance/growth-pack/RELEASE_TEMPLATE.md",
+        "target":  "E:/CODE/ClassroomToolkit/.governance/growth-pack/RELEASE_TEMPLATE.md"
+    },
+    {
+        "source":  "source/project/_common/custom/.governance/growth-pack/CONTRIBUTING.template.md",
+        "target":  "E:/CODE/ClassroomToolkit/.governance/growth-pack/CONTRIBUTING.template.md"
+    },
+    {
+        "source":  "source/project/_common/custom/.governance/growth-pack/SECURITY.template.md",
+        "target":  "E:/CODE/ClassroomToolkit/.governance/growth-pack/SECURITY.template.md"
+    },
+    {
+        "source":  "source/project/_common/custom/.governance/growth-pack/ISSUE_TEMPLATE/bug_report.yml",
+        "target":  "E:/CODE/ClassroomToolkit/.governance/growth-pack/ISSUE_TEMPLATE/bug_report.yml"
+    },
+    {
+        "source":  "source/project/_common/custom/.governance/growth-pack/ISSUE_TEMPLATE/feature_request.yml",
+        "target":  "E:/CODE/ClassroomToolkit/.governance/growth-pack/ISSUE_TEMPLATE/feature_request.yml"
+    },
+    {
+        "source":  "source/project/_common/custom/.governance/growth-pack/pull_request_template.md",
+        "target":  "E:/CODE/ClassroomToolkit/.governance/growth-pack/pull_request_template.md"
+    },
+    {
+        "source":  "source/project/_common/custom/.governance/growth-pack/CHECKLIST.md",
+        "target":  "E:/CODE/ClassroomToolkit/.governance/growth-pack/CHECKLIST.md"
+    },
+    {
+        "source":  "source/project/_common/custom/scripts/governance/verify-growth-pack.ps1",
+        "target":  "E:/CODE/ClassroomToolkit/scripts/governance/verify-growth-pack.ps1"
+    },
+    {
+        "source":  "source/project/_common/custom/scripts/governance/report-growth-readiness.ps1",
+        "target":  "E:/CODE/ClassroomToolkit/scripts/governance/report-growth-readiness.ps1"
+    },
+    {
+        "source":  "source/project/_common/custom/.governance/growth-pack/README.template.md",
+        "target":  "E:/CODE/skills-manager/.governance/growth-pack/README.template.md"
+    },
+    {
+        "source":  "source/project/_common/custom/.governance/growth-pack/RELEASE_TEMPLATE.md",
+        "target":  "E:/CODE/skills-manager/.governance/growth-pack/RELEASE_TEMPLATE.md"
+    },
+    {
+        "source":  "source/project/_common/custom/.governance/growth-pack/ISSUE_TEMPLATE/bug_report.yml",
+        "target":  "E:/CODE/skills-manager/.governance/growth-pack/ISSUE_TEMPLATE/bug_report.yml"
+    },
+    {
+        "source":  "source/project/_common/custom/.governance/growth-pack/ISSUE_TEMPLATE/feature_request.yml",
+        "target":  "E:/CODE/skills-manager/.governance/growth-pack/ISSUE_TEMPLATE/feature_request.yml"
+    },
+    {
+        "source":  "source/project/_common/custom/.governance/growth-pack/pull_request_template.md",
+        "target":  "E:/CODE/skills-manager/.governance/growth-pack/pull_request_template.md"
+    },
+    {
+        "source":  "source/project/_common/custom/.governance/growth-pack/CHECKLIST.md",
+        "target":  "E:/CODE/skills-manager/.governance/growth-pack/CHECKLIST.md"
+    },
+    {
+        "source":  "source/project/_common/custom/scripts/governance/verify-growth-pack.ps1",
+        "target":  "E:/CODE/skills-manager/scripts/governance/verify-growth-pack.ps1"
+    },
+    {
+        "source":  "source/project/_common/custom/scripts/governance/report-growth-readiness.ps1",
+        "target":  "E:/CODE/skills-manager/scripts/governance/report-growth-readiness.ps1"
+    },
+    {
+        "source":  "source/project/_common/custom/.governance/growth-pack/README.template.md",
+        "target":  "E:/CODE/governance-kit/.governance/growth-pack/README.template.md"
+    },
+    {
+        "source":  "source/project/_common/custom/.governance/growth-pack/RELEASE_TEMPLATE.md",
+        "target":  "E:/CODE/governance-kit/.governance/growth-pack/RELEASE_TEMPLATE.md"
+    },
+    {
+        "source":  "source/project/_common/custom/.governance/growth-pack/CONTRIBUTING.template.md",
+        "target":  "E:/CODE/governance-kit/.governance/growth-pack/CONTRIBUTING.template.md"
+    },
+    {
+        "source":  "source/project/_common/custom/.governance/growth-pack/SECURITY.template.md",
+        "target":  "E:/CODE/governance-kit/.governance/growth-pack/SECURITY.template.md"
+    },
+    {
+        "source":  "source/project/_common/custom/.governance/growth-pack/ISSUE_TEMPLATE/bug_report.yml",
+        "target":  "E:/CODE/governance-kit/.governance/growth-pack/ISSUE_TEMPLATE/bug_report.yml"
+    },
+    {
+        "source":  "source/project/_common/custom/.governance/growth-pack/ISSUE_TEMPLATE/feature_request.yml",
+        "target":  "E:/CODE/governance-kit/.governance/growth-pack/ISSUE_TEMPLATE/feature_request.yml"
+    },
+    {
+        "source":  "source/project/_common/custom/.governance/growth-pack/pull_request_template.md",
+        "target":  "E:/CODE/governance-kit/.governance/growth-pack/pull_request_template.md"
+    },
+    {
+        "source":  "source/project/_common/custom/.governance/growth-pack/CHECKLIST.md",
+        "target":  "E:/CODE/governance-kit/.governance/growth-pack/CHECKLIST.md"
+    },
+    {
+        "source":  "source/project/_common/custom/scripts/governance/verify-growth-pack.ps1",
+        "target":  "E:/CODE/governance-kit/scripts/governance/verify-growth-pack.ps1"
+    },
+    {
+        "source":  "source/project/_common/custom/scripts/governance/report-growth-readiness.ps1",
+        "target":  "E:/CODE/governance-kit/scripts/governance/report-growth-readiness.ps1"
+    },
+    {
+        "source":  "source/project/_common/custom/scripts/governance/apply-growth-pack.ps1",
+        "target":  "E:/CODE/ClassroomToolkit/scripts/governance/apply-growth-pack.ps1"
+    },
+    {
+        "source":  "source/project/_common/custom/scripts/governance/apply-growth-pack.ps1",
+        "target":  "E:/CODE/skills-manager/scripts/governance/apply-growth-pack.ps1"
+    },
+    {
+        "source":  "source/project/_common/custom/scripts/governance/apply-growth-pack.ps1",
+        "target":  "E:/CODE/governance-kit/scripts/governance/apply-growth-pack.ps1"
+    },
+    {
+        "source":  "source/project/_common/custom/scripts/governance/check-anti-bloat-budgets.ps1",
+        "target":  "E:/CODE/ClassroomToolkit/scripts/governance/check-anti-bloat-budgets.ps1"
+    },
+    {
+        "source":  "source/project/_common/custom/.governance/anti-bloat-policy.json",
+        "target":  "E:/CODE/ClassroomToolkit/.governance/anti-bloat-policy.json"
+    },
+    {
+        "source":  "source/project/_common/custom/scripts/governance/check-anti-bloat-budgets.ps1",
+        "target":  "E:/CODE/skills-manager/scripts/governance/check-anti-bloat-budgets.ps1"
+    },
+    {
+        "source":  "source/project/_common/custom/.governance/anti-bloat-policy.json",
+        "target":  "E:/CODE/skills-manager/.governance/anti-bloat-policy.json"
+    },
+    {
+        "source":  "source/project/_common/custom/scripts/governance/check-anti-bloat-budgets.ps1",
+        "target":  "E:/CODE/governance-kit/scripts/governance/check-anti-bloat-budgets.ps1"
+    },
+    {
+        "source":  "source/project/_common/custom/.governance/anti-bloat-policy.json",
+        "target":  "E:/CODE/governance-kit/.governance/anti-bloat-policy.json"
+    },
+    {
+        "source":  "source/project/skills-manager/custom/overrides/custom-windows-encoding-guard/SKILL.md",
+        "target":  "E:/CODE/skills-manager/overrides/custom-windows-encoding-guard/SKILL.md"
+    },
+    {
+        "source":  "source/project/skills-manager/custom/overrides/custom-windows-encoding-guard/scripts/bootstrap.ps1",
+        "target":  "E:/CODE/skills-manager/overrides/custom-windows-encoding-guard/scripts/bootstrap.ps1"
+    },
+    {
+        "source":  "source/project/_common/custom/scripts/governance/register-skill-candidate.ps1",
+        "target":  "E:/CODE/ClassroomToolkit/scripts/governance/register-skill-candidate.ps1"
+    },
+    {
+        "source":  "source/project/_common/custom/scripts/governance/promote-skill-candidates.ps1",
+        "target":  "E:/CODE/ClassroomToolkit/scripts/governance/promote-skill-candidates.ps1"
+    },
+    {
+        "source":  "source/project/_common/custom/.governance/skill-promotion-policy.json",
+        "target":  "E:/CODE/ClassroomToolkit/.governance/skill-promotion-policy.json"
+    },
+    {
+        "source":  "source/project/_common/custom/scripts/governance/register-skill-candidate.ps1",
+        "target":  "E:/CODE/skills-manager/scripts/governance/register-skill-candidate.ps1"
+    },
+    {
+        "source":  "source/project/_common/custom/scripts/governance/promote-skill-candidates.ps1",
+        "target":  "E:/CODE/skills-manager/scripts/governance/promote-skill-candidates.ps1"
+    },
+    {
+        "source":  "source/project/_common/custom/.governance/skill-promotion-policy.json",
+        "target":  "E:/CODE/skills-manager/.governance/skill-promotion-policy.json"
+    },
+    {
+        "source":  "source/project/_common/custom/scripts/governance/register-skill-candidate.ps1",
+        "target":  "E:/CODE/governance-kit/scripts/governance/register-skill-candidate.ps1"
+    },
+    {
+        "source":  "source/project/_common/custom/scripts/governance/promote-skill-candidates.ps1",
+        "target":  "E:/CODE/governance-kit/scripts/governance/promote-skill-candidates.ps1"
+    },
+    {
+        "source":  "source/project/_common/custom/.governance/skill-promotion-policy.json",
+        "target":  "E:/CODE/governance-kit/.governance/skill-promotion-policy.json"
     }
 ]

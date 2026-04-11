@@ -456,6 +456,86 @@ exit 0
     }
   }
 
+  it "validate-config fails when skill source is not registered in project-custom-files" {
+    $tmp = Join-Path $env:TEMP ("govkit-test-" + [guid]::NewGuid().ToString("N"))
+    try {
+      New-Item -ItemType Directory -Path (Join-Path $tmp "scripts\lib") -Force | Out-Null
+      New-Item -ItemType Directory -Path (Join-Path $tmp "scripts") -Force | Out-Null
+      New-Item -ItemType Directory -Path (Join-Path $tmp "config") -Force | Out-Null
+      New-Item -ItemType Directory -Path (Join-Path $tmp "source\project\_common\custom\.agents\skills\new-skill") -Force | Out-Null
+
+      Copy-Item -Path (Join-Path $repoRoot "scripts\lib\common.ps1") -Destination (Join-Path $tmp "scripts\lib\common.ps1") -Force
+      Copy-Item -Path (Join-Path $repoRoot "scripts\validate-config.ps1") -Destination (Join-Path $tmp "scripts\validate-config.ps1") -Force
+
+      "test" | Set-Content -Path (Join-Path $tmp "source\project\_common\custom\.agents\skills\new-skill\SKILL.md") -Encoding UTF8
+
+      @("E:/CODE/FakeRepo") | ConvertTo-Json -Depth 3 | Set-Content -Path (Join-Path $tmp "config\repositories.json") -Encoding UTF8
+      @(@{ source = "source/global/AGENTS.md"; target = "C:/Users/sciman/.codex/AGENTS.md" }) | ConvertTo-Json -Depth 4 | Set-Content -Path (Join-Path $tmp "config\targets.json") -Encoding UTF8
+      @{
+        default = @{ phase = "observe"; blockExpiredWaiver = $false }
+        repos = @()
+      } | ConvertTo-Json -Depth 6 | Set-Content -Path (Join-Path $tmp "config\rule-rollout.json") -Encoding UTF8
+      @{
+        default = @()
+        repos = @(
+          @{
+            repoName = "FakeRepo"
+            files = @()
+          }
+        )
+      } | ConvertTo-Json -Depth 6 | Set-Content -Path (Join-Path $tmp "config\project-custom-files.json") -Encoding UTF8
+      Set-MinProjectRulePolicy -ConfigDir (Join-Path $tmp "config") -RepoPath "E:/CODE/FakeRepo"
+      Set-MinReleaseDistributionPolicy -ConfigDir (Join-Path $tmp "config")
+      Set-MinPracticeStackPolicy -ConfigDir (Join-Path $tmp "config") -RepoName "FakeRepo"
+
+      $output = & powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $tmp "scripts\validate-config.ps1") 2>&1 | Out-String
+      $LASTEXITCODE | should be 1
+      $output | should match "unregistered skill custom file"
+    } finally {
+      if (Test-Path $tmp) { Remove-Item -LiteralPath $tmp -Recurse -Force }
+    }
+  }
+
+  it "validate-config passes when skill source is registered in project-custom-files" {
+    $tmp = Join-Path $env:TEMP ("govkit-test-" + [guid]::NewGuid().ToString("N"))
+    try {
+      New-Item -ItemType Directory -Path (Join-Path $tmp "scripts\lib") -Force | Out-Null
+      New-Item -ItemType Directory -Path (Join-Path $tmp "scripts") -Force | Out-Null
+      New-Item -ItemType Directory -Path (Join-Path $tmp "config") -Force | Out-Null
+      New-Item -ItemType Directory -Path (Join-Path $tmp "source\project\_common\custom\.agents\skills\new-skill") -Force | Out-Null
+
+      Copy-Item -Path (Join-Path $repoRoot "scripts\lib\common.ps1") -Destination (Join-Path $tmp "scripts\lib\common.ps1") -Force
+      Copy-Item -Path (Join-Path $repoRoot "scripts\validate-config.ps1") -Destination (Join-Path $tmp "scripts\validate-config.ps1") -Force
+
+      "test" | Set-Content -Path (Join-Path $tmp "source\project\_common\custom\.agents\skills\new-skill\SKILL.md") -Encoding UTF8
+
+      @("E:/CODE/FakeRepo") | ConvertTo-Json -Depth 3 | Set-Content -Path (Join-Path $tmp "config\repositories.json") -Encoding UTF8
+      @(@{ source = "source/global/AGENTS.md"; target = "C:/Users/sciman/.codex/AGENTS.md" }) | ConvertTo-Json -Depth 4 | Set-Content -Path (Join-Path $tmp "config\targets.json") -Encoding UTF8
+      @{
+        default = @{ phase = "observe"; blockExpiredWaiver = $false }
+        repos = @()
+      } | ConvertTo-Json -Depth 6 | Set-Content -Path (Join-Path $tmp "config\rule-rollout.json") -Encoding UTF8
+      @{
+        default = @(".agents/skills/new-skill/SKILL.md")
+        repos = @(
+          @{
+            repoName = "FakeRepo"
+            files = @()
+          }
+        )
+      } | ConvertTo-Json -Depth 6 | Set-Content -Path (Join-Path $tmp "config\project-custom-files.json") -Encoding UTF8
+      Set-MinProjectRulePolicy -ConfigDir (Join-Path $tmp "config") -RepoPath "E:/CODE/FakeRepo"
+      Set-MinReleaseDistributionPolicy -ConfigDir (Join-Path $tmp "config")
+      Set-MinPracticeStackPolicy -ConfigDir (Join-Path $tmp "config") -RepoName "FakeRepo"
+
+      $output = & powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $tmp "scripts\validate-config.ps1") 2>&1 | Out-String
+      $LASTEXITCODE | should be 0
+      $output | should match "Config validation passed"
+    } finally {
+      if (Test-Path $tmp) { Remove-Item -LiteralPath $tmp -Recurse -Force }
+    }
+  }
+
   it "validate-config fails on invalid autonomous limit fields" {
     $tmp = Join-Path $env:TEMP ("govkit-test-" + [guid]::NewGuid().ToString("N"))
     try {
@@ -638,6 +718,7 @@ exit 0
       Set-StubScript -Path (Join-Path $tmp "scripts\validate-config.ps1")
       Set-StubScript -Path (Join-Path $tmp "scripts\check-release-profile-coverage.ps1")
       Set-StubScript -Path (Join-Path $tmp "scripts\verify.ps1") -Message "boom" -ExitCode 1
+      Set-StubScript -Path (Join-Path $tmp "scripts\governance\check-anti-bloat-budgets.ps1")
       Set-StubScript -Path (Join-Path $tmp "scripts\check-waivers.ps1")
       Set-StubScript -Path (Join-Path $tmp "scripts\governance\check-practice-stack.ps1")
       Set-StubScript -Path (Join-Path $tmp "scripts\status.ps1")
@@ -663,6 +744,7 @@ exit 0
       Set-StubScript -Path (Join-Path $tmp "scripts\validate-config.ps1")
       Set-StubScript -Path (Join-Path $tmp "scripts\check-release-profile-coverage.ps1")
       Set-RequireSkipValidationVerifyScript -Path (Join-Path $tmp "scripts\verify.ps1")
+      Set-StubScript -Path (Join-Path $tmp "scripts\governance\check-anti-bloat-budgets.ps1")
       Set-StubScript -Path (Join-Path $tmp "scripts\check-waivers.ps1")
       Set-StubScript -Path (Join-Path $tmp "scripts\governance\check-practice-stack.ps1")
       Set-StubScript -Path (Join-Path $tmp "scripts\status.ps1")
@@ -687,6 +769,7 @@ exit 0
       Set-StubScript -Path (Join-Path $tmp "scripts\validate-config.ps1")
       Set-StubScript -Path (Join-Path $tmp "scripts\check-release-profile-coverage.ps1")
       Set-StubScript -Path (Join-Path $tmp "scripts\verify.ps1") -Message "boom" -ExitCode 1
+      Set-StubScript -Path (Join-Path $tmp "scripts\governance\check-anti-bloat-budgets.ps1")
       Set-StubScript -Path (Join-Path $tmp "scripts\check-waivers.ps1")
       Set-StubScript -Path (Join-Path $tmp "scripts\governance\check-practice-stack.ps1")
       Set-StubScript -Path (Join-Path $tmp "scripts\status.ps1")
@@ -712,6 +795,7 @@ exit 0
       Set-StubScript -Path (Join-Path $tmp "scripts\validate-config.ps1")
       Set-StubScript -Path (Join-Path $tmp "scripts\check-release-profile-coverage.ps1")
       Set-RequireSkipValidationVerifyScript -Path (Join-Path $tmp "scripts\verify.ps1")
+      Set-StubScript -Path (Join-Path $tmp "scripts\governance\check-anti-bloat-budgets.ps1")
       Set-StubScript -Path (Join-Path $tmp "scripts\check-waivers.ps1")
       Set-StubScript -Path (Join-Path $tmp "scripts\governance\check-practice-stack.ps1")
       Set-StubScript -Path (Join-Path $tmp "scripts\status.ps1")
@@ -725,6 +809,71 @@ exit 0
       $obj.health | should be "GREEN"
       @($obj.failed_steps).Count | should be 0
       (@($obj.steps).Count -ge 5) | should be $true
+    } finally {
+      if (Test-Path $tmp) { Remove-Item -LiteralPath $tmp -Recurse -Force }
+    }
+  }
+
+  it "anti-bloat budgets apply mode_limits by token_budget_mode" {
+    $tmp = Join-Path $env:TEMP ("govkit-test-" + [guid]::NewGuid().ToString("N"))
+    try {
+      New-Item -ItemType Directory -Path (Join-Path $tmp "scripts\governance") -Force | Out-Null
+      New-Item -ItemType Directory -Path (Join-Path $tmp ".governance") -Force | Out-Null
+      New-Item -ItemType Directory -Path (Join-Path $tmp "sample") -Force | Out-Null
+
+      Copy-Item -Path (Join-Path $repoRoot "scripts\governance\check-anti-bloat-budgets.ps1") -Destination (Join-Path $tmp "scripts\governance\check-anti-bloat-budgets.ps1") -Force
+
+      $lines = @()
+      for ($i = 1; $i -le 850; $i++) {
+        $lines += ('Write-Host "line-{0}"' -f $i)
+      }
+      ($lines -join "`r`n") | Set-Content -Path (Join-Path $tmp "sample\large.ps1") -Encoding UTF8
+
+      @'
+{
+  "schema_version": "1.0",
+  "enabled": true,
+  "enforce": {
+    "block_on_violation": true
+  },
+  "scope": {
+    "prefer_git_pending": false,
+    "include_untracked": true,
+    "scan_repo_when_no_pending": true,
+    "max_repo_files": 50
+  },
+  "scan": {
+    "include_extensions": [".ps1"],
+    "exclude_paths": ["scripts/governance/"]
+  },
+  "limits": {
+    "max_file_lines": 1000,
+    "max_consecutive_non_empty_lines": 2000,
+    "max_estimated_tokens_per_file": 50000,
+    "max_estimated_tokens_total_pending": 50000,
+    "max_duplicate_line_occurrences": 1000,
+    "chars_per_token": 4
+  },
+  "mode_limits": {
+    "lite": {
+      "max_file_lines": 800
+    },
+    "deep": {
+      "max_file_lines": 1200
+    }
+  }
+}
+'@ | Set-Content -Path (Join-Path $tmp ".governance\anti-bloat-policy.json") -Encoding UTF8
+
+      $liteOutput = & powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $tmp "scripts\governance\check-anti-bloat-budgets.ps1") -RepoRoot $tmp -TokenBudgetMode lite 2>&1 | Out-String
+      $LASTEXITCODE | should be 1
+      $liteOutput | should match "anti_bloat\.token_budget_mode=lite"
+      $liteOutput | should match "VIOLATION\] file_lines"
+
+      $deepOutput = & powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $tmp "scripts\governance\check-anti-bloat-budgets.ps1") -RepoRoot $tmp -TokenBudgetMode deep 2>&1 | Out-String
+      $LASTEXITCODE | should be 0
+      $deepOutput | should match "anti_bloat\.token_budget_mode=deep"
+      $deepOutput | should match "anti_bloat\.health=PASS"
     } finally {
       if (Test-Path $tmp) { Remove-Item -LiteralPath $tmp -Recurse -Force }
     }
@@ -2694,6 +2843,12 @@ param()
 Write-Host "practice stack ok"
 exit 0
 '@ | Set-Content -Path (Join-Path $tmp "scripts\governance\check-practice-stack.ps1") -Encoding UTF8
+
+      @'
+param()
+Write-Host "anti bloat ok"
+exit 0
+'@ | Set-Content -Path (Join-Path $tmp "scripts\governance\check-anti-bloat-budgets.ps1") -Encoding UTF8
 
       @'
 param()

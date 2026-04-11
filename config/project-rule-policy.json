@@ -46,6 +46,7 @@
     },
     {
       "repoName": "governance-kit",
+      "token_budget_mode": "deep",
       "auto_commit_enabled": true,
       "auto_commit_on_checkpoints": [
         "after_backflow",

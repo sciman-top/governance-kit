@@ -149,6 +149,9 @@
 - 默认不纳入“全部”：IDE/agent 本地配置、临时文件、日志、备份、调试残留、缓存与本地运行态目录。
 - `push` 仅推送已存在的 commit 历史，不再次筛选文件；文件筛选必须在 `git add/commit` 前完成。
 - 未跟踪文件仅在被确认为本次任务产物且满足策略时纳入提交；否则保持未跟踪。
+- 测试文件判定：提交前必须执行 `scripts/governance/check-tracked-files.ps1 -Scope pending -AsJson`，读取 `test_file_suggestions`。
+- `suggested_action=ignore`：不得纳入 commit/push；`suggested_action=track`：可纳入；`suggested_action=review_required`：先由外层 AI 明确归类后再继续。
+- 策略阻断：当 `.governance/tracked-files-policy.json` 启用 `block_on_test_file_review_required=true` 时，存在 `review_required` 将直接阻断提交/推送。
 - 执行 `git add -A` 前必须先隔离非本次改动，避免误纳入。
 
 ### C.12 外层 AI 教学执行条款
@@ -189,6 +192,7 @@
 - 三文件同构约束：`A/C/D` 语义一致，仅 `B` 允许平台差异。
 - 规则升级后同步校验版本、日期、承接映射与门禁命令一致性。
 - 平台差异仅在 B 段表达；A/C/D 不承载平台实现细节。
+
 
 
 

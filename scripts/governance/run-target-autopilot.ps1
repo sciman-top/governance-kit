@@ -74,6 +74,83 @@ function Emit-BrowserSessionHint {
   Write-Host "browser_session.attach=agent-browser --cdp 9222 open about:blank"
 }
 
+function Try-RegisterSkillCandidate {
+  param(
+    [Parameter(Mandatory = $true)][string]$RepoPath,
+    [Parameter(Mandatory = $true)][string]$IssueId,
+    [Parameter(Mandatory = $true)][string]$StepName,
+    [Parameter(Mandatory = $true)][string]$CommandText,
+    [Parameter(Mandatory = $true)][string]$LogPath,
+    [Parameter(Mandatory = $true)][string]$FailureReason,
+    [Parameter(Mandatory = $true)][string]$PowerShellPath
+  )
+
+  $registerScript = Join-Path $RepoPath "scripts\governance\register-skill-candidate.ps1"
+  if (-not (Test-Path -LiteralPath $registerScript -PathType Leaf)) {
+    return
+  }
+
+  try {
+    $signature = New-CommandFailureSignature -StepName $StepName -CommandText $CommandText -LogPath $LogPath
+    $args = @(
+      "-NoProfile",
+      "-ExecutionPolicy", "Bypass",
+      "-File", $registerScript,
+      "-IssueSignature", $signature,
+      "-RepoRoot", $RepoPath,
+      "-IssueId", $IssueId,
+      "-StepName", $StepName,
+      "-CommandText", $CommandText,
+      "-FailureReason", $FailureReason,
+      "-EvidenceLink", $LogPath
+    )
+    & $PowerShellPath @args | Out-Null
+    if ($LASTEXITCODE -ne 0) {
+      Write-Host ("[WARN] skill candidate register failed: step={0} exit={1}" -f $StepName, $LASTEXITCODE)
+    } else {
+      Write-Host ("[SKILL_CANDIDATE] step={0} signature={1}" -f $StepName, $signature)
+    }
+  }
+  catch {
+    Write-Host ("[WARN] skill candidate register exception: step={0} error={1}" -f $StepName, $_.Exception.Message)
+  }
+}
+
+function Try-PromoteSkillCandidates {
+  param(
+    [Parameter(Mandatory = $true)][string]$RepoPath,
+    [Parameter(Mandatory = $true)][string]$GovernanceKitRoot,
+    [Parameter(Mandatory = $true)][string]$PowerShellPath
+  )
+
+  $promoteScript = Join-Path $RepoPath "scripts\governance\promote-skill-candidates.ps1"
+  if (-not (Test-Path -LiteralPath $promoteScript -PathType Leaf)) {
+    return
+  }
+
+  try {
+    $args = @(
+      "-NoProfile",
+      "-ExecutionPolicy", "Bypass",
+      "-File", $promoteScript,
+      "-GovernanceKitRoot", $GovernanceKitRoot,
+      "-AsJson"
+    )
+    $raw = & $PowerShellPath @args
+    if ($LASTEXITCODE -ne 0) {
+      Write-Host ("[WARN] skill promotion failed: exit={0}" -f $LASTEXITCODE)
+      return
+    }
+    $text = [string]::Join([Environment]::NewLine, @($raw))
+    if ([string]::IsNullOrWhiteSpace($text)) { return }
+    $result = $text | ConvertFrom-Json
+    Write-Host ("[SKILL_PROMOTION] promoted_count={0} gates_ran={1}" -f [int]$result.promoted_count, [bool]$result.gates_ran)
+  }
+  catch {
+    Write-Host ("[WARN] skill promotion exception: {0}" -f $_.Exception.Message)
+  }
+}
+
 function New-DefaultSubagentTriggerPolicy {
   return [pscustomobject]@{
     schema_version = "1.0"
@@ -373,6 +450,8 @@ for ($cycle = 1; $cycle -le $effectiveMaxCycles; $cycle++) {
       continue
     }
 
+    Try-RegisterSkillCandidate -RepoPath $repoPath -IssueId $IssueId -StepName ([string]$step.name) -CommandText ([string]$step.command) -LogPath ([string]$result.log_path) -FailureReason "gate_failed_first_attempt" -PowerShellPath $psExe
+
     $recovered = $false
     for ($attempt = 1; $attempt -le $effectiveMaxFixAttemptsPerGate; $attempt++) {
       if ($tokenBudgetMode -eq "lite") {
@@ -385,6 +464,7 @@ for ($cycle = 1; $cycle -le $effectiveMaxCycles; $cycle++) {
         $recovered = $true
         break
       }
+      Try-RegisterSkillCandidate -RepoPath $repoPath -IssueId $IssueId -StepName ([string]$step.name) -CommandText ([string]$step.command) -LogPath ([string]$result.log_path) -FailureReason ("gate_retry_failed_attempt_" + $attempt) -PowerShellPath $psExe
       if ($enableNoProgressGuard) {
         $sig = New-CommandFailureSignature -StepName ([string]$step.name) -CommandText ([string]$step.command) -LogPath ([string]$result.log_path)
         if (-not $failureSignatureCounts.ContainsKey($sig)) {
@@ -404,6 +484,7 @@ for ($cycle = 1; $cycle -le $effectiveMaxCycles; $cycle++) {
         Write-Host ("CLARIFICATION_REQUIRED issue_id={0} attempt_count={1} scenario={2}" -f $IssueId, $clarificationState.attempt_count, $clarificationState.scenario)
         Write-Host ("[CLARIFICATION_STATE_JSON] " + ($clarificationState | ConvertTo-Json -Depth 8 -Compress))
       }
+      Try-PromoteSkillCandidates -RepoPath $repoPath -GovernanceKitRoot $kitRoot -PowerShellPath $psExe
       throw "Gate step '$($step.name)' failed. log=$($result.log_path)"
     }
   }
@@ -417,6 +498,7 @@ for ($cycle = 1; $cycle -le $effectiveMaxCycles; $cycle++) {
   }
 }
 
+Try-PromoteSkillCandidates -RepoPath $repoPath -GovernanceKitRoot $kitRoot -PowerShellPath $psExe
 Write-Host "STATUS: ITERATION_COMPLETE_CONTINUE"
 Write-Host "target safe autopilot completed"
 Invoke-ClarificationTracker -TrackerScript $trackerScript -RepoPath $repoPath -IssueId $IssueId -Scenario $effectiveClarificationScenario -Mode "record" -Outcome "success" -PowerShellPath $psExe | Out-Null

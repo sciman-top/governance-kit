@@ -466,6 +466,78 @@ foreach ($repoNorm in $seenRepo) {
   }
 }
 
+$registeredDefaultCustomFiles = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::OrdinalIgnoreCase)
+if ($null -ne $projectCustom.default_layers) {
+  foreach ($layerName in $allowedCustomLayers) {
+    $prop = $projectCustom.default_layers.PSObject.Properties[$layerName]
+    if ($null -eq $prop -or $prop.Value -isnot [System.Array]) { continue }
+    foreach ($f in @($prop.Value)) {
+      $fText = (([string]$f) -replace '\\', '/').TrimStart('/')
+      if (-not [string]::IsNullOrWhiteSpace($fText)) {
+        [void]$registeredDefaultCustomFiles.Add($fText)
+      }
+    }
+  }
+}
+if ($null -eq $projectCustom.default_layers -and $null -ne $projectCustom.default) {
+  foreach ($f in @($projectCustom.default)) {
+    $fText = (([string]$f) -replace '\\', '/').TrimStart('/')
+    if (-not [string]::IsNullOrWhiteSpace($fText)) { [void]$registeredDefaultCustomFiles.Add($fText) }
+  }
+}
+
+$registeredRepoCustomFiles = @{}
+foreach ($entry in $customRepos) {
+  if ($null -eq $entry) { continue }
+  $entryRepoName = [string]$entry.repoName
+  if ([string]::IsNullOrWhiteSpace($entryRepoName)) { continue }
+
+  if (-not $registeredRepoCustomFiles.ContainsKey($entryRepoName)) {
+    $registeredRepoCustomFiles[$entryRepoName] = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::OrdinalIgnoreCase)
+  }
+  foreach ($f in @($entry.files)) {
+    $fText = (([string]$f) -replace '\\', '/').TrimStart('/')
+    if (-not [string]::IsNullOrWhiteSpace($fText)) {
+      [void]$registeredRepoCustomFiles[$entryRepoName].Add($fText)
+    }
+  }
+}
+
+$projectSourceRoot = Join-Path $kitRoot "source\project"
+if (Test-Path -LiteralPath $projectSourceRoot -PathType Container) {
+  $skillSourceFiles = @(
+    Get-ChildItem -Path $projectSourceRoot -Recurse -File -Filter "SKILL.md" -ErrorAction SilentlyContinue |
+    Where-Object {
+      $rel = ($_.FullName.Substring($projectSourceRoot.Length).TrimStart('\') -replace '\\', '/')
+      $rel -match "^[^/]+/custom/(\.agents/skills/|plugins/[^/]+/skills/)"
+    }
+  )
+
+  foreach ($skillFile in $skillSourceFiles) {
+    $rel = ($skillFile.FullName.Substring($projectSourceRoot.Length).TrimStart('\') -replace '\\', '/')
+    if ($rel -notmatch "^([^/]+)/custom/(.+)$") { continue }
+
+    $scopeRepo = [string]$matches[1]
+    $customRel = [string]$matches[2]
+    $registered = $false
+
+    if ($scopeRepo.Equals("_common", [System.StringComparison]::OrdinalIgnoreCase)) {
+      $registered = $registeredDefaultCustomFiles.Contains($customRel)
+    } else {
+      if ($registeredRepoCustomFiles.ContainsKey($scopeRepo)) {
+        $registered = $registeredRepoCustomFiles[$scopeRepo].Contains($customRel)
+      } else {
+        $registered = $false
+      }
+    }
+
+    if (-not $registered) {
+      Write-Host ("[CFG] unregistered skill custom file: {0}/{1}" -f $scopeRepo, $customRel)
+      $fail++
+    }
+  }
+}
+
 $allowProjectRuleRepos = if ($null -eq $projectRulePolicy.allowProjectRulesForRepos) { @() } else { @($projectRulePolicy.allowProjectRulesForRepos) }
 $seenProjectAllowRepo = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::OrdinalIgnoreCase)
 foreach ($ar in $allowProjectRuleRepos) {

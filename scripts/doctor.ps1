@@ -149,15 +149,16 @@ function Get-ClarificationObservability([string]$KitRootPath) {
 }
 
 $steps = @(
-  [pscustomobject]@{ name = "verify-kit"; script = (Join-Path $PSScriptRoot 'verify-kit.ps1'); args = @() },
-  [pscustomobject]@{ name = "validate-config"; script = (Join-Path $PSScriptRoot 'validate-config.ps1'); args = @() },
-  [pscustomobject]@{ name = "release-profile-coverage"; script = (Join-Path $PSScriptRoot 'check-release-profile-coverage.ps1'); args = @() },
-  [pscustomobject]@{ name = "verify-targets"; script = (Join-Path $PSScriptRoot 'verify.ps1'); args = @('-SkipConfigValidation') },
-  [pscustomobject]@{ name = "growth-readiness-report"; script = (Join-Path $PSScriptRoot 'governance\report-growth-readiness.ps1'); args = @() },
-  [pscustomobject]@{ name = "waiver-check"; script = (Join-Path $PSScriptRoot 'check-waivers.ps1'); args = @() },
-  [pscustomobject]@{ name = "practice-stack"; script = (Join-Path $PSScriptRoot 'governance\check-practice-stack.ps1'); args = @("-RepoRoot", $kitRoot) },
-  [pscustomobject]@{ name = "status"; script = (Join-Path $PSScriptRoot 'status.ps1'); args = @() },
-  [pscustomobject]@{ name = "rollout-status"; script = (Join-Path $PSScriptRoot 'rollout-status.ps1'); args = @() }
+  [pscustomobject]@{ name = "verify-kit"; script = (Join-Path $PSScriptRoot 'verify-kit.ps1'); args = @(); required = $false },
+  [pscustomobject]@{ name = "validate-config"; script = (Join-Path $PSScriptRoot 'validate-config.ps1'); args = @(); required = $false },
+  [pscustomobject]@{ name = "release-profile-coverage"; script = (Join-Path $PSScriptRoot 'check-release-profile-coverage.ps1'); args = @(); required = $false },
+  [pscustomobject]@{ name = "verify-targets"; script = (Join-Path $PSScriptRoot 'verify.ps1'); args = @('-SkipConfigValidation'); required = $false },
+  [pscustomobject]@{ name = "anti-bloat-budgets"; script = (Join-Path $PSScriptRoot 'governance\check-anti-bloat-budgets.ps1'); args = @("-RepoRoot", $kitRoot); required = $true },
+  [pscustomobject]@{ name = "growth-readiness-report"; script = (Join-Path $PSScriptRoot 'governance\report-growth-readiness.ps1'); args = @(); required = $false },
+  [pscustomobject]@{ name = "waiver-check"; script = (Join-Path $PSScriptRoot 'check-waivers.ps1'); args = @(); required = $false },
+  [pscustomobject]@{ name = "practice-stack"; script = (Join-Path $PSScriptRoot 'governance\check-practice-stack.ps1'); args = @("-RepoRoot", $kitRoot); required = $false },
+  [pscustomobject]@{ name = "status"; script = (Join-Path $PSScriptRoot 'status.ps1'); args = @(); required = $false },
+  [pscustomobject]@{ name = "rollout-status"; script = (Join-Path $PSScriptRoot 'rollout-status.ps1'); args = @(); required = $false }
 )
 
 $skippedSteps = [System.Collections.Generic.List[string]]::new()
@@ -174,9 +175,23 @@ $failedSteps = [System.Collections.Generic.List[string]]::new()
 
 foreach ($item in $steps) {
   if (-not (Test-Path -LiteralPath $item.script -PathType Leaf)) {
-    [void]$skippedSteps.Add($item.name)
-    if (-not $AsJson) {
-      Write-Host ("[SKIP] {0} (script not found: {1})" -f $item.name, $item.script)
+    if ($item.required) {
+      [void]$failedSteps.Add($item.name)
+      [void]$stepResults.Add([pscustomobject]@{
+        step = $item.name
+        status = "FAIL"
+        duration_ms = 0
+        error = ("required script not found: {0}" -f $item.script)
+        output = $null
+      })
+      if (-not $AsJson) {
+        Write-Host ("[FAIL] {0} (required script not found: {1})" -f $item.name, $item.script)
+      }
+    } else {
+      [void]$skippedSteps.Add($item.name)
+      if (-not $AsJson) {
+        Write-Host ("[SKIP] {0} (script not found: {1})" -f $item.name, $item.script)
+      }
     }
     continue
   }

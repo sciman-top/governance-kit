@@ -1,0 +1,50 @@
+﻿{
+    "schema_version":  "1.0",
+    "promoted":  [
+                     {
+                         "issue_signature":  "autopilot-utf8-smoke-20260411",
+                         "skill_name":  "custom-auto-autopilot-utf8-smoke-20260411",
+                         "promoted_at":  "2026-04-11T15:31:46.0635145+08:00",
+                         "hit_count":  6,
+                         "repos":  [
+                                       "E:/CODE/skills-manager"
+                                   ]
+                     },
+                     {
+                         "issue_signature":  "pwsh-encoding-mojibake-loop-20260411-a",
+                         "skill_name":  "custom-auto-pwsh-encoding-mojibake-loop-20260411",
+                         "promoted_at":  "2026-04-11T15:31:46.0635145+08:00",
+                         "hit_count":  3,
+                         "repos":  [
+                                       "E:/CODE/skills-manager"
+                                   ]
+                     },
+                     {
+                         "issue_signature":  "pwsh-encoding-mojibake-loop-20260411-b",
+                         "skill_name":  "custom-auto-pwsh-encoding-mojibake-loop-20260411",
+                         "promoted_at":  "2026-04-11T15:32:43.5565416+08:00",
+                         "hit_count":  3,
+                         "repos":  [
+                                       "E:/CODE/skills-manager"
+                                   ]
+                     },
+                     {
+                         "issue_signature":  "pwsh-encoding-mojibake-loop-20260411-c",
+                         "skill_name":  "custom-auto-pwsh-encoding-mojibake-loop-20260411",
+                         "promoted_at":  "2026-04-11T15:33:08.7894156+08:00",
+                         "hit_count":  3,
+                         "repos":  [
+                                       "E:/CODE/skills-manager"
+                                   ]
+                     },
+                     {
+                         "issue_signature":  "pwsh-encoding-mojibake-loop-20260411-d",
+                         "skill_name":  "custom-auto-pwsh-encoding-mojibake-l-d3bde4eb",
+                         "promoted_at":  "2026-04-11T15:48:02.5516943+08:00",
+                         "hit_count":  3,
+                         "repos":  [
+                                       "E:/CODE/skills-manager"
+                                   ]
+                     }
+                 ]
+}

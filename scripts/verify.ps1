@@ -191,4 +191,17 @@ if (-not (Test-Path -LiteralPath $growthScript -PathType Leaf)) {
   }
 }
 
-if ($fail -gt 0 -or $policyFail -gt 0 -or $trackedFilesFail -gt 0 -or $growthFail -gt 0) { exit 1 }
+$antiBloatFail = 0
+$antiBloatScript = Join-Path $PSScriptRoot "governance\check-anti-bloat-budgets.ps1"
+if (-not (Test-Path -LiteralPath $antiBloatScript -PathType Leaf)) {
+  Write-Host "[ANTI-BLOAT] skip: script not found"
+} else {
+  try {
+    Invoke-ChildScript -ScriptPath $antiBloatScript -ScriptArgs @("-PolicyOnly")
+  } catch {
+    Write-Host ("[ANTI-BLOAT] policy validation failed: " + $_.Exception.Message)
+    $antiBloatFail++
+  }
+}
+
+if ($fail -gt 0 -or $policyFail -gt 0 -or $trackedFilesFail -gt 0 -or $growthFail -gt 0 -or $antiBloatFail -gt 0) { exit 1 }

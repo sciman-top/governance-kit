@@ -75,6 +75,9 @@
 - 默认不纳入“全部”：IDE/agent 本地配置、临时文件、日志、备份、调试残留、缓存与本地运行态目录。
 - `push` 仅推送 commit 历史，不再次筛选文件；文件筛选必须在 `git add/commit` 前完成。
 - 未跟踪文件仅在被确认为本次任务产物且满足策略时纳入提交；否则保持未跟踪。
+- 测试文件判定：提交前必须执行 `scripts/governance/check-tracked-files.ps1 -Scope pending -AsJson`，读取 `test_file_suggestions`。
+- `suggested_action=ignore`：不得纳入 commit/push；`suggested_action=track`：可纳入；`suggested_action=review_required`：先由外层 AI 明确归类后再继续。
+- 策略阻断：当 `.governance/tracked-files-policy.json` 启用 `block_on_test_file_review_required=true` 时，存在 `review_required` 将直接阻断提交/推送。
 
 ### C.5 治理问题优先修复顺序
 - 发现治理链路（规则/脚本/配置）问题时，先修 governance-kit source of truth，再执行目标仓命令。
@@ -90,4 +93,5 @@
 - A/C/D 三文件同构，仅 B 允许平台差异。
 - 文档精简优先，删除不改变语义的重复描述。
 - 规则更新后同步校验版本、日期、映射与门禁命令一致性。
+
 
