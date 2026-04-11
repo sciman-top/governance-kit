@@ -1151,6 +1151,93 @@ Fixture body.
     }
   }
 
+  it "collect-governance-metrics fills update triggers and external baseline fields when scripts are available" {
+    $tmp = Join-Path $env:TEMP ("govkit-test-" + [guid]::NewGuid().ToString("N"))
+    $repo = Join-Path $tmp "repo"
+    try {
+      New-Item -ItemType Directory -Path (Join-Path $tmp "scripts\lib") -Force | Out-Null
+      New-Item -ItemType Directory -Path (Join-Path $tmp "scripts\governance") -Force | Out-Null
+      New-Item -ItemType Directory -Path (Join-Path $tmp "source\global") -Force | Out-Null
+      New-Item -ItemType Directory -Path (Join-Path $tmp "config") -Force | Out-Null
+      New-Item -ItemType Directory -Path (Join-Path $repo ".governance") -Force | Out-Null
+      New-Item -ItemType Directory -Path (Join-Path $repo "scripts\governance") -Force | Out-Null
+      New-Item -ItemType Directory -Path $repo -Force | Out-Null
+
+      Copy-Item -Path (Join-Path $repoRoot "scripts\collect-governance-metrics.ps1") -Destination (Join-Path $tmp "scripts\collect-governance-metrics.ps1") -Force
+      Copy-Item -Path (Join-Path $repoRoot "scripts\lib\common.ps1") -Destination (Join-Path $tmp "scripts\lib\common.ps1") -Force
+
+      @($repo) | ConvertTo-Json -Depth 3 | Set-Content -Path (Join-Path $tmp "config\repositories.json") -Encoding UTF8
+
+      @"
+# AGENTS
+**Version**: 7.77
+**Last Updated**: 2026-03-30
+"@ | Set-Content -Path (Join-Path $tmp "source\global\AGENTS.md") -Encoding UTF8
+
+      @'
+{
+  "schema_version": "1.0",
+  "default": {
+    "ssdf": "recommended",
+    "slsa": "recommended",
+    "sbom": "recommended",
+    "scorecard": "recommended"
+  },
+  "repos": [
+    {
+      "repoName": "repo",
+      "practices": {
+        "ssdf": true,
+        "slsa": true,
+        "sbom": false,
+        "scorecard": true
+      }
+    }
+  ]
+}
+'@ | Set-Content -Path (Join-Path $repo ".governance\practice-stack-policy.json") -Encoding UTF8
+
+      @'
+param([string]$RepoRoot=".", [switch]$AsJson)
+Write-Output (@{
+  schema_version = "1.0"
+  status = "ALERT"
+  alert_count = 2
+} | ConvertTo-Json -Depth 6)
+exit 1
+'@ | Set-Content -Path (Join-Path $repo "scripts\governance\check-update-triggers.ps1") -Encoding UTF8
+
+      @'
+param([string]$RepoRoot=".", [switch]$AsJson)
+Write-Output (@{
+  schema_version = "1.0"
+  status = "ADVISORY"
+  summary = @{
+    advisory_count = 4
+    warn_count = 0
+  }
+} | ConvertTo-Json -Depth 6)
+exit 0
+'@ | Set-Content -Path (Join-Path $repo "scripts\governance\check-external-baselines.ps1") -Encoding UTF8
+
+      $output = & powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $tmp "scripts\collect-governance-metrics.ps1") 2>&1 | Out-String
+      if ($LASTEXITCODE -ne 0) { throw "collect-governance-metrics failed with exit code $LASTEXITCODE" }
+      $output | should match "collect-governance-metrics done"
+
+      $metrics = Get-Content -Raw (Join-Path $repo "docs\governance\metrics-auto.md")
+      $metrics | should match "update_trigger_alert_count=2"
+      $metrics | should match "practice_stack_ssdf_enabled_rate=75\.00%"
+      $metrics | should match "practice_stack_slsa_enabled_rate=75\.00%"
+      $metrics | should match "practice_stack_sbom_enabled_rate=75\.00%"
+      $metrics | should match "practice_stack_scorecard_enabled_rate=75\.00%"
+      $metrics | should match "external_baseline_status=ADVISORY"
+      $metrics | should match "external_baseline_advisory_count=4"
+      $metrics | should match "external_baseline_warn_count=0"
+    } finally {
+      if (Test-Path $tmp) { Remove-Item -LiteralPath $tmp -Recurse -Force }
+    }
+  }
+
   it "add-repo prefers repo-scoped project rule sources when available" {
     $tmp = Join-Path $env:TEMP ("govkit-test-" + [guid]::NewGuid().ToString("N"))
     $repo = Join-Path $tmp "FakeRepo"

@@ -4,10 +4,139 @@ $reposPath = Join-Path $kitRoot "config\repositories.json"
 $globalAgents = Join-Path $kitRoot "source\global\AGENTS.md"
 $commonPath = Join-Path $PSScriptRoot "lib\common.ps1"
 . $commonPath
+Assert-Command -Name powershell
+$psExe = Get-CurrentPowerShellPath
 
 function Format-Rate([int]$Numerator, [int]$Denominator) {
   if ($Denominator -le 0) { return "N/A" }
   return ("{0:P2}" -f ($Numerator / [double]$Denominator))
+}
+
+function Find-RepoPolicyEntry {
+  param(
+    [object[]]$Entries,
+    [string]$RepoName
+  )
+  foreach ($entry in @($Entries)) {
+    if ($null -eq $entry) { continue }
+    $entryName = [string]$entry.repoName
+    if ($entryName.Equals($RepoName, [System.StringComparison]::OrdinalIgnoreCase)) {
+      return $entry
+    }
+  }
+  return $null
+}
+
+function Parse-JsonFromCommandOutput {
+  param([string]$RawText)
+  if ([string]::IsNullOrWhiteSpace($RawText)) { return $null }
+  try {
+    return ($RawText | ConvertFrom-Json)
+  } catch {
+    $start = $RawText.IndexOf("{")
+    $end = $RawText.LastIndexOf("}")
+    if ($start -ge 0 -and $end -ge $start) {
+      try {
+        return ($RawText.Substring($start, $end - $start + 1) | ConvertFrom-Json)
+      } catch {
+        return $null
+      }
+    }
+  }
+  return $null
+}
+
+function Invoke-JsonScriptSafe {
+  param(
+    [string]$ScriptPath,
+    [string[]]$Args = @()
+  )
+
+  if (-not (Test-Path -LiteralPath $ScriptPath -PathType Leaf)) {
+    return [pscustomobject]@{
+      found = $false
+      exit_code = -1
+      parsed = $null
+      raw = ""
+    }
+  }
+
+  $captured = & $psExe -NoProfile -ExecutionPolicy Bypass -File $ScriptPath @Args 2>&1
+  $exitCode = $LASTEXITCODE
+  $rawText = [string]::Join([Environment]::NewLine, @($captured))
+  return [pscustomobject]@{
+    found = $true
+    exit_code = [int]$exitCode
+    parsed = Parse-JsonFromCommandOutput -RawText $rawText
+    raw = $rawText
+  }
+}
+
+function Get-PracticeStackEnableRates {
+  param(
+    [string]$RepoWin,
+    [string]$RepoName
+  )
+
+  $policyPathCandidates = @(
+    (Join-Path $RepoWin ".governance\practice-stack-policy.json"),
+    (Join-Path $RepoWin "config\practice-stack-policy.json")
+  )
+  $policyPath = $null
+  foreach ($candidate in $policyPathCandidates) {
+    if (Test-Path -LiteralPath $candidate -PathType Leaf) {
+      $policyPath = $candidate
+      break
+    }
+  }
+
+  if ($null -eq $policyPath) {
+    return [pscustomobject]@{
+      ssdf = "N/A"
+      slsa = "N/A"
+      sbom = "N/A"
+      scorecard = "N/A"
+    }
+  }
+
+  $policy = $null
+  try {
+    $policy = Read-JsonFile -Path $policyPath -DisplayName $policyPath
+  } catch {
+    $policy = $null
+  }
+  if ($null -eq $policy) {
+    return [pscustomobject]@{
+      ssdf = "N/A"
+      slsa = "N/A"
+      sbom = "N/A"
+      scorecard = "N/A"
+    }
+  }
+
+  $repoEntry = Find-RepoPolicyEntry -Entries @($policy.repos) -RepoName $RepoName
+  $repoPractices = if ($null -ne $repoEntry) { $repoEntry.practices } else { $null }
+  $practiceKeys = @("ssdf", "slsa", "sbom", "scorecard")
+  $enabledCount = 0
+  foreach ($key in $practiceKeys) {
+    $enabled = $true
+    if ($null -ne $repoPractices -and $null -ne $repoPractices.PSObject.Properties[$key]) {
+      $raw = $repoPractices.$key
+      if ($raw -is [bool]) {
+        $enabled = [bool]$raw
+      } else {
+        $enabled = $false
+      }
+    }
+    if ($enabled) { $enabledCount++ }
+  }
+  $rate = Format-Rate $enabledCount $practiceKeys.Count
+  return [pscustomobject]@{
+    ssdf = $rate
+    slsa = $rate
+    sbom = $rate
+    scorecard = $rate
+  }
 }
 
 $ruleVersion = "unknown"
@@ -80,6 +209,67 @@ foreach ($repoRaw in $repos) {
   $overdueRate = Format-Rate $waiverExpiredUnrecovered $waiverFiles.Count
   $evidenceRate = Format-Rate $completeEvidence $totalEvidence
   $learningLoopRate = Format-Rate $learningLoopCompleteEvidence $totalEvidence
+  $repoName = Split-Path -Leaf $repoWin
+  $practiceRates = Get-PracticeStackEnableRates -RepoWin $repoWin -RepoName $repoName
+
+  $updateTriggerAlertCount = "N/A"
+  $updateTriggerScript = Join-Path $repoWin "scripts\governance\check-update-triggers.ps1"
+  $triggerResult = Invoke-JsonScriptSafe -ScriptPath $updateTriggerScript -Args @("-RepoRoot", $repoWin, "-AsJson")
+  if ($null -ne $triggerResult.parsed -and $null -ne $triggerResult.parsed.PSObject.Properties['alert_count']) {
+    $updateTriggerAlertCount = [string]([int]$triggerResult.parsed.alert_count)
+  } else {
+    $m = [regex]::Match([string]$triggerResult.raw, '"alert_count"\s*:\s*([0-9]+)')
+    if (-not $m.Success) {
+      $m = [regex]::Match([string]$triggerResult.raw, '(?m)^alert_count=([0-9]+)\s*$')
+    }
+    if ($m.Success) {
+      $updateTriggerAlertCount = [string]([int]$m.Groups[1].Value)
+    }
+  }
+
+  $externalBaselineStatus = "N/A"
+  $externalBaselineAdvisoryCount = "N/A"
+  $externalBaselineWarnCount = "N/A"
+  $externalBaselineScript = Join-Path $repoWin "scripts\governance\check-external-baselines.ps1"
+  $externalResult = Invoke-JsonScriptSafe -ScriptPath $externalBaselineScript -Args @("-RepoRoot", $repoWin, "-AsJson")
+  if ($null -ne $externalResult.parsed) {
+    if ($null -ne $externalResult.parsed.PSObject.Properties['status']) {
+      $externalBaselineStatus = [string]$externalResult.parsed.status
+    }
+    if ($null -ne $externalResult.parsed.summary) {
+      if ($null -ne $externalResult.parsed.summary.PSObject.Properties['advisory_count']) {
+        $externalBaselineAdvisoryCount = [string]([int]$externalResult.parsed.summary.advisory_count)
+      }
+      if ($null -ne $externalResult.parsed.summary.PSObject.Properties['warn_count']) {
+        $externalBaselineWarnCount = [string]([int]$externalResult.parsed.summary.warn_count)
+      }
+    }
+  } else {
+    $statusMatch = [regex]::Match([string]$externalResult.raw, '"status"\s*:\s*"([A-Z_]+)"')
+    if (-not $statusMatch.Success) {
+      $statusMatch = [regex]::Match([string]$externalResult.raw, '(?m)^status=([A-Z_]+)\s*$')
+    }
+    if ($statusMatch.Success) {
+      $externalBaselineStatus = [string]$statusMatch.Groups[1].Value
+    }
+
+    $advisoryMatch = [regex]::Match([string]$externalResult.raw, '"advisory_count"\s*:\s*([0-9]+)')
+    if (-not $advisoryMatch.Success) {
+      $advisoryMatch = [regex]::Match([string]$externalResult.raw, '(?m)^advisory_count=([0-9]+)\s*$')
+    }
+    if ($advisoryMatch.Success) {
+      $externalBaselineAdvisoryCount = [string]([int]$advisoryMatch.Groups[1].Value)
+    }
+
+    $warnMatch = [regex]::Match([string]$externalResult.raw, '"warn_count"\s*:\s*([0-9]+)')
+    if (-not $warnMatch.Success) {
+      $warnMatch = [regex]::Match([string]$externalResult.raw, '(?m)^warn_count=([0-9]+)\s*$')
+    }
+    if ($warnMatch.Success) {
+      $externalBaselineWarnCount = [string]([int]$warnMatch.Groups[1].Value)
+    }
+  }
+
   $metricsDir = Join-Path $repoWin "docs\governance"
   if (!(Test-Path $metricsDir)) {
     try {
@@ -102,7 +292,17 @@ foreach ($repoRaw in $repos) {
     "learning_loop_evidence_rate=$learningLoopRate"
     "waiver_active_count=$waiverActive"
     "waiver_expired_unrecovered_count=$waiverExpiredUnrecovered"
-    "update_trigger_alert_count=N/A"
+    "update_trigger_alert_count=$updateTriggerAlertCount"
+    "practice_stack_ssdf_enabled_rate=$($practiceRates.ssdf)"
+    "practice_stack_slsa_enabled_rate=$($practiceRates.slsa)"
+    "practice_stack_sbom_enabled_rate=$($practiceRates.sbom)"
+    "practice_stack_scorecard_enabled_rate=$($practiceRates.scorecard)"
+    "supply_chain_sbom_validation_pass_rate=N/A"
+    "slsa_target_level=N/A"
+    "scorecard_average=N/A"
+    "external_baseline_status=$externalBaselineStatus"
+    "external_baseline_advisory_count=$externalBaselineAdvisoryCount"
+    "external_baseline_warn_count=$externalBaselineWarnCount"
     "notes=auto-generated by governance-kit/scripts/collect-governance-metrics.ps1"
   ) -join "`r`n"
 
