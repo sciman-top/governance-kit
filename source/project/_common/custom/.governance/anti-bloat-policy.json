@@ -91,6 +91,15 @@
           "max_estimated_tokens_total_pending": 90000
         }
       }
+    },
+    {
+      "repoName": "governance-kit",
+      "mode_limits": {
+        "deep": {
+          "max_file_lines": 1250,
+          "max_estimated_tokens_per_file": 14000
+        }
+      }
     }
   ]
 }

@@ -117,7 +117,11 @@ foreach ($fileName in @("AGENTS.md", "CLAUDE.md", "GEMINI.md")) {
     continue
   }
 
-  [void]$desired.Add([pscustomobject]@{ source = $projectSource; target = "$repo/$fileName" })
+  [void]$desired.Add([pscustomobject]@{
+    source = $projectSource
+    target = "$repo/$fileName"
+    boundary_class = Get-ExpectedBoundaryClass -Source $projectSource
+  })
 }
 
 $customFiles = @(Get-ProjectCustomFilesForRepo -KitRoot $kitRoot -RepoPath $repo -RepoName $repoName)
@@ -134,6 +138,7 @@ foreach ($customRelRaw in $customFiles) {
   [void]$desired.Add([pscustomobject]@{
     source = $customSourceRel
     target = "$repo/$customRel"
+    boundary_class = Get-ExpectedBoundaryClass -Source $customSourceRel
   })
 }
 
@@ -157,16 +162,21 @@ $updated = 0
 foreach ($d in @($desired)) {
   $sameTarget = @($targets | Where-Object { $_.target -eq $d.target })
   if ($sameTarget.Count -gt 0) {
-    $exact = @($sameTarget | Where-Object { $_.source -eq $d.source })
+    $exact = @($sameTarget | Where-Object {
+      $bcProp = $_.PSObject.Properties['boundary_class']
+      $bc = if ($null -eq $bcProp) { "" } else { [string]$bcProp.Value }
+      $_.source -eq $d.source -and $bc -eq [string]$d.boundary_class
+    })
     if ($exact.Count -gt 0) {
       continue
     }
 
     if ($Mode -eq "plan") {
-      Write-Host "[PLAN] UPDATE target source: $($sameTarget[0].source) -> $($d.source) | target=$($d.target)"
+      Write-Host "[PLAN] UPDATE target mapping: source=$($sameTarget[0].source) -> $($d.source) boundary_class=$($d.boundary_class) | target=$($d.target)"
     } else {
       $sameTarget[0].source = $d.source
-      Write-Host "[UPDATED] target source: $($d.source) -> $($d.target)"
+      $sameTarget[0] | Add-Member -NotePropertyName boundary_class -NotePropertyValue $d.boundary_class -Force
+      Write-Host "[UPDATED] target mapping: source=$($d.source) boundary_class=$($d.boundary_class) -> $($d.target)"
     }
     $updated++
     continue

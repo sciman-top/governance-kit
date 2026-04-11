@@ -192,6 +192,40 @@ describe "governance-kit optimization guardrails" {
     (Test-Path $commonPath) | should be $true
   }
 
+  it "classifies the three approved global user-level targets" {
+    . (Join-Path $repoRoot "scripts\lib\common.ps1")
+
+    $approved = @(
+      "C:/Users/sciman/.codex/AGENTS.md",
+      "C:/Users/sciman/.claude/CLAUDE.md",
+      "C:/Users/sciman/.gemini/GEMINI.md"
+    )
+
+    foreach ($target in $approved) {
+      (Test-AllowedGlobalUserTarget -Target $target) | should be $true
+      (Get-BoundaryTargetLayer -Target $target -RepoRoots @((Normalize-Repo $repoRoot))) | should be "global-user"
+    }
+  }
+
+  it "rejects unexpected global user-level targets" {
+    . (Join-Path $repoRoot "scripts\lib\common.ps1")
+
+    (Test-AllowedGlobalUserTarget -Target "C:/Users/sciman/.codex/README.md") | should be $false
+    $check = Get-BoundaryMappingCheck -Source "source/global/AGENTS.md" -Target "C:/Users/sciman/.codex/README.md" -RepoRoots @((Normalize-Repo $repoRoot))
+    $check.allowed | should be $false
+    $check.source_layer | should be "global"
+    $check.target_layer | should be "global-user"
+  }
+
+  it "treats shared templates as project-layer distributions" {
+    . (Join-Path $repoRoot "scripts\lib\common.ps1")
+
+    $check = Get-BoundaryMappingCheck -Source "source/project/_common/custom/scripts/governance/check-tracked-files.ps1" -Target (Join-Path $repoRoot "scripts\governance\check-tracked-files.ps1") -RepoRoots @((Normalize-Repo $repoRoot))
+    $check.allowed | should be $true
+    $check.source_layer | should be "shared-template"
+    $check.target_layer | should be "project"
+  }
+
   it "install force mode ignores no-overwrite switches" {
     $tmp = Join-Path $env:TEMP ("govkit-test-" + [guid]::NewGuid().ToString("N"))
     try {
@@ -357,13 +391,15 @@ exit 0
 
       Set-StubScript -Path (Join-Path $tmp "scripts\verify.ps1") -Message "ok" -ExitCode 0
 
-      $src = Join-Path $tmp "source\AGENTS.md"
+      New-Item -ItemType Directory -Path (Join-Path $tmp "source\project\governance-kit") -Force | Out-Null
+
+      $src = Join-Path $tmp "source\project\governance-kit\AGENTS.md"
       $dst = Join-Path $tmp "target\AGENTS.md"
       Set-Content -Path $src -Value "new-content" -Encoding UTF8
       Set-Content -Path $dst -Value "old-content" -Encoding UTF8
 
-      @(@{ source = "source/AGENTS.md"; target = $dst }) | ConvertTo-Json -Depth 4 | Set-Content -Path (Join-Path $tmp "config\targets.json") -Encoding UTF8
-      @((Join-Path $tmp "RepoA")) | ConvertTo-Json -Depth 3 | Set-Content -Path (Join-Path $tmp "config\repositories.json") -Encoding UTF8
+      @(@{ source = "source/project/governance-kit/AGENTS.md"; target = $dst }) | ConvertTo-Json -Depth 4 | Set-Content -Path (Join-Path $tmp "config\targets.json") -Encoding UTF8
+      @($tmp) | ConvertTo-Json -Depth 3 | Set-Content -Path (Join-Path $tmp "config\repositories.json") -Encoding UTF8
 
       $output = & powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $tmp "scripts\install.ps1") -Mode safe -NoBackup -FullCycle 2>&1 | Out-String
       if ($LASTEXITCODE -ne 0) { throw "install.ps1 full-cycle failed with exit code $LASTEXITCODE" }

@@ -1,7 +1,7 @@
 ﻿{
     "version":  1,
     "tool":  "governance-kit",
-    "updated_at":  "2026-04-11T22:30:17",
+    "updated_at":  "2026-04-11T23:59:26",
     "managed_count":  67,
     "managed_files":  [
                           {
@@ -57,7 +57,7 @@
                           {
                               "path":  ".governance/anti-bloat-policy.json",
                               "source":  "source/project/_common/custom/.governance/anti-bloat-policy.json",
-                              "sha256":  "8C776F4C1F264CF821FC1D6E08957893A29A6C4AB9D86AB4BD1766BA4E99D706"
+                              "sha256":  "716F0508B28F222F5963DD0275540CDFD28FADAB18510F0E4610B977548969C1"
                           },
                           {
                               "path":  ".governance/external-baseline-policy.json",
@@ -307,7 +307,7 @@
                           {
                               "path":  "scripts/governance/run-recurring-review.ps1",
                               "source":  "source/project/governance-kit/custom/scripts/governance/run-recurring-review.ps1",
-                              "sha256":  "08392939A3B604AAE3365D748F293A88B3150D640E276F80E9C23CAE5F503651"
+                              "sha256":  "FB9322964A3DA7119998654793A9E3F8AAB0700AFB81A1EDC6500CF1494F7D3B"
                           },
                           {
                               "path":  "scripts/governance/run-target-autopilot.ps1",

@@ -1,17 +1,14 @@
-﻿$ErrorActionPreference = "Stop"
-
+$ErrorActionPreference = "Stop"
 if (-not (Get-Variable -Name JsonFileCache -Scope Script -ErrorAction SilentlyContinue)) {
   $script:JsonFileCache = @{}
 }
 if (-not (Get-Variable -Name FileHashCache -Scope Script -ErrorAction SilentlyContinue)) {
   $script:FileHashCache = @{}
 }
-
 function Get-FileCacheStamp([string]$Path) {
   $fileInfo = Get-Item -LiteralPath $Path -ErrorAction Stop
   return ($fileInfo.Length.ToString() + ":" + $fileInfo.LastWriteTimeUtc.Ticks.ToString())
 }
-
 function Read-JsonFile {
   param(
     [Parameter(Mandatory = $true)]
@@ -20,46 +17,60 @@ function Read-JsonFile {
     [switch]$UseCache,
     [string]$DisplayName = ""
   )
-
   if ([string]::IsNullOrWhiteSpace($Path)) {
     throw "Path is required for Read-JsonFile."
   }
   if (-not (Test-Path -LiteralPath $Path -PathType Leaf)) {
     return $DefaultValue
   }
-
   $fullPath = [System.IO.Path]::GetFullPath($Path)
   $cacheKey = $fullPath.ToLowerInvariant()
   $stamp = Get-FileCacheStamp -Path $fullPath
-
   if ($UseCache -and $script:JsonFileCache.ContainsKey($cacheKey)) {
     $cached = $script:JsonFileCache[$cacheKey]
     if ($null -ne $cached -and $cached.PSObject.Properties['stamp'] -and [string]$cached.stamp -eq $stamp) {
       return $cached.value
     }
   }
-
   $label = if ([string]::IsNullOrWhiteSpace($DisplayName)) { $fullPath } else { $DisplayName }
+  $value = $null
+  $parsed = $false
+  $rawCandidates = New-Object System.Collections.Generic.List[string]
+  $utf8Strict = New-Object System.Text.UTF8Encoding($false, $true)
   try {
-    $value = Get-Content -LiteralPath $fullPath -Raw | ConvertFrom-Json
-  } catch {
+    $rawUtf8 = [System.IO.File]::ReadAllText($fullPath, $utf8Strict)
+    if ($null -ne $rawUtf8) { $rawCandidates.Add([string]$rawUtf8) }
+  } catch {}
+  try {
+    $rawDefault = [System.IO.File]::ReadAllText($fullPath)
+    if ($null -ne $rawDefault) { $rawCandidates.Add([string]$rawDefault) }
+  } catch {}
+  try {
+    $rawContent = Get-Content -LiteralPath $fullPath -Raw
+    if ($null -ne $rawContent) { $rawCandidates.Add([string]$rawContent) }
+  } catch {}
+  foreach ($raw in $rawCandidates) {
+    if ([string]::IsNullOrWhiteSpace($raw)) { continue }
+    try {
+      $value = $raw | ConvertFrom-Json
+      $parsed = $true
+      break
+    } catch {}
+  }
+  if (-not $parsed) {
     throw "$label invalid JSON: $fullPath"
   }
-
   if ($UseCache) {
     $script:JsonFileCache[$cacheKey] = [pscustomobject]@{
       stamp = $stamp
       value = $value
     }
   }
-
   if ($null -eq $value) {
     return $DefaultValue
   }
-
   return $value
 }
-
 function Read-JsonArray([string]$Path) {
   $raw = Read-JsonFile -Path $Path -DefaultValue @() -UseCache
   if ($null -eq $raw) { return @() }
@@ -67,7 +78,6 @@ function Read-JsonArray([string]$Path) {
   if ($raw.PSObject -and $raw.PSObject.Properties['value']) { return @($raw.value) }
   return @($raw)
 }
-
 function Write-JsonArray([string]$Path, [object[]]$Items, [int]$Depth=6) {
   $json = @($Items) | ConvertTo-Json -Depth $Depth
   $jsonTrim = $json.TrimStart()
@@ -76,17 +86,14 @@ function Write-JsonArray([string]$Path, [object[]]$Items, [int]$Depth=6) {
   }
   Set-Content -Path $Path -Value $json -Encoding UTF8
 }
-
 function Read-Utf8NoBom([string]$Path) {
   $enc = New-Object System.Text.UTF8Encoding($false)
   return [System.IO.File]::ReadAllText($Path, $enc)
 }
-
 function Write-Utf8NoBom([string]$Path, [string]$Content) {
   $enc = New-Object System.Text.UTF8Encoding($false)
   [System.IO.File]::WriteAllText($Path, $Content, $enc)
 }
-
 function Test-FileHasUtf8Bom([string]$Path) {
   if ([string]::IsNullOrWhiteSpace($Path)) { return $false }
   if (-not (Test-Path -LiteralPath $Path -PathType Leaf)) { return $false }
@@ -94,7 +101,6 @@ function Test-FileHasUtf8Bom([string]$Path) {
   if ($bytes.Length -lt 3) { return $false }
   return ($bytes[0] -eq 0xEF -and $bytes[1] -eq 0xBB -and $bytes[2] -eq 0xBF)
 }
-
 function Read-SkillMarkdownNormalized([string]$Path) {
   if ([string]::IsNullOrWhiteSpace($Path)) { return "" }
   if (-not (Test-Path -LiteralPath $Path -PathType Leaf)) { return "" }
@@ -102,7 +108,6 @@ function Read-SkillMarkdownNormalized([string]$Path) {
   if ($null -eq $raw) { return "" }
   return $raw.TrimStart([char]0xFEFF)
 }
-
 function Write-SkillMarkdownNormalized([string]$Path, [string]$Content) {
   if ([string]::IsNullOrWhiteSpace($Path)) {
     throw "Path is required for Write-SkillMarkdownNormalized."
@@ -110,7 +115,6 @@ function Write-SkillMarkdownNormalized([string]$Path, [string]$Content) {
   $normalized = if ($null -eq $Content) { "" } else { $Content.TrimStart([char]0xFEFF) }
   Write-Utf8NoBom -Path $Path -Content $normalized
 }
-
 function Invoke-CommandCapture {
   param(
     [Parameter(Mandatory = $true)]
@@ -118,18 +122,16 @@ function Invoke-CommandCapture {
     [int]$HeadLines = 20,
     [switch]$IncludeTimestamp
   )
-
   $output = $null
   $exitCode = 0
   try {
-    $output = Invoke-Expression $Command 2>&1 | Out-String
+    $output = & powershell -NoProfile -ExecutionPolicy Bypass -Command $Command 2>&1 | Out-String
     $exitCode = $LASTEXITCODE
     if ($null -eq $exitCode) { $exitCode = 0 }
   } catch {
     $output = $_.Exception.Message
     $exitCode = 1
   }
-
   $lines = @()
   if (-not [string]::IsNullOrWhiteSpace($output)) {
     $lines = @(
@@ -138,7 +140,6 @@ function Invoke-CommandCapture {
       Select-Object -First $HeadLines
     )
   }
-
   $result = [ordered]@{
     cmd = $Command
     exit_code = [int]$exitCode
@@ -149,18 +150,14 @@ function Invoke-CommandCapture {
   if ($IncludeTimestamp) {
     $result.timestamp = (Get-Date).ToString("o")
   }
-
   return [pscustomobject]$result
 }
-
 function Assert-Command {
   param([Parameter(Mandatory = $true)][string]$Name)
-
   if (-not (Get-Command $Name -ErrorAction SilentlyContinue)) {
     throw "Required command not found: $Name"
   }
 }
-
 function Invoke-LoggedCommand {
   param(
     [Parameter(Mandatory = $true)][string]$Name,
@@ -168,14 +165,11 @@ function Invoke-LoggedCommand {
     [Parameter(Mandatory = $true)][string]$WorkDir,
     [Parameter(Mandatory = $true)][string]$LogRoot
   )
-
   if (-not (Test-Path -LiteralPath $LogRoot -PathType Container)) {
     New-Item -ItemType Directory -Force -Path $LogRoot | Out-Null
   }
-
   $safeName = ($Name -replace '[^a-zA-Z0-9._-]', '_')
   $logPath = Join-Path $LogRoot ((Get-Date -Format "yyyyMMdd-HHmmss") + "-" + $safeName + ".log")
-
   Push-Location $WorkDir
   try {
     & $Action *>&1 | Tee-Object -LiteralPath $logPath | Out-Host
@@ -183,23 +177,19 @@ function Invoke-LoggedCommand {
   } finally {
     Pop-Location
   }
-
   if ($null -eq $exitCode) { $exitCode = 0 }
-
   return [pscustomobject]@{
     name = $Name
     exit_code = [int]$exitCode
     log_path = $logPath
   }
 }
-
 function Write-RepoAutomationPolicySummary {
   param(
     [Parameter(Mandatory = $true)]
     [psobject]$Policy,
     [string]$Prefix = "[POLICY]"
   )
-
   Write-Host ("{0} allow_project_rules={1} allow_rule_optimization={2} allow_local_optimize_without_backflow={3} max_autonomous_iterations={4} max_repeated_failure_per_step={5} stop_on_irreversible_risk={6} allow_auto_fix={7} forbid_breaking_contract={8} enable_no_progress_guard={9} max_no_progress_iterations={10} token_budget_mode={11}" -f `
     $Prefix,
     $Policy.allow_project_rules,
@@ -214,7 +204,6 @@ function Write-RepoAutomationPolicySummary {
     $Policy.max_no_progress_iterations,
     $Policy.token_budget_mode)
 }
-
 function Get-FileSha256([string]$Path) {
   if ([string]::IsNullOrWhiteSpace($Path)) {
     throw "Path is required for Get-FileSha256."
@@ -222,7 +211,6 @@ function Get-FileSha256([string]$Path) {
   if (!(Test-Path -LiteralPath $Path -PathType Leaf)) {
     throw "File not found: $Path"
   }
-
   $fullPath = [System.IO.Path]::GetFullPath($Path)
   $cacheKey = $fullPath.ToLowerInvariant()
   $cacheStamp = Get-FileCacheStamp -Path $fullPath
@@ -232,7 +220,6 @@ function Get-FileSha256([string]$Path) {
       return [string]$cached.hash
     }
   }
-
   $hashCmd = Get-Command -Name "Get-FileHash" -ErrorAction SilentlyContinue
   $hash = $null
   if ($null -ne $hashCmd) {
@@ -243,7 +230,6 @@ function Get-FileSha256([string]$Path) {
     }
     return $hash
   }
-
   $stream = $null
   $sha256 = $null
   try {
@@ -265,25 +251,20 @@ function Get-FileSha256([string]$Path) {
     }
   }
 }
-
 function Get-CommandLogSignature {
   param([string]$LogPath)
-
   if ([string]::IsNullOrWhiteSpace($LogPath) -or -not (Test-Path -LiteralPath $LogPath -PathType Leaf)) {
     return "log:none"
   }
-
   $raw = ""
   try {
     $raw = Get-Content -LiteralPath $LogPath -Raw -ErrorAction Stop
   } catch {
     return "log:read-error"
   }
-
   if ([string]::IsNullOrWhiteSpace($raw)) {
     return "log:empty"
   }
-
   $lines = @(
     $raw -split "`r?`n" |
     ForEach-Object { ([string]$_).Trim() } |
@@ -293,7 +274,6 @@ function Get-CommandLogSignature {
   if ($lines.Count -eq 0) {
     return "log:empty-lines"
   }
-
   $text = [string]::Join(" | ", $lines)
   $bytes = [System.Text.Encoding]::UTF8.GetBytes($text)
   $sha = [System.Security.Cryptography.SHA256]::Create()
@@ -304,14 +284,12 @@ function Get-CommandLogSignature {
     $sha.Dispose()
   }
 }
-
 function New-CommandFailureSignature {
   param(
     [Parameter(Mandatory = $true)][string]$StepName,
     [Parameter(Mandatory = $true)][string]$CommandText,
     [Parameter(Mandatory = $true)][string]$LogPath
   )
-
   $logSignature = Get-CommandLogSignature -LogPath $LogPath
   $payload = ("step={0}|cmd={1}|{2}" -f $StepName, $CommandText, $logSignature)
   $bytes = [System.Text.Encoding]::UTF8.GetBytes($payload)
@@ -323,28 +301,23 @@ function New-CommandFailureSignature {
     $sha.Dispose()
   }
 }
-
 function Test-FileContentEqual([string]$PathA, [string]$PathB) {
   if ([string]::IsNullOrWhiteSpace($PathA) -or [string]::IsNullOrWhiteSpace($PathB)) {
     throw "Both file paths are required for Test-FileContentEqual."
   }
   if (-not (Test-Path -LiteralPath $PathA -PathType Leaf)) { return $false }
   if (-not (Test-Path -LiteralPath $PathB -PathType Leaf)) { return $false }
-
   $a = Get-Item -LiteralPath $PathA -ErrorAction Stop
   $b = Get-Item -LiteralPath $PathB -ErrorAction Stop
   if ($a.Length -ne $b.Length) { return $false }
   if ($a.Length -eq 0) { return $true }
-
   $hashA = Get-FileSha256 -Path $a.FullName
   $hashB = Get-FileSha256 -Path $b.FullName
   return $hashA -eq $hashB
 }
-
 function Normalize-Repo([string]$Path) {
   return ([System.IO.Path]::GetFullPath(($Path -replace '/', '\')) -replace '\\','/').TrimEnd('/')
 }
-
 function Get-RelativePathSafe([string]$BasePath, [string]$TargetPath) {
   $base = [System.IO.Path]::GetFullPath($BasePath).TrimEnd('\')
   $target = [System.IO.Path]::GetFullPath($TargetPath)
@@ -353,7 +326,6 @@ function Get-RelativePathSafe([string]$BasePath, [string]$TargetPath) {
   }
   return $target -replace '\\', '/'
 }
-
 function Is-ProjectRuleSource([string]$Source) {
   $s = ([string]$Source -replace '\\', '/')
   if (-not $s.StartsWith("source/project/", [System.StringComparison]::OrdinalIgnoreCase)) {
@@ -366,12 +338,175 @@ function Is-ProjectRuleSource([string]$Source) {
   }
   return $true
 }
-
+function Get-BoundarySourceLayer([string]$Source) {
+  $s = ([string]$Source -replace '\\', '/')
+  if ($s.StartsWith("source/global/", [System.StringComparison]::OrdinalIgnoreCase)) {
+    return "global"
+  }
+  if ($s.StartsWith("source/project/_common/", [System.StringComparison]::OrdinalIgnoreCase)) {
+    return "shared-template"
+  }
+  if ($s.StartsWith("source/project/", [System.StringComparison]::OrdinalIgnoreCase)) {
+    return "project"
+  }
+  return "unknown"
+}
+function Get-ExpectedBoundaryClass([string]$Source) {
+  $sourceLayer = Get-BoundarySourceLayer -Source $Source
+  switch ($sourceLayer) {
+    "global" { return "global-user" }
+    "project" { return "project" }
+    "shared-template" { return "shared-template" }
+    default { return "unknown" }
+  }
+}
+function Test-BoundaryClassValue([string]$BoundaryClass) {
+  $v = ([string]$BoundaryClass).Trim().ToLowerInvariant()
+  return ($v -eq "global-user" -or $v -eq "project" -or $v -eq "shared-template")
+}
+function Get-BoundaryTargetLayer([string]$Target, [string[]]$RepoRoots) {
+  $t = ([string]$Target -replace '\\', '/')
+  if ($t -match '^C:/Users/[^/]+/\.(codex|claude|gemini)/') {
+    return "global-user"
+  }
+  foreach ($root in @($RepoRoots)) {
+    if ([string]::IsNullOrWhiteSpace([string]$root)) { continue }
+    $rootNorm = (Normalize-Repo ([string]$root)) + "/"
+    if ($t.StartsWith($rootNorm, [System.StringComparison]::OrdinalIgnoreCase) -or $t.Equals((Normalize-Repo ([string]$root)), [System.StringComparison]::OrdinalIgnoreCase)) {
+      return "project"
+    }
+  }
+  return "external"
+}
+function Test-AllowedGlobalUserTarget([string]$Target) {
+  $t = ([string]$Target -replace '\\', '/')
+  return ($t -match '^C:/Users/[^/]+/\.(codex|claude|gemini)/(AGENTS|CLAUDE|GEMINI)\.md$')
+}
+function Read-TargetRepoRoots([string]$KitRoot) {
+  $reposPath = Join-Path $KitRoot "config\repositories.json"
+  if (-not (Test-Path -LiteralPath $reposPath -PathType Leaf)) {
+    return @()
+  }
+  try {
+    $repos = @(Read-JsonArray $reposPath)
+  } catch {
+    throw "repositories.json invalid JSON: $reposPath"
+  }
+  $normalized = @()
+  foreach ($repo in $repos) {
+    if ([string]::IsNullOrWhiteSpace([string]$repo)) { continue }
+    $normalized += Normalize-Repo ([string]$repo)
+  }
+  return @($normalized)
+}
+function Get-BoundaryMappingCheck {
+  param(
+    [Parameter(Mandatory = $true)][string]$Source,
+    [Parameter(Mandatory = $true)][string]$Target,
+    [Parameter(Mandatory = $true)][string[]]$RepoRoots
+  )
+  $sourceLayer = Get-BoundarySourceLayer -Source $Source
+  $targetLayer = Get-BoundaryTargetLayer -Target $Target -RepoRoots $RepoRoots
+  $allowed = $false
+  $reason = ""
+  switch ($sourceLayer) {
+    "global" {
+      if ($targetLayer -eq "global-user" -and (Test-AllowedGlobalUserTarget -Target $Target)) {
+        $allowed = $true
+        $reason = "global source -> allowed global-user target"
+      } else {
+        $reason = "global source must map to one of the approved global-user targets"
+      }
+    }
+    "shared-template" {
+      if ($targetLayer -eq "project") {
+        $allowed = $true
+        $reason = "shared template -> project target"
+      } else {
+        $reason = "shared template must map to project targets only"
+      }
+    }
+    "project" {
+      if ($targetLayer -eq "project") {
+        $allowed = $true
+        $reason = "project source -> project target"
+      } else {
+        $reason = "project source must map to project targets only"
+      }
+    }
+    default {
+      $reason = "unknown source layer"
+    }
+  }
+  return [pscustomobject]@{
+    source_layer = $sourceLayer
+    target_layer = $targetLayer
+    allowed = [bool]$allowed
+    reason = [string]$reason
+  }
+}
+function Test-TargetsConfigEntries {
+  param(
+    [Parameter(Mandatory = $true)][array]$Targets,
+    [Parameter(Mandatory = $true)][AllowEmptyCollection()][string[]]$RepoRoots,
+    [bool]$EnforceBoundary = $true,
+    [bool]$EnforceBoundaryClass = $false
+  )
+  $cfgFail = 0
+  $seenTargets = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::OrdinalIgnoreCase)
+  foreach ($item in $Targets) {
+    if ($null -eq $item -or [string]::IsNullOrWhiteSpace([string]$item.source) -or [string]::IsNullOrWhiteSpace([string]$item.target)) {
+      Write-Host "[CFG] invalid entry (missing source/target)"
+      $cfgFail++
+      continue
+    }
+    if ([System.IO.Path]::IsPathRooted([string]$item.source)) {
+      Write-Host "[CFG] source must be relative path: $($item.source)"
+      $cfgFail++
+      continue
+    }
+    if (-not [System.IO.Path]::IsPathRooted(([string]$item.target -replace '/', '\'))) {
+      Write-Host "[CFG] target must be absolute path: $($item.target)"
+      $cfgFail++
+      continue
+    }
+    $normTarget = [System.IO.Path]::GetFullPath(([string]$item.target -replace '/', '\'))
+    if (-not $seenTargets.Add($normTarget)) {
+      Write-Host "[CFG] duplicate target path: $normTarget"
+      $cfgFail++
+    }
+    $expectedBoundaryClass = Get-ExpectedBoundaryClass -Source ([string]$item.source)
+    $boundaryClassProp = $item.PSObject.Properties['boundary_class']
+    $boundaryClassText = if ($null -eq $boundaryClassProp) { "" } else { ([string]$boundaryClassProp.Value).Trim().ToLowerInvariant() }
+    if ($EnforceBoundaryClass -and $expectedBoundaryClass -eq "unknown") {
+      Write-Host "[CFG] unknown source layer for boundary classification: source=$($item.source) target=$($item.target)"
+      $cfgFail++
+    } elseif ($EnforceBoundaryClass) {
+      if ([string]::IsNullOrWhiteSpace($boundaryClassText)) {
+        Write-Host "[CFG] missing boundary_class: source=$($item.source) target=$($item.target)"
+        $cfgFail++
+      } elseif (-not (Test-BoundaryClassValue -BoundaryClass $boundaryClassText)) {
+        Write-Host "[CFG] invalid boundary_class: expected one of global-user/project/shared-template source=$($item.source) target=$($item.target) actual=$boundaryClassText"
+        $cfgFail++
+      } elseif ($boundaryClassText -ne $expectedBoundaryClass) {
+        Write-Host "[CFG] boundary_class mismatch: source=$($item.source) target=$($item.target) expected=$expectedBoundaryClass actual=$boundaryClassText"
+        $cfgFail++
+      }
+    }
+    if ($EnforceBoundary) {
+      $boundaryCheck = Get-BoundaryMappingCheck -Source ([string]$item.source) -Target ([string]$item.target) -RepoRoots $RepoRoots
+      if (-not $boundaryCheck.allowed) {
+        Write-Host ("[CFG] boundary violation: source={0} target={1} reason={2} source_layer={3} target_layer={4}" -f $item.source, $item.target, $boundaryCheck.reason, $boundaryCheck.source_layer, $boundaryCheck.target_layer)
+        $cfgFail++
+      }
+    }
+  }
+  return [int]$cfgFail
+}
 function Get-RepoName([string]$RepoPath) {
   $repoNorm = Normalize-Repo $RepoPath
   return Split-Path -Leaf $repoNorm
 }
-
 function Get-ProjectRuleSourceForRepo([string]$KitRoot, [string]$RepoPath, [string]$FileName) {
   $repoName = Get-RepoName $RepoPath
   $repoScopedRel = "source/project/$repoName/$FileName"
@@ -379,39 +514,31 @@ function Get-ProjectRuleSourceForRepo([string]$KitRoot, [string]$RepoPath, [stri
   if (Test-Path $repoScopedAbs) {
     return $repoScopedRel
   }
-
   $legacyRel = "source/project/$FileName"
   $legacyAbs = Join-Path $KitRoot ($legacyRel -replace '/', '\')
   if (Test-Path $legacyAbs) {
     return $legacyRel
   }
-
   $templateRel = Get-DefaultProjectRuleTemplateSource -KitRoot $KitRoot -FileName $FileName
   if ($null -ne $templateRel) {
     return $templateRel
   }
-
   return $null
 }
-
 function Get-DefaultProjectRuleTemplateSource([string]$KitRoot, [string]$FileName) {
   if ([string]::IsNullOrWhiteSpace($FileName)) {
     return $null
   }
-
   $templateRel = "source/template/project/$FileName"
   $templateAbs = Join-Path $KitRoot ($templateRel -replace '/', '\')
   if (Test-Path -LiteralPath $templateAbs -PathType Leaf) {
     return $templateRel
   }
-
   return $null
 }
-
 function Get-ProjectRulePolicyPath([string]$KitRoot) {
   return Join-Path $KitRoot "config\project-rule-policy.json"
 }
-
 function Read-ProjectRulePolicy([string]$KitRoot) {
   $path = Get-ProjectRulePolicyPath $KitRoot
   $defaultPolicy = [pscustomobject]@{
@@ -433,13 +560,10 @@ function Read-ProjectRulePolicy([string]$KitRoot) {
     }
     repos = @()
   }
-
   $policy = Read-JsonFile -Path $path -DefaultValue $null -UseCache -DisplayName "project-rule-policy.json"
-
   if ($null -eq $policy) {
     return $defaultPolicy
   }
-
   if ($null -eq $policy.PSObject.Properties['allowProjectRulesForRepos']) {
     $policy | Add-Member -NotePropertyName allowProjectRulesForRepos -NotePropertyValue @()
   }
@@ -488,10 +612,8 @@ function Read-ProjectRulePolicy([string]$KitRoot) {
   if ($null -eq $policy.PSObject.Properties['repos']) {
     $policy | Add-Member -NotePropertyName repos -NotePropertyValue @()
   }
-
   return $policy
 }
-
 function Read-ProjectRuleAllowRepos([string]$KitRoot) {
   $policy = Read-ProjectRulePolicy $KitRoot
   if ($null -eq $policy.allowProjectRulesForRepos) { return @() }
@@ -504,7 +626,6 @@ function Read-ProjectRuleAllowRepos([string]$KitRoot) {
   }
   return $normalized
 }
-
 function Is-RepoAllowedForProjectRules([string]$Repo, [string[]]$AllowRepos) {
   $repoNorm = Normalize-Repo $Repo
   foreach ($r in $AllowRepos) {
@@ -514,7 +635,6 @@ function Is-RepoAllowedForProjectRules([string]$Repo, [string[]]$AllowRepos) {
   }
   return $false
 }
-
 function Get-RepoAutomationPolicy([string]$KitRoot, [string]$Repo) {
   $repoNorm = Normalize-Repo $Repo
   $policy = Read-ProjectRulePolicy $KitRoot
@@ -527,7 +647,6 @@ function Get-RepoAutomationPolicy([string]$KitRoot, [string]$Repo) {
     }
   }
   $allowProjectRules = Is-RepoAllowedForProjectRules -Repo $repoNorm -AllowRepos $allowRepos
-
   $effectiveAllowAutoFix = [bool]$policy.defaults.allow_auto_fix
   $effectiveAllowRuleOptimization = [bool]$policy.defaults.allow_rule_optimization
   $effectiveAllowLocalOptimizeWithoutBackflow = [bool]$policy.defaults.allow_local_optimize_without_backflow
@@ -541,10 +660,8 @@ function Get-RepoAutomationPolicy([string]$KitRoot, [string]$Repo) {
   $effectiveAutoCommitEnabled = [bool]$policy.defaults.auto_commit_enabled
   $effectiveAutoCommitOnCheckpoints = @($policy.defaults.auto_commit_on_checkpoints)
   $effectiveAutoCommitMessagePrefix = [string]$policy.defaults.auto_commit_message_prefix
-
   foreach ($entry in @($policy.repos)) {
     if ($null -eq $entry) { continue }
-
     $entryMatch = $false
     if ($entry.PSObject.Properties['repo'] -and -not [string]::IsNullOrWhiteSpace([string]$entry.repo)) {
       $entryRepoNorm = Normalize-Repo ([string]$entry.repo)
@@ -559,7 +676,6 @@ function Get-RepoAutomationPolicy([string]$KitRoot, [string]$Repo) {
       }
     }
     if (-not $entryMatch) { continue }
-
     if ($entry.PSObject.Properties['allow_auto_fix']) {
       $effectiveAllowAutoFix = [bool]$entry.allow_auto_fix
     }
@@ -600,7 +716,6 @@ function Get-RepoAutomationPolicy([string]$KitRoot, [string]$Repo) {
       $effectiveAutoCommitMessagePrefix = [string]$entry.auto_commit_message_prefix
     }
   }
-
   return [pscustomobject]@{
     repo = $repoNorm
     allow_project_rules = [bool]$allowProjectRules
@@ -619,20 +734,15 @@ function Get-RepoAutomationPolicy([string]$KitRoot, [string]$Repo) {
     auto_commit_message_prefix = [string]$effectiveAutoCommitMessagePrefix
   }
 }
-
 function Get-ProjectCustomFilesForRepo([string]$KitRoot, [string]$RepoPath, [string]$RepoName) {
   $configPath = Join-Path $KitRoot "config\project-custom-files.json"
   $cfg = Read-JsonFile -Path $configPath -DefaultValue $null -UseCache -DisplayName "project-custom-files.json"
   if ($null -eq $cfg) { return @() }
-
   $repoNorm = Normalize-Repo $RepoPath
   $repoLeaf = if ([string]::IsNullOrWhiteSpace($RepoName)) { Get-RepoName $RepoPath } else { $RepoName }
-
   $files = [System.Collections.Generic.List[string]]::new()
-
   $policyPath = Join-Path $KitRoot "config\oneclick-distribution-policy.json"
   $distributionPolicy = Read-JsonFile -Path $policyPath -DefaultValue $null -UseCache -DisplayName "oneclick-distribution-policy.json"
-
   function Add-CustomFiles([System.Collections.Generic.List[string]]$Target, [object[]]$Items) {
     foreach ($f in @($Items)) {
       if (-not [string]::IsNullOrWhiteSpace([string]$f)) {
@@ -640,7 +750,6 @@ function Get-ProjectCustomFilesForRepo([string]$KitRoot, [string]$RepoPath, [str
       }
     }
   }
-
   $activeDefaultLayers = @("core", "default")
   if ($null -ne $distributionPolicy -and $null -ne $distributionPolicy.project_custom_files) {
     $policyProjectCustom = $distributionPolicy.project_custom_files
@@ -657,7 +766,6 @@ function Get-ProjectCustomFilesForRepo([string]$KitRoot, [string]$RepoPath, [str
         $activeDefaultLayers = @($candidateLayers | Select-Object -Unique)
       }
     }
-
     foreach ($entry in @($policyProjectCustom.repos)) {
       if ($null -eq $entry) { continue }
       $match = $false
@@ -673,7 +781,6 @@ function Get-ProjectCustomFilesForRepo([string]$KitRoot, [string]$RepoPath, [str
         }
       }
       if (-not $match) { continue }
-
       if ($entry.PSObject.Properties['active_layers']) {
         $repoLayers = @()
         foreach ($layer in @($entry.active_layers)) {
@@ -689,7 +796,6 @@ function Get-ProjectCustomFilesForRepo([string]$KitRoot, [string]$RepoPath, [str
       }
     }
   }
-
   $loadedLayeredDefaults = $false
   if ($null -ne $cfg.default_layers) {
     foreach ($layer in $activeDefaultLayers) {
@@ -700,15 +806,12 @@ function Get-ProjectCustomFilesForRepo([string]$KitRoot, [string]$RepoPath, [str
       }
     }
   }
-
   if (-not $loadedLayeredDefaults -and $null -ne $cfg.default) {
     Add-CustomFiles -Target $files -Items @($cfg.default)
   }
-
   if ($null -ne $cfg.repos) {
     foreach ($entry in @($cfg.repos)) {
       if ($null -eq $entry) { continue }
-
       $match = $false
       if ($entry.PSObject.Properties['repo'] -and -not [string]::IsNullOrWhiteSpace([string]$entry.repo)) {
         $entryRepoNorm = Normalize-Repo ([string]$entry.repo)
@@ -722,25 +825,21 @@ function Get-ProjectCustomFilesForRepo([string]$KitRoot, [string]$RepoPath, [str
         }
       }
       if (-not $match) { continue }
-
       Add-CustomFiles -Target $files -Items @($entry.files)
     }
   }
-
   $growthPackFiles = @(Get-GrowthPackFilesForRepo -KitRoot $KitRoot -RepoPath $RepoPath -RepoName $repoLeaf)
   foreach ($f in $growthPackFiles) {
     if (-not [string]::IsNullOrWhiteSpace([string]$f)) {
       [void]$files.Add(([string]$f -replace '\\', '/').TrimStart('/'))
     }
   }
-
   $codexRuntimeFiles = @(Get-CodexRuntimeFilesForRepo -KitRoot $KitRoot -RepoPath $RepoPath -RepoName $repoLeaf)
   foreach ($f in $codexRuntimeFiles) {
     if (-not [string]::IsNullOrWhiteSpace([string]$f)) {
       [void]$files.Add(([string]$f -replace '\\', '/').TrimStart('/'))
     }
   }
-
   $unique = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::OrdinalIgnoreCase)
   $ordered = [System.Collections.Generic.List[string]]::new()
   foreach ($f in $files) {
@@ -748,32 +847,25 @@ function Get-ProjectCustomFilesForRepo([string]$KitRoot, [string]$RepoPath, [str
       [void]$ordered.Add($f)
     }
   }
-
   return @($ordered)
 }
-
 function Get-GrowthPackFilesForRepo([string]$KitRoot, [string]$RepoPath, [string]$RepoName) {
   $policyPath = Join-Path $KitRoot "config\growth-pack-policy.json"
   $policy = Read-JsonFile -Path $policyPath -DefaultValue $null -UseCache -DisplayName "growth-pack-policy.json"
   if ($null -eq $policy) { return @() }
-
   $enabled = $false
   if ($null -ne $policy.PSObject.Properties['enabled']) {
     $enabled = [bool]$policy.enabled
   }
   if (-not $enabled) { return @() }
-
   $repoNorm = Normalize-Repo $RepoPath
   $repoLeaf = if ([string]::IsNullOrWhiteSpace($RepoName)) { Get-RepoName $RepoPath } else { [string]$RepoName }
-
   $tier = "starter"
   if ($null -ne $policy.PSObject.Properties['default_tier'] -and -not [string]::IsNullOrWhiteSpace([string]$policy.default_tier)) {
     $tier = ([string]$policy.default_tier).Trim().ToLowerInvariant()
   }
-
   foreach ($entry in @($policy.repo_overrides)) {
     if ($null -eq $entry) { continue }
-
     $match = $false
     if ($entry.PSObject.Properties['repo'] -and -not [string]::IsNullOrWhiteSpace([string]$entry.repo)) {
       $entryRepoNorm = Normalize-Repo ([string]$entry.repo)
@@ -787,7 +879,6 @@ function Get-GrowthPackFilesForRepo([string]$KitRoot, [string]$RepoPath, [string
       }
     }
     if (-not $match) { continue }
-
     if ($entry.PSObject.Properties['enabled']) {
       $enabled = [bool]$entry.enabled
     }
@@ -795,40 +886,30 @@ function Get-GrowthPackFilesForRepo([string]$KitRoot, [string]$RepoPath, [string
       $tier = ([string]$entry.tier).Trim().ToLowerInvariant()
     }
   }
-
   if (-not $enabled) { return @() }
   if ($null -eq $policy.PSObject.Properties['tiers'] -or $null -eq $policy.tiers) { return @() }
-
   $tierProp = $policy.tiers.PSObject.Properties[$tier]
   if ($null -eq $tierProp -or $null -eq $tierProp.Value) { return @() }
-
   $files = [System.Collections.Generic.List[string]]::new()
   foreach ($f in @($tierProp.Value)) {
     if (-not [string]::IsNullOrWhiteSpace([string]$f)) {
       [void]$files.Add(([string]$f -replace '\\', '/').TrimStart('/'))
     }
   }
-
   return @($files.ToArray())
 }
-
 function Get-CodexRuntimeFilesForRepo([string]$KitRoot, [string]$RepoPath, [string]$RepoName) {
   $policyPath = Join-Path $KitRoot "config\codex-runtime-policy.json"
   $policy = Read-JsonFile -Path $policyPath -DefaultValue $null -UseCache -DisplayName "codex-runtime-policy.json"
-
   if ($null -eq $policy) { return @() }
-
   $enabled = $false
   if ($null -ne $policy.PSObject.Properties['enabled_by_default']) {
     $enabled = [bool]$policy.enabled_by_default
   }
-
   $repoNorm = Normalize-Repo $RepoPath
   $repoLeaf = if ([string]::IsNullOrWhiteSpace($RepoName)) { Get-RepoName $RepoPath } else { [string]$RepoName }
-
   foreach ($entry in @($policy.repos)) {
     if ($null -eq $entry) { continue }
-
     $match = $false
     if ($entry.PSObject.Properties['repo'] -and -not [string]::IsNullOrWhiteSpace([string]$entry.repo)) {
       $entryRepoNorm = Normalize-Repo ([string]$entry.repo)
@@ -842,33 +923,26 @@ function Get-CodexRuntimeFilesForRepo([string]$KitRoot, [string]$RepoPath, [stri
       }
     }
     if (-not $match) { continue }
-
     if ($entry.PSObject.Properties['enabled']) {
       $enabled = [bool]$entry.enabled
     }
   }
-
   if (-not $enabled) { return @() }
   if ($null -eq $policy.PSObject.Properties['default_files'] -or $null -eq $policy.default_files) { return @() }
-
   $files = [System.Collections.Generic.List[string]]::new()
   foreach ($f in @($policy.default_files)) {
     if (-not [string]::IsNullOrWhiteSpace([string]$f)) {
       [void]$files.Add(([string]$f -replace '\\', '/').TrimStart('/'))
     }
   }
-
   return @($files.ToArray())
 }
-
 function Get-ProjectCustomSourceForRepo([string]$KitRoot, [string]$RepoName, [string]$CustomRelativePath) {
   if ([string]::IsNullOrWhiteSpace($CustomRelativePath)) {
     return $null
   }
-
   $customRel = ([string]$CustomRelativePath -replace '\\', '/').TrimStart('/')
   $repoNameSafe = if ([string]::IsNullOrWhiteSpace($RepoName)) { "" } else { [string]$RepoName }
-
   $repoScopedRel = if ([string]::IsNullOrWhiteSpace($repoNameSafe)) { $null } else { "source/project/$repoNameSafe/custom/$customRel" }
   if (-not [string]::IsNullOrWhiteSpace($repoScopedRel)) {
     $repoScopedAbs = Join-Path $KitRoot ($repoScopedRel -replace '/', '\')
@@ -876,16 +950,13 @@ function Get-ProjectCustomSourceForRepo([string]$KitRoot, [string]$RepoName, [st
       return $repoScopedRel
     }
   }
-
   $commonRel = "source/project/_common/custom/$customRel"
   $commonAbs = Join-Path $KitRoot ($commonRel -replace '/', '\')
   if (Test-Path -LiteralPath $commonAbs -PathType Leaf) {
     return $commonRel
   }
-
   return $null
 }
-
 function Parse-KeyValueFile([string]$Path) {
   $map = @{}
   foreach ($line in (Get-Content -Path $Path)) {
@@ -897,7 +968,6 @@ function Parse-KeyValueFile([string]$Path) {
   }
   return $map
 }
-
 function Parse-IsoDate([string]$Text) {
   if ([string]::IsNullOrWhiteSpace($Text)) { return $null }
   try {
@@ -911,17 +981,14 @@ function Parse-IsoDate([string]$Text) {
     return $null
   }
 }
-
 function Get-ReleaseDistributionPolicy {
   param(
     [Parameter(Mandatory = $true)]
     [string]$KitRoot
   )
-
   $path = Join-Path $KitRoot "config\release-distribution-policy.json"
   return Read-JsonFile -Path $path -DefaultValue $null -UseCache -DisplayName "release-distribution-policy.json"
 }
-
 function Get-ReleaseDistributionPolicyForRepo {
   param(
     [object]$Policy,
@@ -929,9 +996,7 @@ function Get-ReleaseDistributionPolicyForRepo {
     [string]$RepoName,
     [switch]$FallbackToDefault
   )
-
   if ($null -eq $Policy) { return $null }
-
   if ($null -ne $Policy.PSObject.Properties['repos'] -and $null -ne $Policy.repos) {
     $repoEntry = @($Policy.repos | Where-Object {
       $_ -ne $null -and
@@ -940,30 +1005,24 @@ function Get-ReleaseDistributionPolicyForRepo {
     } | Select-Object -First 1)[0]
     if ($null -ne $repoEntry) { return $repoEntry }
   }
-
   if ($FallbackToDefault -and $null -ne $Policy.PSObject.Properties['default']) {
     return $Policy.default
   }
-
   return $null
 }
-
 function Resolve-EffectiveClarificationScenario {
   param(
     [string]$RequestedScenario = "auto",
     [string]$ContextFile = "",
     [string]$CurrentMode = ""
   )
-
   $validScenarios = @("plan", "requirement", "bugfix", "acceptance")
-
   if ($RequestedScenario -ne "auto" -and -not [string]::IsNullOrWhiteSpace($RequestedScenario) -and $validScenarios -contains $RequestedScenario) {
     return [pscustomobject]@{
       scenario = $RequestedScenario
       source = "param"
     }
   }
-
   if (-not [string]::IsNullOrWhiteSpace($ContextFile) -and (Test-Path -LiteralPath $ContextFile)) {
     try {
       $ctx = Read-JsonFile -Path $ContextFile -DisplayName "clarification context"
@@ -983,20 +1042,17 @@ function Resolve-EffectiveClarificationScenario {
       Write-Host ("[WARN] clarification context parse failed: {0}" -f $ContextFile)
     }
   }
-
   if ($CurrentMode -eq "plan") {
     return [pscustomobject]@{
       scenario = "plan"
       source = "mode"
     }
   }
-
   return [pscustomobject]@{
     scenario = "bugfix"
     source = "fallback"
   }
 }
-
 function Invoke-ClarificationTracker {
   param(
     [Parameter(Mandatory = $true)][string]$TrackerScript,
@@ -1008,7 +1064,6 @@ function Invoke-ClarificationTracker {
     [string]$Reason = "",
     [string]$PowerShellPath = ""
   )
-
   if ([string]::IsNullOrWhiteSpace($PowerShellPath)) {
     $PowerShellPath = Get-CurrentPowerShellPath
   }
@@ -1018,7 +1073,6 @@ function Invoke-ClarificationTracker {
   if (-not (Get-Command -Name $PowerShellPath -ErrorAction SilentlyContinue)) {
     throw "PowerShell command not found: $PowerShellPath"
   }
-
   $args = @(
     "-NoProfile",
     "-ExecutionPolicy", "Bypass",
@@ -1034,7 +1088,6 @@ function Invoke-ClarificationTracker {
   if (-not [string]::IsNullOrWhiteSpace($Reason)) {
     $args += @("-Reason", $Reason)
   }
-
   $json = & $PowerShellPath @args
   if ($LASTEXITCODE -ne 0) {
     throw "clarification tracker failed with exit code $LASTEXITCODE"
@@ -1043,14 +1096,12 @@ function Invoke-ClarificationTracker {
   if ([string]::IsNullOrWhiteSpace($jsonText)) {
     throw "clarification tracker returned empty output"
   }
-
   try {
     return $jsonText | ConvertFrom-Json
   } catch {
     throw "clarification tracker returned invalid JSON"
   }
 }
-
 function Get-RuleDocMetadata([string]$Path) {
   if (!(Test-Path $Path)) {
     return [pscustomobject]@{
@@ -1058,19 +1109,16 @@ function Get-RuleDocMetadata([string]$Path) {
       last_update = $null
     }
   }
-
   $text = Get-Content -Path $Path -Raw
   # Match markdown metadata lines like: **版本**: 9.31 or **Version**: 9.31
   $versionMatch = [regex]::Match($text, "(?m)^\*\*.+?\*+:\s*([0-9]+\.[0-9]+)\s*$")
   # Match markdown metadata lines like: **最后更新**: 2026-03-30
   $dateMatch = [regex]::Match($text, "(?m)^\*\*.+?\*+:\s*([0-9]{4}-[0-9]{2}-[0-9]{2})\s*$")
-
   return [pscustomobject]@{
     version = if ($versionMatch.Success) { $versionMatch.Groups[1].Value } else { $null }
     last_update = if ($dateMatch.Success) { $dateMatch.Groups[1].Value } else { $null }
   }
 }
-
 function New-ScriptLock([string]$KitRoot, [string]$LockName, [int]$TimeoutSeconds = 120) {
   if ([string]::IsNullOrWhiteSpace($KitRoot)) {
     throw "KitRoot is required for New-ScriptLock."
@@ -1081,12 +1129,10 @@ function New-ScriptLock([string]$KitRoot, [string]$LockName, [int]$TimeoutSecond
   if ($TimeoutSeconds -lt 1) {
     throw "TimeoutSeconds must be >= 1."
   }
-
   $lockDir = Join-Path $KitRoot ".locks"
   if (!(Test-Path -LiteralPath $lockDir)) {
     New-Item -ItemType Directory -Path $lockDir -Force | Out-Null
   }
-
   $lockPath = Join-Path $lockDir ($LockName + ".lock")
   $deadline = (Get-Date).AddSeconds($TimeoutSeconds)
   do {
@@ -1111,10 +1157,8 @@ function New-ScriptLock([string]$KitRoot, [string]$LockName, [int]$TimeoutSecond
       Start-Sleep -Milliseconds 200
     }
   } while ((Get-Date) -lt $deadline)
-
   throw "Failed to acquire script lock '$LockName' within ${TimeoutSeconds}s: $lockPath"
 }
-
 function Release-ScriptLock([object]$LockHandle) {
   if ($null -eq $LockHandle) { return }
   if ($LockHandle.PSObject.Properties['stream'] -and $null -ne $LockHandle.stream) {
@@ -1124,7 +1168,6 @@ function Release-ScriptLock([object]$LockHandle) {
     }
   }
 }
-
 function Get-ModeRisk([string]$Mode) {
   switch ($Mode) {
     "plan"  { return "LOW(read-only)" }
@@ -1133,12 +1176,10 @@ function Get-ModeRisk([string]$Mode) {
     default { return "UNKNOWN" }
   }
 }
-
 function Write-ModeRisk([string]$ScriptName, [string]$Mode) {
   $risk = Get-ModeRisk $Mode
   Write-Host "[MODE] $ScriptName mode=$Mode risk=$risk"
 }
-
 function Get-CurrentPowerShellPath() {
   $exe = (Get-Process -Id $PID -ErrorAction SilentlyContinue).Path
   if ([string]::IsNullOrWhiteSpace($exe)) {
@@ -1146,7 +1187,6 @@ function Get-CurrentPowerShellPath() {
   }
   return $exe
 }
-
 function Invoke-ChildScript([string]$ScriptPath, [string[]]$ScriptArgs = @()) {
   $psExe = Get-CurrentPowerShellPath
   & $psExe -NoProfile -ExecutionPolicy Bypass -File $ScriptPath @ScriptArgs
@@ -1154,7 +1194,6 @@ function Invoke-ChildScript([string]$ScriptPath, [string[]]$ScriptArgs = @()) {
     throw "Script failed with exit code ${LASTEXITCODE}: $ScriptPath"
   }
 }
-
 function Invoke-ChildScriptCapture([string]$ScriptPath, [string[]]$ScriptArgs = @()) {
   $psExe = Get-CurrentPowerShellPath
   $out = & $psExe -NoProfile -ExecutionPolicy Bypass -File $ScriptPath @ScriptArgs

@@ -117,6 +117,17 @@ if ($targets.Count -eq 0) {
   throw "targets.json has no entries: $targetsPath"
 }
 
+$repoRoots = @((Read-TargetRepoRoots $kitRoot))
+$enforceBoundary = ($repoRoots.Count -gt 0)
+if (-not $enforceBoundary) {
+  Write-Host "[INFO] skip boundary validation: repositories.json not found or empty"
+}
+$projectRulePolicy = Read-ProjectRulePolicy $kitRoot
+$enforceBoundaryClass = $false
+if ($null -ne $projectRulePolicy.defaults -and $null -ne $projectRulePolicy.defaults.PSObject.Properties['enforce_boundary_class']) {
+  $enforceBoundaryClass = [bool]$projectRulePolicy.defaults.enforce_boundary_class
+}
+
 if ($ShowScope) {
   Write-Host "=== SCOPE install ==="
   Write-Host "targets.count=$($targets.Count)"
@@ -129,33 +140,7 @@ if ($ShowScope) {
   }
 }
 
-$cfgFail = 0
-$seenTargets = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::OrdinalIgnoreCase)
-foreach ($item in $targets) {
-  if ($null -eq $item -or [string]::IsNullOrWhiteSpace([string]$item.source) -or [string]::IsNullOrWhiteSpace([string]$item.target)) {
-    Write-Host "[CFG] invalid entry (missing source/target)"
-    $cfgFail++
-    continue
-  }
-
-  if ([System.IO.Path]::IsPathRooted([string]$item.source)) {
-    Write-Host "[CFG] source must be relative path: $($item.source)"
-    $cfgFail++
-    continue
-  }
-
-  if (-not [System.IO.Path]::IsPathRooted(([string]$item.target -replace '/', '\'))) {
-    Write-Host "[CFG] target must be absolute path: $($item.target)"
-    $cfgFail++
-    continue
-  }
-
-  $normTarget = [System.IO.Path]::GetFullPath(([string]$item.target -replace '/', '\'))
-  if (-not $seenTargets.Add($normTarget)) {
-    Write-Host "[CFG] duplicate target path: $normTarget"
-    $cfgFail++
-  }
-}
+$cfgFail = Test-TargetsConfigEntries -Targets $targets -RepoRoots $repoRoots -EnforceBoundary:$enforceBoundary -EnforceBoundaryClass:$enforceBoundaryClass
 if ($cfgFail -gt 0) {
   throw "targets.json validation failed: $cfgFail issue(s)"
 }

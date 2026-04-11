@@ -34,6 +34,16 @@ if ($targets.Count -eq 0) {
 }
 
 $repos = Read-JsonArray $reposPath
+$repoRoots = @((Read-TargetRepoRoots $kitRoot))
+$enforceBoundary = ($repoRoots.Count -gt 0)
+if (-not $enforceBoundary) {
+  Write-Host "[INFO] skip boundary validation: repositories.json not found or empty"
+}
+$projectRulePolicy = Read-ProjectRulePolicy $kitRoot
+$enforceBoundaryClass = $false
+if ($null -ne $projectRulePolicy.defaults -and $null -ne $projectRulePolicy.defaults.PSObject.Properties['enforce_boundary_class']) {
+  $enforceBoundaryClass = [bool]$projectRulePolicy.defaults.enforce_boundary_class
+}
 $allowProjectRuleRepos = Read-ProjectRuleAllowRepos $kitRoot
 
 $cfgFail = 0
@@ -58,6 +68,33 @@ foreach ($item in $targets) {
   }
 
   $normTarget = [System.IO.Path]::GetFullPath(([string]$item.target -replace '/', '\'))
+  $expectedBoundaryClass = Get-ExpectedBoundaryClass -Source ([string]$item.source)
+  $boundaryClassProp = $item.PSObject.Properties['boundary_class']
+  $boundaryClassText = if ($null -eq $boundaryClassProp) { "" } else { ([string]$boundaryClassProp.Value).Trim().ToLowerInvariant() }
+  if ($enforceBoundaryClass -and $expectedBoundaryClass -eq "unknown") {
+    Write-Host "[CFG] unknown source layer for boundary classification: source=$($item.source) target=$($item.target)"
+    $cfgFail++
+  } elseif ($enforceBoundaryClass) {
+    if ([string]::IsNullOrWhiteSpace($boundaryClassText)) {
+      Write-Host "[CFG] missing boundary_class: source=$($item.source) target=$($item.target)"
+      $cfgFail++
+    } elseif (-not (Test-BoundaryClassValue -BoundaryClass $boundaryClassText)) {
+      Write-Host "[CFG] invalid boundary_class: expected one of global-user/project/shared-template source=$($item.source) target=$($item.target) actual=$boundaryClassText"
+      $cfgFail++
+    } elseif ($boundaryClassText -ne $expectedBoundaryClass) {
+      Write-Host "[CFG] boundary_class mismatch: source=$($item.source) target=$($item.target) expected=$expectedBoundaryClass actual=$boundaryClassText"
+      $cfgFail++
+    }
+  }
+
+  if ($enforceBoundary) {
+    $boundaryCheck = Get-BoundaryMappingCheck -Source ([string]$item.source) -Target ([string]$item.target) -RepoRoots $repoRoots
+    if (-not $boundaryCheck.allowed) {
+      Write-Host ("[CFG] boundary violation: source={0} target={1} reason={2} source_layer={3} target_layer={4}" -f $item.source, $item.target, $boundaryCheck.reason, $boundaryCheck.source_layer, $boundaryCheck.target_layer)
+      $cfgFail++
+    }
+  }
+
   if (Is-ProjectRuleSource ([string]$item.source)) {
     $normTargetUnix = ($normTarget -replace '\\', '/')
     $allowed = $false
