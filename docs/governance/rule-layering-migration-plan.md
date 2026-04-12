@@ -138,4 +138,5 @@
 - Phase 4：`进行中`
   - 已启动观察窗口（2026-04-13~2026-04-27），证据：`docs/change-evidence/20260413-rule-layering-pilot-kickoff.md`。
   - 已沉淀 W0 基线对照：`docs/change-evidence/20260413-rule-layering-week0-baseline.md`。
+  - 已追加窗口中期检查点：`docs/change-evidence/20260413-phase4-mid-window-checkpoint.md`（`doctor=GREEN`、`token_balance=OK`、`auto_rollback_triggered=false`）。
   - 未完成项：窗口期满后输出周度对照与推广决策。
