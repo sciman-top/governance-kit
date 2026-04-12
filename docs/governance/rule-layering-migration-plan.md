@@ -123,12 +123,12 @@
 - Phase 1：`已完成（本轮范围）`
   - 主规则瘦身与索引分流已完成。
   - `verification-entrypoints / global-repo-mapping / evidence-and-rollback-runbook / backflow-runbook / git-scope-and-tracked-files` 已落地。
-- Phase 2：`进行中`
+- Phase 2：`已完成（试点范围）`
   - 已新增 `source/project/skills-manager/custom/overrides/governance-teaching-lite-output/SKILL.md` 草案。
   - 已新增 `source/project/skills-manager/custom/overrides/governance-clarification-protocol/SKILL.md` 试点草案。
   - 已解除跨仓数据阻断：`skills-manager` 侧 `trigger-eval summary` 已由 `no_data` 修复为 `ok`。
-  - 当前 `create/promote` 仍未执行，原因从“数据缺失”变为“候选不满足 promotion 触发条件（如 no_material_delta / ack 未满足）”。
-  - 证据：`docs/change-evidence/20260413-phase2-trigger-eval-gate-checkpoint.md`、`docs/change-evidence/20260413-phase2-cross-repo-trigger-eval-unblocked.md`。
+  - 当前 `create/promote` 返回健康空结果（`eligible_signature_count=0`），原因为无新增可晋升增量，不属于流程阻断。
+  - 证据：`docs/change-evidence/20260413-phase2-trigger-eval-gate-checkpoint.md`、`docs/change-evidence/20260413-phase2-cross-repo-trigger-eval-unblocked.md`、`docs/change-evidence/20260413-phase2-skills-trial-closeout.md`。
 - Phase 3：`进行中`
   - 已落地 `docs/governance/output-filter-policy.md`（先 advisory 再 enforce）。
   - 已补充 W0 试点对照报告（见变更证据）。
