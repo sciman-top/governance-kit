@@ -255,6 +255,19 @@ if (-not (Test-Path -LiteralPath $tokenBalanceScript -PathType Leaf)) {
   }
 }
 
+$proactiveSuggestionFail = 0
+$proactiveSuggestionScript = Join-Path $PSScriptRoot "governance\check-proactive-suggestion-balance.ps1"
+if (-not (Test-Path -LiteralPath $proactiveSuggestionScript -PathType Leaf)) {
+  Write-Host "[PROACTIVE-SUGGESTION] skip: script not found"
+} else {
+  try {
+    Invoke-ChildScript -ScriptPath $proactiveSuggestionScript -ScriptArgs @("-RepoRoot", $kitRoot)
+  } catch {
+    Write-Host ("[PROACTIVE-SUGGESTION] check failed: " + $_.Exception.Message)
+    $proactiveSuggestionFail++
+  }
+}
+
 $riskTierApprovalFail = 0
 $riskTierApprovalScript = Join-Path $PSScriptRoot "governance\check-risk-tier-approval.ps1"
 if (-not (Test-Path -LiteralPath $riskTierApprovalScript -PathType Leaf)) {
@@ -367,4 +380,4 @@ if (-not (Test-Path -LiteralPath $tokenEfficiencyTrendScript -PathType Leaf)) {
   }
 }
 
-if ($fail -gt 0 -or $policyFail -gt 0 -or $trackedFilesFail -gt 0 -or $growthFail -gt 0 -or $antiBloatFail -gt 0 -or $tokenBalanceFail -gt 0 -or $riskTierApprovalFail -gt 0 -or $rolloutPromotionFail -gt 0 -or $failureReplayFail -gt 0 -or $rollbackDrillFail -gt 0 -or $skillFamilyHealthFail -gt 0 -or $skillLifecycleHealthFail -gt 0 -or $crossRepoCompatibilityFail -gt 0 -or $tokenEfficiencyTrendFail -gt 0) { exit 1 }
+if ($fail -gt 0 -or $policyFail -gt 0 -or $trackedFilesFail -gt 0 -or $growthFail -gt 0 -or $antiBloatFail -gt 0 -or $tokenBalanceFail -gt 0 -or $proactiveSuggestionFail -gt 0 -or $riskTierApprovalFail -gt 0 -or $rolloutPromotionFail -gt 0 -or $failureReplayFail -gt 0 -or $rollbackDrillFail -gt 0 -or $skillFamilyHealthFail -gt 0 -or $skillLifecycleHealthFail -gt 0 -or $crossRepoCompatibilityFail -gt 0 -or $tokenEfficiencyTrendFail -gt 0) { exit 1 }

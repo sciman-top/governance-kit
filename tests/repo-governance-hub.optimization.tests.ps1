@@ -964,6 +964,74 @@ Fixture body.
     }
   }
 
+  it "token-balance applies thresholds_by_mode by token_budget_mode" {
+    $tmp = Join-Path $env:TEMP ("govkit-test-" + [guid]::NewGuid().ToString("N"))
+    try {
+      New-Item -ItemType Directory -Path (Join-Path $tmp "scripts\governance") -Force | Out-Null
+      New-Item -ItemType Directory -Path (Join-Path $tmp ".governance") -Force | Out-Null
+      New-Item -ItemType Directory -Path (Join-Path $tmp "docs\governance") -Force | Out-Null
+
+      Copy-Item -Path (Join-Path $repoRoot "scripts\governance\check-token-balance.ps1") -Destination (Join-Path $tmp "scripts\governance\check-token-balance.ps1") -Force
+
+      @'
+{
+  "schema_version": "1.0",
+  "enabled": true,
+  "thresholds": {
+    "min_first_pass_rate": 0.6,
+    "max_rework_after_clarification_rate": 0.35,
+    "max_average_response_token": 1800,
+    "max_single_task_token": 12000
+  },
+  "thresholds_by_mode": {
+    "lite": {
+      "min_first_pass_rate": 0.58,
+      "max_rework_after_clarification_rate": 0.4,
+      "max_average_response_token": 1200,
+      "max_single_task_token": 8000
+    },
+    "deep": {
+      "min_first_pass_rate": 0.6,
+      "max_rework_after_clarification_rate": 0.4,
+      "max_average_response_token": 2600,
+      "max_single_task_token": 18000
+    }
+  },
+  "actions": {
+    "suggested_rollback_profile": {
+      "token_budget_mode": "standard",
+      "max_autonomous_iterations": 4,
+      "clarification_max_questions": 3
+    }
+  }
+}
+'@ | Set-Content -Path (Join-Path $tmp ".governance\token-balance-policy.json") -Encoding UTF8
+
+      @'
+first_pass_rate=70%
+rework_after_clarification_rate=20%
+average_response_token=1300
+single_task_token=9000
+'@ | Set-Content -Path (Join-Path $tmp "docs\governance\metrics-auto.md") -Encoding UTF8
+
+      $liteJson = & powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $tmp "scripts\governance\check-token-balance.ps1") -RepoRoot $tmp -TokenBudgetMode lite -AsJson
+      $LASTEXITCODE | should be 1
+      $liteObj = $liteJson | ConvertFrom-Json
+      [string]$liteObj.status | should be "ALERT"
+      [string]$liteObj.token_budget_mode | should be "lite"
+      [int]$liteObj.violation_count | should be 2
+
+      $deepJson = & powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $tmp "scripts\governance\check-token-balance.ps1") -RepoRoot $tmp -TokenBudgetMode deep -AsJson
+      $LASTEXITCODE | should be 0
+      $deepObj = $deepJson | ConvertFrom-Json
+      [string]$deepObj.status | should be "OK"
+      [string]$deepObj.token_budget_mode | should be "deep"
+      [int]$deepObj.violation_count | should be 0
+    } finally {
+      if (Test-Path $tmp) { Remove-Item -LiteralPath $tmp -Recurse -Force }
+    }
+  }
+
   it "status supports AsJson output" {
     $tmp = Join-Path $env:TEMP ("govkit-test-" + [guid]::NewGuid().ToString("N"))
     try {
@@ -1222,6 +1290,7 @@ Fixture body.
       New-Item -ItemType Directory -Path (Join-Path $tmp "config") -Force | Out-Null
       New-Item -ItemType Directory -Path (Join-Path $repo ".governance") -Force | Out-Null
       New-Item -ItemType Directory -Path (Join-Path $repo "scripts\governance") -Force | Out-Null
+      New-Item -ItemType Directory -Path (Join-Path $repo "docs\change-evidence") -Force | Out-Null
       New-Item -ItemType Directory -Path $repo -Force | Out-Null
 
       Copy-Item -Path (Join-Path $repoRoot "scripts\collect-governance-metrics.ps1") -Destination (Join-Path $tmp "scripts\collect-governance-metrics.ps1") -Force
@@ -1281,11 +1350,19 @@ Write-Output (@{
 exit 0
 '@ | Set-Content -Path (Join-Path $repo "scripts\governance\check-external-baselines.ps1") -Encoding UTF8
 
+      @'
+attempt_count=1
+average_response_token=980
+single_task_token=6094
+'@ | Set-Content -Path (Join-Path $repo "docs\change-evidence\20260412-token-metrics-sample.md") -Encoding UTF8
+
       $output = & powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $tmp "scripts\collect-governance-metrics.ps1") 2>&1 | Out-String
       if ($LASTEXITCODE -ne 0) { throw "collect-governance-metrics failed with exit code $LASTEXITCODE" }
       $output | should match "collect-governance-metrics done"
 
       $metrics = Get-Content -Raw (Join-Path $repo "docs\governance\metrics-auto.md")
+      $metrics | should match "average_response_token=980"
+      $metrics | should match "single_task_token=6094"
       $metrics | should match "update_trigger_alert_count=2"
       $metrics | should match "practice_stack_ssdf_enabled_rate=75\.00%"
       $metrics | should match "practice_stack_slsa_enabled_rate=75\.00%"

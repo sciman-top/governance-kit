@@ -209,22 +209,8 @@ function Resolve-TokenBudgetMode {
     }
   }
 
-  $tokenSaverPath = Join-Path $RepoRootResolved ".governance\token-saver-policy.json"
-  if (Test-Path -LiteralPath $tokenSaverPath -PathType Leaf) {
-    try {
-      $tokenSaver = Get-Content -LiteralPath $tokenSaverPath -Raw | ConvertFrom-Json
-      if ($null -ne $tokenSaver.PSObject.Properties['default_mode']) {
-        $candidate = ([string]$tokenSaver.default_mode).Trim().ToLowerInvariant()
-        if (Test-TokenBudgetModeValue -Value $candidate) {
-          return $candidate
-        }
-      }
-    } catch {
-      # fallback to default
-    }
-  }
-
-  return "lite"
+  # Gate strictness should not inherit response style defaults (e.g. lite output mode).
+  return "standard"
 }
 
 function Normalize-RepoText {

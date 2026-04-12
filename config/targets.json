@@ -1233,5 +1233,50 @@
         "source":  "source/project/_common/custom/scripts/governance/integrate-growth-suggestions.ps1",
         "target":  "E:/CODE/repo-governance-hub/scripts/governance/integrate-growth-suggestions.ps1",
         "boundary_class":  "shared-template"
+    },
+    {
+        "source":  "source/project/_common/custom/scripts/governance/check-token-efficiency-trend.ps1",
+        "target":  "E:/CODE/ClassroomToolkit/scripts/governance/check-token-efficiency-trend.ps1",
+        "boundary_class":  "shared-template"
+    },
+    {
+        "source":  "source/project/_common/custom/.governance/token-efficiency-trend-policy.json",
+        "target":  "E:/CODE/ClassroomToolkit/.governance/token-efficiency-trend-policy.json",
+        "boundary_class":  "shared-template"
+    },
+    {
+        "source":  "source/project/_common/custom/scripts/governance/check-token-efficiency-trend.ps1",
+        "target":  "E:/CODE/skills-manager/scripts/governance/check-token-efficiency-trend.ps1",
+        "boundary_class":  "shared-template"
+    },
+    {
+        "source":  "source/project/_common/custom/.governance/token-efficiency-trend-policy.json",
+        "target":  "E:/CODE/skills-manager/.governance/token-efficiency-trend-policy.json",
+        "boundary_class":  "shared-template"
+    },
+    {
+        "source":  "source/project/repo-governance-hub/custom/scripts/governance/check-token-efficiency-trend.ps1",
+        "target":  "E:/CODE/repo-governance-hub/scripts/governance/check-token-efficiency-trend.ps1",
+        "boundary_class":  "project"
+    },
+    {
+        "source":  "source/project/_common/custom/.governance/token-efficiency-trend-policy.json",
+        "target":  "E:/CODE/repo-governance-hub/.governance/token-efficiency-trend-policy.json",
+        "boundary_class":  "shared-template"
+    },
+    {
+        "source":  "source/project/_common/custom/scripts/governance/check-proactive-suggestion-balance.ps1",
+        "target":  "E:/CODE/ClassroomToolkit/scripts/governance/check-proactive-suggestion-balance.ps1",
+        "boundary_class":  "shared-template"
+    },
+    {
+        "source":  "source/project/_common/custom/scripts/governance/check-proactive-suggestion-balance.ps1",
+        "target":  "E:/CODE/skills-manager/scripts/governance/check-proactive-suggestion-balance.ps1",
+        "boundary_class":  "shared-template"
+    },
+    {
+        "source":  "source/project/_common/custom/scripts/governance/check-proactive-suggestion-balance.ps1",
+        "target":  "E:/CODE/repo-governance-hub/scripts/governance/check-proactive-suggestion-balance.ps1",
+        "boundary_class":  "shared-template"
     }
 ]

@@ -1,7 +1,7 @@
 ﻿{
     "schema_version":  "1.0",
     "status":  "ok",
-    "generated_at":  "2026-04-12T14:23:58.5516255+08:00",
+    "generated_at":  "2026-04-12T21:05:14.0784345+08:00",
     "repo_root":  "E:/CODE/repo-governance-hub",
     "input_path":  "E:/CODE/repo-governance-hub/.governance/skill-candidates/trigger-eval-runs.jsonl",
     "output_path":  "E:/CODE/repo-governance-hub/.governance/skill-candidates/trigger-eval-summary.json",

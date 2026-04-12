@@ -1,8 +1,8 @@
 ﻿{
     "version":  1,
     "tool":  "repo-governance-hub",
-    "updated_at":  "2026-04-12T18:03:06",
-    "managed_count":  72,
+    "updated_at":  "2026-04-12T21:00:55",
+    "managed_count":  75,
     "managed_files":  [
                           {
                               "path":  ".agents/plugins/marketplace.json",
@@ -57,7 +57,7 @@
                           {
                               "path":  ".governance/anti-bloat-policy.json",
                               "source":  "source/project/_common/custom/.governance/anti-bloat-policy.json",
-                              "sha256":  "CCCA4ABC95520131F7F94DD91B2A330D0766CA9769A5E3483574730DEC7B1C2F"
+                              "sha256":  "98C241A78553CA23B4950A1F77696454403F48EADB80A794CE786AD1BDE6F383"
                           },
                           {
                               "path":  ".governance/external-baseline-policy.json",
@@ -167,7 +167,12 @@
                           {
                               "path":  ".governance/token-balance-policy.json",
                               "source":  "source/project/_common/custom/.governance/token-balance-policy.json",
-                              "sha256":  "C9EC85889AC951C3E630D95CF64A042F09EEBFC6AFF3EBED70F0D0A0C6A96FD2"
+                              "sha256":  "CF8BBCC0EF650F28B8BABAFCBCD06B84C83014129FF33CCB4B31E2F2BB6CD833"
+                          },
+                          {
+                              "path":  ".governance/token-efficiency-trend-policy.json",
+                              "source":  "source/project/_common/custom/.governance/token-efficiency-trend-policy.json",
+                              "sha256":  "69B26CDCBD32A8BB4516A592FFB1F464B168226A6C56C88CD783D692B06AFC40"
                           },
                           {
                               "path":  ".governance/token-saver-policy.json",
@@ -252,7 +257,7 @@
                           {
                               "path":  "scripts/governance/check-anti-bloat-budgets.ps1",
                               "source":  "source/project/_common/custom/scripts/governance/check-anti-bloat-budgets.ps1",
-                              "sha256":  "166CE83FC8B2F14A8DFDC63D29912C6F394DE19A551D05437FFA3B3948572C4D"
+                              "sha256":  "4538405FE0C6849A56256A9326AC88F3A9B4E069D6E2D4EF5558FE84DF00CD7E"
                           },
                           {
                               "path":  "scripts/governance/check-external-baselines.ps1",
@@ -265,6 +270,11 @@
                               "sha256":  "B1AFBCBE536C366D584E906EC5BC66D926B6C459C2F37FA082C06848F0855FAA"
                           },
                           {
+                              "path":  "scripts/governance/check-proactive-suggestion-balance.ps1",
+                              "source":  "source/project/_common/custom/scripts/governance/check-proactive-suggestion-balance.ps1",
+                              "sha256":  "E3D672D5438D969263313FCDF77958569C54D3684C12731A150AD91998F77DFC"
+                          },
+                          {
                               "path":  "scripts/governance/check-skill-trigger-evals.ps1",
                               "source":  "source/project/_common/custom/scripts/governance/check-skill-trigger-evals.ps1",
                               "sha256":  "1BDC3C148DEF3A06E7B3D49A0057DB0AE795CD59D7365FA9C9FAFAD91FAE6046"
@@ -272,7 +282,12 @@
                           {
                               "path":  "scripts/governance/check-token-balance.ps1",
                               "source":  "source/project/_common/custom/scripts/governance/check-token-balance.ps1",
-                              "sha256":  "42F76BB375D2A0AFD4D2A5F359E70A2F1B0203E0959BA33607852B662A6BD289"
+                              "sha256":  "940BDEC693B7E3C38AD26FA77333EF00C000EEFC37A51CD1B14EECD8D1F3F917"
+                          },
+                          {
+                              "path":  "scripts/governance/check-token-efficiency-trend.ps1",
+                              "source":  "source/project/repo-governance-hub/custom/scripts/governance/check-token-efficiency-trend.ps1",
+                              "sha256":  "D73949700B45014610DFA82CF82117F1DB281F17B754D7CF9940DC361FDC8347"
                           },
                           {
                               "path":  "scripts/governance/check-tracked-files.ps1",
@@ -327,7 +342,7 @@
                           {
                               "path":  "scripts/governance/run-recurring-review.ps1",
                               "source":  "source/project/repo-governance-hub/custom/scripts/governance/run-recurring-review.ps1",
-                              "sha256":  "9DE5393F1AE7044BA9AB39680C9673C639D300B71672015134C9B4DF86961608"
+                              "sha256":  "546400D30A9F1DD24C61429461180FACC39E2A812D473D58E3C3736B8FC0EFA2"
                           },
                           {
                               "path":  "scripts/governance/run-skill-lifecycle-review.ps1",

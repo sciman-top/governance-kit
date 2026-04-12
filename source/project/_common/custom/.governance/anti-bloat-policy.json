@@ -6,7 +6,7 @@
   },
   "scope": {
     "prefer_git_pending": true,
-    "include_untracked": false,
+    "include_untracked": true,
     "scan_repo_when_no_pending": false,
     "max_repo_files": 200
   },
@@ -39,8 +39,7 @@
       ".venv/",
       "coverage/",
       "docs/",
-      "tests/",
-      "source/project/"
+      "tests/"
     ]
   },
   "limits": {

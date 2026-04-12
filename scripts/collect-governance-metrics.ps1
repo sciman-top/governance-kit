@@ -112,13 +112,15 @@ function Get-TokenQualitySnapshot {
   $reworkRate = Format-Rate $attemptRework $attemptTotal
 
   $avgResponseToken = "N/A"
-  if ($responseTokens.Count -gt 0) {
-    $avgResponseToken = [string]([int][math]::Round((($responseTokens | Measure-Object -Sum).Sum / [double]$responseTokens.Count), 0))
+  $responseTokenValues = @($responseTokens.ToArray())
+  if ($responseTokenValues.Count -gt 0) {
+    $avgResponseToken = [string]([int][math]::Round((($responseTokenValues | Measure-Object -Sum).Sum / [double]$responseTokenValues.Count), 0))
   }
 
   $avgSingleTaskToken = "N/A"
-  if ($taskTokens.Count -gt 0) {
-    $avgSingleTaskToken = [string]([int][math]::Round((($taskTokens | Measure-Object -Sum).Sum / [double]$taskTokens.Count), 0))
+  $singleTaskTokenValues = @($taskTokens.ToArray())
+  if ($singleTaskTokenValues.Count -gt 0) {
+    $avgSingleTaskToken = [string]([int][math]::Round((($singleTaskTokenValues | Measure-Object -Sum).Sum / [double]$singleTaskTokenValues.Count), 0))
   }
 
   $tokenPerEffectiveConclusion = "N/A"

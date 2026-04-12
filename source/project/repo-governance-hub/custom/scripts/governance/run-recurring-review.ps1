@@ -33,6 +33,7 @@ $skillLifecycleHealthScript = Join-Path $kitRoot "scripts\governance\check-skill
 $crossRepoCompatibilityScript = Join-Path $kitRoot "scripts\governance\check-cross-repo-compatibility.ps1"
 $tokenEfficiencyTrendScript = Join-Path $kitRoot "scripts\governance\check-token-efficiency-trend.ps1"
 $tokenBalanceScript = Join-Path $kitRoot "scripts\governance\check-token-balance.ps1"
+$proactiveSuggestionScript = Join-Path $kitRoot "scripts\governance\check-proactive-suggestion-balance.ps1"
 $externalBaselineScript = Join-Path $kitRoot "scripts\governance\check-external-baselines.ps1"
 $requiredScripts = @($doctorScript, $rolloutScript, $waiverScript, $metricsScript, $triggerScript)
 foreach ($script in $requiredScripts) {
@@ -51,6 +52,7 @@ $hasSkillFamilyHealthScript = (Test-Path -LiteralPath $skillFamilyHealthScript -
 $hasSkillLifecycleHealthScript = (Test-Path -LiteralPath $skillLifecycleHealthScript -PathType Leaf)
 $hasCrossRepoCompatibilityScript = (Test-Path -LiteralPath $crossRepoCompatibilityScript -PathType Leaf)
 $hasTokenEfficiencyTrendScript = (Test-Path -LiteralPath $tokenEfficiencyTrendScript -PathType Leaf)
+$hasProactiveSuggestionScript = (Test-Path -LiteralPath $proactiveSuggestionScript -PathType Leaf)
 
 $psExe = Get-CurrentPowerShellPath
 
@@ -128,6 +130,9 @@ function Write-AlertSnapshot([object]$ReviewResult, [string]$RootPath) {
   [void]$lines.Add(("token_efficiency_trend_status={0}" -f $ReviewResult.summary.token_efficiency_trend_status))
   [void]$lines.Add(("token_efficiency_trend_history_count={0}" -f $ReviewResult.summary.token_efficiency_trend_history_count))
   [void]$lines.Add(("token_efficiency_trend_latest_value={0}" -f $ReviewResult.summary.token_efficiency_trend_latest_value))
+  [void]$lines.Add(("proactive_suggestion_balance_status={0}" -f $ReviewResult.summary.proactive_suggestion_balance_status))
+  [void]$lines.Add(("proactive_suggestion_balance_warning_count={0}" -f $ReviewResult.summary.proactive_suggestion_balance_warning_count))
+  [void]$lines.Add(("proactive_suggestion_balance_violation_count={0}" -f $ReviewResult.summary.proactive_suggestion_balance_violation_count))
   if (@($ReviewResult.alerts).Count -gt 0) {
     [void]$lines.Add("alerts=")
     foreach ($a in @($ReviewResult.alerts)) {
@@ -235,6 +240,15 @@ if ($hasTokenBalanceScript) {
 } else {
   $tokenBalance = [pscustomobject]@{
     name = "check-token-balance"
+    exit_code = 0
+    output = ""
+  }
+}
+if ($hasProactiveSuggestionScript) {
+  $proactiveSuggestion = Invoke-StepText -Name "check-proactive-suggestion-balance" -ScriptPath $proactiveSuggestionScript -Args @("-RepoRoot", $repoPath, "-AsJson")
+} else {
+  $proactiveSuggestion = [pscustomobject]@{
+    name = "check-proactive-suggestion-balance"
     exit_code = 0
     output = ""
   }
@@ -641,6 +655,9 @@ $releaseDistributionPolicyDriftCount = 0
 $tokenBalanceStatus = "UNKNOWN"
 $tokenBalanceWarningCount = 0
 $tokenBalanceViolationCount = 0
+$proactiveSuggestionBalanceStatus = "UNKNOWN"
+$proactiveSuggestionBalanceWarningCount = 0
+$proactiveSuggestionBalanceViolationCount = 0
 $externalBaselineStatus = "UNKNOWN"
 $externalBaselineAdvisoryCount = 0
 $externalBaselineWarnCount = 0
@@ -719,6 +736,56 @@ if ($hasTokenBalanceScript -and ($tokenBalance.exit_code -ne 0 -or $tokenBalance
   [void]$alerts.Add(("token balance status={0} violation_count={1}" -f $tokenBalanceStatus, $tokenBalanceViolationCount))
 }
 
+if (-not $hasProactiveSuggestionScript) {
+  $proactiveSuggestionBalanceStatus = "UNAVAILABLE"
+} elseif (-not [string]::IsNullOrWhiteSpace($proactiveSuggestion.output)) {
+  $proactiveObj = Parse-JsonLoose -RawText ([string]$proactiveSuggestion.output)
+  if ($null -ne $proactiveObj) {
+    if ($proactiveObj.PSObject.Properties.Name -contains "status") {
+      $proactiveSuggestionBalanceStatus = [string]$proactiveObj.status
+    }
+    if ($proactiveObj.PSObject.Properties.Name -contains "warning_count") {
+      try { $proactiveSuggestionBalanceWarningCount = [int]$proactiveObj.warning_count } catch { $proactiveSuggestionBalanceWarningCount = 0 }
+    }
+    if ($proactiveObj.PSObject.Properties.Name -contains "violation_count") {
+      try { $proactiveSuggestionBalanceViolationCount = [int]$proactiveObj.violation_count } catch { $proactiveSuggestionBalanceViolationCount = 0 }
+    }
+  } else {
+    $rawProactiveText = [string]$proactiveSuggestion.output
+    $statusMatchJson = [regex]::Match($rawProactiveText, '"status"\s*:\s*"([^"]+)"')
+    $warningMatchJson = [regex]::Match($rawProactiveText, '"warning_count"\s*:\s*([0-9]+)')
+    $violationMatchJson = [regex]::Match($rawProactiveText, '"violation_count"\s*:\s*([0-9]+)')
+    $statusMatchKv = [regex]::Match($rawProactiveText, '(?m)^proactive_suggestion_balance\.status=([A-Z_]+)\s*$')
+    $warningMatchKv = [regex]::Match($rawProactiveText, '(?m)^proactive_suggestion_balance\.warning_count=([0-9]+)\s*$')
+    $violationMatchKv = [regex]::Match($rawProactiveText, '(?m)^proactive_suggestion_balance\.violation_count=([0-9]+)\s*$')
+    if ($statusMatchJson.Success -or $statusMatchKv.Success) {
+      if ($statusMatchJson.Success) {
+        $proactiveSuggestionBalanceStatus = $statusMatchJson.Groups[1].Value
+      } else {
+        $proactiveSuggestionBalanceStatus = $statusMatchKv.Groups[1].Value
+      }
+      if ($warningMatchJson.Success) {
+        $proactiveSuggestionBalanceWarningCount = [int]$warningMatchJson.Groups[1].Value
+      } elseif ($warningMatchKv.Success) {
+        $proactiveSuggestionBalanceWarningCount = [int]$warningMatchKv.Groups[1].Value
+      }
+      if ($violationMatchJson.Success) {
+        $proactiveSuggestionBalanceViolationCount = [int]$violationMatchJson.Groups[1].Value
+      } elseif ($violationMatchKv.Success) {
+        $proactiveSuggestionBalanceViolationCount = [int]$violationMatchKv.Groups[1].Value
+      }
+    } elseif ($proactiveSuggestion.exit_code -eq 0) {
+      $proactiveSuggestionBalanceStatus = "OK"
+    } else {
+      $proactiveSuggestionBalanceStatus = "PARSE_ERROR"
+    }
+  }
+}
+
+if ($hasProactiveSuggestionScript -and ($proactiveSuggestion.exit_code -ne 0 -or $proactiveSuggestionBalanceStatus -eq "ALERT" -or $proactiveSuggestionBalanceStatus -eq "PARSE_ERROR" -or $proactiveSuggestionBalanceViolationCount -gt 0)) {
+  [void]$alerts.Add(("proactive suggestion balance status={0} violation_count={1}" -f $proactiveSuggestionBalanceStatus, $proactiveSuggestionBalanceViolationCount))
+}
+
 if (-not $hasExternalBaselineScript) {
   $externalBaselineStatus = "UNAVAILABLE"
 } elseif ($externalBaseline.exit_code -eq 0 -and -not [string]::IsNullOrWhiteSpace($externalBaseline.output)) {
@@ -785,6 +852,9 @@ $result = [pscustomobject]@{
     token_balance_status = $tokenBalanceStatus
     token_balance_warning_count = [int]$tokenBalanceWarningCount
     token_balance_violation_count = [int]$tokenBalanceViolationCount
+    proactive_suggestion_balance_status = $proactiveSuggestionBalanceStatus
+    proactive_suggestion_balance_warning_count = [int]$proactiveSuggestionBalanceWarningCount
+    proactive_suggestion_balance_violation_count = [int]$proactiveSuggestionBalanceViolationCount
     external_baseline_status = $externalBaselineStatus
     external_baseline_advisory_count = [int]$externalBaselineAdvisoryCount
     external_baseline_warn_count = [int]$externalBaselineWarnCount
@@ -825,6 +895,7 @@ $result = [pscustomobject]@{
     cross_repo_compatibility_exit_code = [int]$crossRepoCompatibility.exit_code
     token_efficiency_trend_exit_code = [int]$tokenEfficiencyTrend.exit_code
     token_balance_exit_code = [int]$tokenBalance.exit_code
+    proactive_suggestion_balance_exit_code = [int]$proactiveSuggestion.exit_code
     external_baseline_exit_code = [int]$externalBaseline.exit_code
   }
   steps = @(
@@ -843,6 +914,7 @@ $result = [pscustomobject]@{
     [pscustomobject]@{ name = "check-cross-repo-compatibility"; exit_code = [int]$crossRepoCompatibility.exit_code },
     [pscustomobject]@{ name = "check-token-efficiency-trend"; exit_code = [int]$tokenEfficiencyTrend.exit_code },
     [pscustomobject]@{ name = "check-token-balance"; exit_code = [int]$tokenBalance.exit_code },
+    [pscustomobject]@{ name = "check-proactive-suggestion-balance"; exit_code = [int]$proactiveSuggestion.exit_code },
     [pscustomobject]@{ name = "check-external-baselines"; exit_code = [int]$externalBaseline.exit_code }
   )
 }
@@ -872,6 +944,9 @@ Write-Host ("release_distribution_policy_drift_count={0}" -f $result.summary.rel
 Write-Host ("token_balance_status={0}" -f $result.summary.token_balance_status)
 Write-Host ("token_balance_warning_count={0}" -f $result.summary.token_balance_warning_count)
 Write-Host ("token_balance_violation_count={0}" -f $result.summary.token_balance_violation_count)
+Write-Host ("proactive_suggestion_balance_status={0}" -f $result.summary.proactive_suggestion_balance_status)
+Write-Host ("proactive_suggestion_balance_warning_count={0}" -f $result.summary.proactive_suggestion_balance_warning_count)
+Write-Host ("proactive_suggestion_balance_violation_count={0}" -f $result.summary.proactive_suggestion_balance_violation_count)
 Write-Host ("external_baseline_status={0}" -f $result.summary.external_baseline_status)
 Write-Host ("external_baseline_advisory_count={0}" -f $result.summary.external_baseline_advisory_count)
 Write-Host ("external_baseline_warn_count={0}" -f $result.summary.external_baseline_warn_count)

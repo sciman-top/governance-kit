@@ -1,0 +1,47 @@
+规则ID=token-balance-mode-aware-and-anti-bloat-scope
+规则版本=9.38
+兼容窗口(观察期/强制期)=observe->enforce
+影响模块=scripts/governance/check-token-balance.ps1;.governance/token-balance-policy.json;.governance/anti-bloat-policy.json
+当前落点=repo-governance-hub root + source/project/_common/custom
+目标归宿=source/project/_common/custom/*
+迁移批次=2026-04-12
+风险等级=medium
+risk_tier=medium
+是否豁免(Waiver)=no
+豁免责任人=
+豁免到期=
+豁免回收计划=
+执行命令=powershell -File scripts/verify-kit.ps1; powershell -File tests/repo-governance-hub.optimization.tests.ps1; powershell -File scripts/validate-config.ps1; powershell -File scripts/verify.ps1; powershell -File scripts/doctor.ps1
+验证证据=build/test/contract/hotspot all pass; verify-targets pass after install -Mode safe
+供应链安全扫描=N/A
+发布后验证(指标/阈值/窗口)=token_balance.status!=ALERT during observe window
+数据变更治理(迁移/回填/回滚)=none
+回滚动作=restore files from backups and rerun install -Mode safe
+rollback_trigger=token gate false-positive spikes or quality drop
+subagent_decision_mode=none
+spawn_parallel_subagents=false
+max_parallel_agents=0
+decision_score=0
+reason_codes=manual-single-agent
+hard_guard_hits=none
+policy_path=.governance/token-balance-policy.json
+growth_pack_enabled=false
+target_repo_count=3
+readiness_score=green
+quickstart_presence=n/a
+release_template_presence=n/a
+trigger_eval_status=n/a
+trigger_eval_validation_pass_rate=n/a
+trigger_eval_validation_false_trigger_rate=n/a
+
+任务理解快照=在不降低编码质量的前提下，避免 token 约束过松或过紧；优先修复模式一刀切与扫描漏检
+术语解释点=token_budget_mode: lite/standard/deep 分档；anti-bloat: 变更集体量门禁
+可观测信号=token_balance.token_budget_mode; anti_bloat.scope/pending_total_estimated_tokens; verify-targets diff count
+排障路径=检查 policy->script mode 解析链->verify-targets 是否同步->重跑四门禁
+未确认假设与纠偏结论=未确认跨仓历史指标稳定性；先采用 observe 并通过 recurring review 跟踪
+
+learning_points_3=分档阈值比单阈值更能平衡质量与成本; 扫描范围漏掉 source/project 会放大分发后风险; source+target 同步是治理脚本变更的必要闭环
+reusable_checklist=改 policy->改 gate script->补测试->install 分发->四门禁复验
+open_questions=是否对 missing_metric 引入“连续天数超阈值再阻断”的硬策略
+average_response_token=980
+single_task_token=6094
