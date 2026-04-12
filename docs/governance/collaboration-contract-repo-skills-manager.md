@@ -37,11 +37,9 @@
 ## UTF-8 Guard Ownership (Windows PowerShell)
 - Canonical preventive skill:
   - `E:/CODE/skills-manager/overrides/custom-windows-encoding-guard`
-- Historical incident-signature bridge (compatibility only):
-  - `E:/CODE/skills-manager/overrides/custom-auto-pwsh-encoding-mojibake-loop-a9b049cd`
 - Governance rule:
   - `pwsh-encoding-mojibake-loop-*` signatures are treated as known family.
-  - Promotion policy must prefer `optimize/bridge` and block duplicate `create`.
+  - Promotion policy must block duplicate `create` and converge to canonical guard.
   - No parallel standalone UTF-8 guard skills are allowed for the same family.
 
 ## Evidence Requirements

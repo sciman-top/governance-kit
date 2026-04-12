@@ -1348,15 +1348,5 @@
     "source": "source/project/skills-manager/custom/overrides/governance-clarification-protocol/SKILL.md",
     "target": "E:/CODE/skills-manager/overrides/governance-clarification-protocol/SKILL.md",
     "boundary_class": "project"
-  },
-  {
-    "source": "source/project/skills-manager/custom/overrides/custom-auto-pwsh-encoding-mojibake-loop-a9b049cd/SKILL.md",
-    "target": "E:/CODE/skills-manager/overrides/custom-auto-pwsh-encoding-mojibake-loop-a9b049cd/SKILL.md",
-    "boundary_class": "project"
-  },
-  {
-    "source": "source/project/skills-manager/custom/overrides/custom-auto-pwsh-encoding-mojibake-loop-a9b049cd/scripts/bootstrap.ps1",
-    "target": "E:/CODE/skills-manager/overrides/custom-auto-pwsh-encoding-mojibake-loop-a9b049cd/scripts/bootstrap.ps1",
-    "boundary_class": "project"
   }
 ]

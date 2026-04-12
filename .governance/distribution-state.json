@@ -1,7 +1,7 @@
 {
   "version": 1,
   "tool": "repo-governance-hub",
-  "updated_at": "2026-04-13T02:42:06",
+  "updated_at": "2026-04-13T03:06:32",
   "managed_count": 79,
   "managed_files": [
     {
@@ -142,7 +142,7 @@
     {
       "path": ".governance/skill-promotion-policy.json",
       "source": "source/project/_common/custom/.governance/skill-promotion-policy.json",
-      "sha256": "869627DEE474E40D3747F30D7D059931B555727F753669FF6C92ABAB83C2DE9C"
+      "sha256": "DA28D068B28493E2470562DF8652D5570844A5D6EB99C5A22C1A3997D18EDBAA"
     },
     {
       "path": ".governance/subagent-trigger-policy.json",
@@ -197,7 +197,7 @@
     {
       "path": "AGENTS.md",
       "source": "source/project/repo-governance-hub/AGENTS.md",
-      "sha256": "0D256FB4135041D7B8E126396D58D5AE57F9683859E8E1D6F5C15C152F714D04"
+      "sha256": "33EB1FC219D21DC60A691926639532733CB580CF48D5B38998104F5F7539F5D7"
     },
     {
       "path": "CLAUDE.md",
@@ -222,7 +222,7 @@
     {
       "path": "docs/governance/skill-trigger-eval-runbook.md",
       "source": "source/project/_common/custom/docs/governance/skill-trigger-eval-runbook.md",
-      "sha256": "B67A589D9CFCC2F474653D202B9C9177389FDB7E8D38B10DB224E0D7599FD619"
+      "sha256": "D29E532DB6AB3D38AC84314F05097FBA7DD0B54022908657EAE0FCE2B4FD3FA2"
     },
     {
       "path": "docs/governance/slsa-target-level.md",
@@ -327,12 +327,12 @@
     {
       "path": "scripts/governance/migrate-skill-registry-v2.ps1",
       "source": "source/project/_common/custom/scripts/governance/migrate-skill-registry-v2.ps1",
-      "sha256": "89714EFBE23C0C8BC7A090D19EF14B33508B97E9DBD19BD6858A2777B77FC01B"
+      "sha256": "95739570E67B71808A09E2F76ABCF265B0D9F1B370866EF513CCD94EA7EB5DE0"
     },
     {
       "path": "scripts/governance/promote-skill-candidates.ps1",
       "source": "source/project/_common/custom/scripts/governance/promote-skill-candidates.ps1",
-      "sha256": "964F3503CB9DA5D3E15CFC3D299248F79AFB5B7724DD1A224FA1EAF4CCF9F432"
+      "sha256": "5C7EE721AF7E36958E578F2682907D0B1A4743BFD54A64AB58D46F18B602CF37"
     },
     {
       "path": "scripts/governance/register-skill-candidate.ps1",

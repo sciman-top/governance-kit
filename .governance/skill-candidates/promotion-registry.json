@@ -1,31 +1,6 @@
 {
   "schema_version": "2.0",
-  "promoted": [
-    {
-      "issue_signature": "pwsh-encoding-mojibake-loop-20260411",
-      "family_signature": "pwsh-encoding-mojibake-loop-20260411",
-      "skill_name": "custom-auto-pwsh-encoding-mojibake-a9b049cd",
-      "promoted_at": "2026-04-11T16:44:50.3636101+08:00",
-      "hit_count": 12,
-      "repos": [
-        "E:/CODE/skills-manager"
-      ],
-      "signature_variants": [
-        "pwsh-encoding-mojibake-loop-20260411",
-        "pwsh-encoding-mojibake-loop-20260411-a",
-        "pwsh-encoding-mojibake-loop-20260411-b",
-        "pwsh-encoding-mojibake-loop-20260411-c",
-        "pwsh-encoding-mojibake-loop-20260411-d"
-      ],
-      "lifecycle_state": "active",
-      "invocation_count": 12,
-      "last_invoked_at": "2026-04-11T16:44:50.3636101+08:00",
-      "last_optimized_at": "2026-04-11T16:44:50.3636101+08:00",
-      "health_score": 1,
-      "merged_from": [],
-      "quality_delta": null
-    }
-  ],
+  "promoted": [],
   "registry_schema_version": 2,
   "lifecycle_version": "1.0",
   "updated_at": "2026-04-13T01:58:28.946201+08:00"

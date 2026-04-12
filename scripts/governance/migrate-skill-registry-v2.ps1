@@ -20,7 +20,7 @@ function Ensure-ParentDirectory([string]$PathText) {
   }
 }
 
-function ConvertTo-Slug([string]$Text, [int]$MaxLength = 32) {
+function ConvertTo-Slug([string]$Text, [int]$MaxLength = 48) {
   if ([string]::IsNullOrWhiteSpace($Text)) { return "candidate" }
   $slug = ($Text.ToLowerInvariant() -replace '[^a-z0-9]+', '-').Trim('-')
   if ([string]::IsNullOrWhiteSpace($slug)) { return "candidate" }
@@ -79,10 +79,8 @@ function Get-SignatureFamily([string]$Signature, [string]$CollapsePattern = "^(.
 
 function Get-CanonicalSkillName([string]$Signature) {
   $family = Get-SignatureFamily -Signature $Signature
-  $slugSeed = Get-SignatureSlugSeed $family
-  $slug = ConvertTo-Slug $slugSeed
-  $hash8 = Get-SignatureHash8 $family
-  return ("custom-auto-{0}-{1}" -f $slug, $hash8)
+  $slug = ConvertTo-Slug $family
+  return ("custom-auto-{0}" -f $slug)
 }
 
 function Normalize-StringSet([object[]]$Values) {

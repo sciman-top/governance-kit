@@ -37,6 +37,17 @@
 - If unavailable, use PowerShell fallback summarizer in wrapper scripts.
 - Hook mode must remain opt-in and reversible.
 
+## RTK/tokf Decision (Current)
+- Runtime check (2026-04-13): `rtk_installed=False`, `tokf_installed=False`.
+- Decision: not a hard dependency for this repo phase; keep PowerShell fallback as default.
+- Install trigger (optional):
+  - Fallback summarizer misses critical context in replay samples, or
+  - command-output token budget remains above threshold for 2+ weekly cycles.
+- If trigger fires:
+  - install one tool first (`tokf` preferred for simple stream compaction),
+  - run advisory-only for one cycle,
+  - compare `first_pass_rate/rework_rate/token_per_effective_conclusion` before enforce.
+
 ## Acceptance
 - One-pass rate not lower than baseline.
 - Rework rate not higher than baseline.

@@ -4737,7 +4737,7 @@ param(
       New-Item -ItemType Directory -Path (Join-Path $tmp "config") -Force | Out-Null
       New-Item -ItemType Directory -Path (Join-Path $tmp ".governance") -Force | Out-Null
       New-Item -ItemType Directory -Path (Join-Path $repo ".governance\skill-candidates") -Force | Out-Null
-      New-Item -ItemType Directory -Path (Join-Path $skills "overrides\custom-auto-dup-family-20260412-4f9ba0d0") -Force | Out-Null
+      New-Item -ItemType Directory -Path (Join-Path $skills "overrides\custom-auto-dup-family-20260412") -Force | Out-Null
 
       Copy-Item -Path (Join-Path $repoRoot "scripts\governance\promote-skill-candidates.ps1") -Destination (Join-Path $tmp "scripts\governance\promote-skill-candidates.ps1") -Force
 
@@ -4773,11 +4773,11 @@ param(
 
       @'
 ---
-name: custom-auto-dup-family-20260412-4f9ba0d0
+name: custom-auto-dup-family-20260412
 description: Auto-promoted from repeated issue signature 'dup-family-20260412' (hits=3).
 ---
 # Existing skill
-'@ | Set-Content -Path (Join-Path $skills "overrides\custom-auto-dup-family-20260412-4f9ba0d0\SKILL.md") -Encoding UTF8
+'@ | Set-Content -Path (Join-Path $skills "overrides\custom-auto-dup-family-20260412\SKILL.md") -Encoding UTF8
 
       $json = & powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $tmp "scripts\governance\promote-skill-candidates.ps1") -GovernanceRoot $tmp -AsJson
       if ($LASTEXITCODE -ne 0) { throw "promote-skill-candidates.ps1 failed with exit code $LASTEXITCODE" }
@@ -4792,13 +4792,75 @@ description: Auto-promoted from repeated issue signature 'dup-family-20260412' (
     }
   }
 
+  it "promote-skill-candidates skips create when signature matches manual override binding" {
+    $tmp = Join-Path $env:TEMP ("govkit-test-" + [guid]::NewGuid().ToString("N"))
+    try {
+      $repo = Join-Path $tmp "RepoA"
+      $skills = Join-Path $tmp "skills-root"
+      New-Item -ItemType Directory -Path (Join-Path $tmp "scripts\governance") -Force | Out-Null
+      New-Item -ItemType Directory -Path (Join-Path $tmp "config") -Force | Out-Null
+      New-Item -ItemType Directory -Path (Join-Path $tmp ".governance") -Force | Out-Null
+      New-Item -ItemType Directory -Path (Join-Path $repo ".governance\skill-candidates") -Force | Out-Null
+      New-Item -ItemType Directory -Path (Join-Path $skills "overrides") -Force | Out-Null
+
+      Copy-Item -Path (Join-Path $repoRoot "scripts\governance\promote-skill-candidates.ps1") -Destination (Join-Path $tmp "scripts\governance\promote-skill-candidates.ps1") -Force
+
+      @(
+        ($repo -replace '\\','/')
+      ) | ConvertTo-Json | Set-Content -Path (Join-Path $tmp "config\repositories.json") -Encoding UTF8
+
+      @'
+{
+  "enabled": true,
+  "threshold_count": 3,
+  "window_days": 14,
+  "cooldown_days": 14,
+  "max_promotions_per_run": 3,
+  "event_relative_path": ".governance/skill-candidates/events.jsonl",
+  "registry_relative_path": ".governance/skill-candidates/promotion-registry.json",
+  "skills_root": "__SKILLS_ROOT__",
+  "overrides_relative_path": "overrides",
+  "auto_run_skills_manager_gates": false,
+  "require_user_ack": false,
+  "optimize_existing_without_ack": true,
+  "create_min_unique_repos": 1,
+  "optimize_min_new_variants": 1,
+  "require_trigger_eval_for_create": false,
+  "manual_override_bindings": [
+    {
+      "signature_pattern": "(?i)^governance-clarification-",
+      "skill_name": "governance-clarification-protocol"
+    }
+  ]
+}
+'@.Replace("__SKILLS_ROOT__", ($skills -replace '\\','/')) | Set-Content -Path (Join-Path $tmp ".governance\skill-promotion-policy.json") -Encoding UTF8
+
+      @'
+{"schema_version":"1.0","timestamp":"2026-04-13T01:00:00+08:00","repo":"RepoA","issue_signature":"governance-clarification-20260413-a","issue_id":"x","step_name":"test","command_text":"cmd","failure_reason":"x","evidence_link":"x"}
+{"schema_version":"1.0","timestamp":"2026-04-13T01:01:00+08:00","repo":"RepoA","issue_signature":"governance-clarification-20260413-a","issue_id":"x","step_name":"test","command_text":"cmd","failure_reason":"x","evidence_link":"x"}
+{"schema_version":"1.0","timestamp":"2026-04-13T01:02:00+08:00","repo":"RepoA","issue_signature":"governance-clarification-20260413-a","issue_id":"x","step_name":"test","command_text":"cmd","failure_reason":"x","evidence_link":"x"}
+'@ | Set-Content -Path (Join-Path $repo ".governance\skill-candidates\events.jsonl") -Encoding UTF8
+
+      $json = & powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $tmp "scripts\governance\promote-skill-candidates.ps1") -GovernanceRoot $tmp -AsJson
+      if ($LASTEXITCODE -ne 0) { throw "promote-skill-candidates.ps1 failed with exit code $LASTEXITCODE" }
+      $obj = $json | ConvertFrom-Json
+      [int]$obj.created_count | should be 0
+      [int]$obj.optimized_count | should be 0
+      $skipDecision = @($obj.decision_audit | Where-Object { [string]$_.action -eq "skip" }) | Select-Object -First 1
+      ($null -ne $skipDecision) | should be $true
+      ((@($skipDecision.reason_codes) -contains "manual_override_binding:governance-clarification-protocol")) | should be $true
+    } finally {
+      if (Test-Path $tmp) { Remove-Item -LiteralPath $tmp -Recurse -Force }
+    }
+  }
+
   it "promote-skill-candidates renames legacy truncated custom-auto directory to canonical name" {
     $tmp = Join-Path $env:TEMP ("govkit-test-" + [guid]::NewGuid().ToString("N"))
     try {
       $repo = Join-Path $tmp "RepoA"
       $skills = Join-Path $tmp "skills-root"
       $legacyName = "custom-auto-pwsh-encoding-mojibake-l-a9b049cd"
-      $canonicalName = "custom-auto-pwsh-encoding-mojibake-loop-a9b049cd"
+      $canonicalName = "custom-auto-pwsh-encoding-mojibake-loop-20260411"
       New-Item -ItemType Directory -Path (Join-Path $tmp "scripts\governance") -Force | Out-Null
       New-Item -ItemType Directory -Path (Join-Path $tmp "config") -Force | Out-Null
       New-Item -ItemType Directory -Path (Join-Path $tmp ".governance") -Force | Out-Null

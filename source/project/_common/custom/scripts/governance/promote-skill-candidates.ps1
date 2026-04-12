@@ -20,7 +20,7 @@ function Ensure-ParentDirectory([string]$PathText) {
   }
 }
 
-function ConvertTo-Slug([string]$Text, [int]$MaxLength = 32) {
+function ConvertTo-Slug([string]$Text, [int]$MaxLength = 48) {
   if ([string]::IsNullOrWhiteSpace($Text)) { return "candidate" }
   $slug = ($Text.ToLowerInvariant() -replace '[^a-z0-9]+', '-').Trim('-')
   if ([string]::IsNullOrWhiteSpace($slug)) { return "candidate" }
@@ -74,10 +74,8 @@ function Get-SignatureHash8([string]$Text) {
 
 function Get-CanonicalSkillName([string]$Signature) {
   $family = Get-SignatureFamily -Signature $Signature
-  $slugSeed = Get-SignatureSlugSeed $family
-  $slug = ConvertTo-Slug $slugSeed
-  $hash8 = Get-SignatureHash8 $family
-  return ("custom-auto-{0}-{1}" -f $slug, $hash8)
+  $slug = ConvertTo-Slug $family
+  return ("custom-auto-{0}" -f $slug)
 }
 
 function Get-SignatureFamily([string]$Signature, [string]$CollapsePattern = "^(.*-\d{8})-[a-z]$") {
@@ -105,6 +103,48 @@ function Test-SignatureExcluded([string]$Signature, [object]$Patterns) {
   return $false
 }
 
+function Get-ManualOverrideBindings([psobject]$Policy) {
+  $items = New-Object System.Collections.Generic.List[object]
+  if ($null -eq $Policy) { return @($items.ToArray()) }
+  if ($null -eq $Policy.PSObject.Properties['manual_override_bindings']) { return @($items.ToArray()) }
+  foreach ($raw in @($Policy.manual_override_bindings)) {
+    if ($null -eq $raw) { continue }
+    $pattern = ""
+    $skillName = ""
+    if ($null -ne $raw.PSObject.Properties['signature_pattern']) {
+      $pattern = [string]$raw.signature_pattern
+    }
+    if ($null -ne $raw.PSObject.Properties['skill_name']) {
+      $skillName = [string]$raw.skill_name
+    }
+    if ([string]::IsNullOrWhiteSpace($pattern) -or [string]::IsNullOrWhiteSpace($skillName)) { continue }
+    $items.Add([pscustomobject]@{
+      signature_pattern = $pattern
+      skill_name = $skillName.Trim()
+    }) | Out-Null
+  }
+  return @($items.ToArray())
+}
+
+function Get-MatchedManualOverrideBinding([string]$Signature, [object]$Bindings) {
+  $value = if ($null -eq $Signature) { "" } else { $Signature.Trim().ToLowerInvariant() }
+  if ([string]::IsNullOrWhiteSpace($value)) { return $null }
+  foreach ($binding in @($Bindings)) {
+    if ($null -eq $binding) { continue }
+    $pattern = ""
+    try { $pattern = [string]$binding.signature_pattern } catch { $pattern = "" }
+    if ([string]::IsNullOrWhiteSpace($pattern)) { continue }
+    try {
+      if ($value -match $pattern) {
+        return $binding
+      }
+    } catch {
+      continue
+    }
+  }
+  return $null
+}
+
 function New-DefaultPolicy {
   return [pscustomobject]@{
     schema_version = "1.0"
@@ -122,6 +162,7 @@ function New-DefaultPolicy {
     exclude_signature_patterns = @(
       "(?i)^autopilot-utf8-smoke"
     )
+    manual_override_bindings = @()
     summary_relative_path = ".governance/skill-candidates/last-promotion-summary.json"
     write_summary_file = $true
     require_user_ack = $true
@@ -596,6 +637,7 @@ $policy = Merge-Policy -Base $policy -Candidate (Load-JsonObject $policyTemplate
 $policy = Merge-Policy -Base $policy -Candidate (Load-JsonObject $policyPath)
 $collapsePattern = [string]$policy.collapse_suffix_pattern
 $excludePatterns = @($policy.exclude_signature_patterns)
+$manualOverrideBindings = @(Get-ManualOverrideBindings -Policy $policy)
 
 if (-not [bool]$policy.enabled) {
   $disabled = [pscustomobject]@{
@@ -733,6 +775,19 @@ foreach ($key in $groupMap.Keys) {
   $family = [string]$item.issue_signature
   $canonical = Get-CanonicalSkillName $family
   $repoCount = @($item.repos | Sort-Object).Count
+  $manualBinding = Get-MatchedManualOverrideBinding -Signature $family -Bindings $manualOverrideBindings
+  if ($null -ne $manualBinding) {
+    $boundSkill = [string]$manualBinding.skill_name
+    $decisionAudit.Add([pscustomobject]@{
+      action = "skip"
+      issue_signature = $family
+      skill_name = $boundSkill
+      hit_count = [int]$item.count
+      unique_repo_count = [int]$repoCount
+      reason_codes = @(("manual_override_binding:" + $boundSkill))
+    }) | Out-Null
+    continue
+  }
 
   if (-not $knownExistingFamilies.ContainsKey($key)) {
     $blockedReasons = New-Object System.Collections.Generic.List[string]

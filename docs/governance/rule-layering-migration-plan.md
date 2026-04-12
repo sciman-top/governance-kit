@@ -133,8 +133,10 @@
   - 已落地 `docs/governance/output-filter-policy.md`（先 advisory 再 enforce）。
   - 已补充 W0 试点对照报告（见变更证据）。
   - 已完成运行态噪声收敛：`report-growth-readiness` 默认输出改为 `docs/governance/reviews/growth-readiness-latest.md`，避免在 `docs/change-evidence/` 持续生成未跟踪文件。
+  - 已完成 `RTK/tokf` 决策：当前未安装，维持 PowerShell fallback，按触发条件再启用安装试点。
   - 证据：`docs/change-evidence/20260413-phase3-growth-readiness-output-noise-fix.md`。
   - 试点收口证据：`docs/change-evidence/20260413-phase3-output-filter-trial-closeout.md`。
+  - `RTK/tokf` 决策证据：`docs/change-evidence/20260413-phase3-rtk-tokf-install-decision.md`。
   - 下一步：相关周度观察与扩展决策并入 Phase4。
 - Phase 4：`已完成（可执行范围）`
   - 已启动观察窗口（2026-04-13~2026-04-27），证据：`docs/change-evidence/20260413-rule-layering-pilot-kickoff.md`。

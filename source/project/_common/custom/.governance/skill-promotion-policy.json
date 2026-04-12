@@ -15,6 +15,16 @@
     "(?i)^autopilot-utf8-smoke",
     "(?i)^pwsh-encoding-mojibake-loop-\\d{8}(-[a-z])?$"
   ],
+  "manual_override_bindings": [
+    {
+      "signature_pattern": "(?i)^governance-clarification-",
+      "skill_name": "governance-clarification-protocol"
+    },
+    {
+      "signature_pattern": "(?i)^governance-teaching-lite-output",
+      "skill_name": "governance-teaching-lite-output"
+    }
+  ],
   "summary_relative_path": ".governance/skill-candidates/last-promotion-summary.json",
   "write_summary_file": true,
   "require_user_ack": true,
