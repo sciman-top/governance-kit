@@ -1,0 +1,39 @@
+规则ID=rule-layering-phase0-token-baseline-unblocked
+规则版本=9.38
+兼容窗口(观察期/强制期)=observe->enforce
+影响模块=scripts/collect-governance-metrics.ps1; tests/repo-governance-hub.optimization.tests.ps1; docs/governance/metrics-auto.md
+当前落点=Phase0 token baseline recovery
+目标归宿=Phase0 completion and stable sampling chain
+迁移批次=2026-04-13
+风险等级=medium
+risk_tier=medium
+是否豁免(Waiver)=no
+豁免责任人=
+豁免到期=
+豁免回收计划=
+执行命令=powershell -File scripts/collect-governance-metrics.ps1; powershell -File tests/repo-governance-hub.optimization.tests.ps1 -TestNameFilter \"collect-governance-metrics extracts response token from UTF-8 no BOM CJK evidence\"; powershell -File scripts/verify-kit.ps1; powershell -File tests/repo-governance-hub.optimization.tests.ps1; powershell -File scripts/validate-config.ps1; powershell -File scripts/verify.ps1; powershell -File scripts/doctor.ps1
+验证证据=metrics-auto: average_response_token=980, response_token_sample_count=1; 新增 UTF-8 no BOM CJK 采样回归测试通过；四段门禁通过且 HEALTH=GREEN
+供应链安全扫描=N/A
+发布后验证(指标/阈值/窗口)=token_balance 不再出现 average_response_token 缺失告警（后续按周复验）
+数据变更治理(迁移/回填/回滚)=无结构变更；采样逻辑增强并新增测试覆盖
+回滚动作=git restore scripts/collect-governance-metrics.ps1 tests/repo-governance-hub.optimization.tests.ps1
+rollback_trigger=若采样修复导致误匹配或 token 指标出现异常跳变
+subagent_decision_mode=none
+spawn_parallel_subagents=false
+max_parallel_agents=0
+decision_score=0
+reason_codes=manual-single-agent
+hard_guard_hits=none
+policy_path=.governance/token-balance-policy.json
+
+任务理解快照=目标:恢复 Phase0 token 基线可观测性并关闭 N/A 阻塞; 非目标:调整 token 阈值策略; 验收:average_response_token 非 N/A 且回归测试通过
+术语解释点=UTF-8 no BOM CJK: 无 BOM 的 UTF-8 中文文本场景，常导致 PowerShell 默认读取路径下的解析偏差
+可观测信号=docs/governance/metrics-auto.md.average_response_token; response_token_sample_count; token_balance warning
+排障路径=增强编码读取兜底与指标提取函数 -> 增加针对性回归测试 -> 重跑采样与全门禁
+未确认假设与纠偏结论=未确认其它历史证据编码是否仍有边缘案例；已用函数级 fallback + 回归测试降低风险
+
+learning_points_3=1) 指标采样应显式处理编码差异而非依赖默认读取; 2) 诊断字段 sample_count 能快速定位问题层级; 3) 指标修复必须配套回归测试避免回退
+reusable_checklist=出现 N/A -> 加诊断字段 -> 增强采样函数 -> 加回归测试 -> 重跑采样 -> 跑全门禁 -> 更新计划状态
+open_questions=是否将 metrics 采样结果再落一份 JSON 以便后续趋势分析更稳健
+average_response_token=980
+single_task_token=6094

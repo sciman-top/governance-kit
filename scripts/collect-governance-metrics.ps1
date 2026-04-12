@@ -72,6 +72,87 @@ function Invoke-JsonScriptSafe {
   }
 }
 
+function Read-TextWithEncodingFallback {
+  param([string]$Path)
+  if ([string]::IsNullOrWhiteSpace($Path)) { return "" }
+  if (-not (Test-Path -LiteralPath $Path -PathType Leaf)) { return "" }
+
+  $rawCandidates = [System.Collections.Generic.List[string]]::new()
+  $utf8Strict = New-Object System.Text.UTF8Encoding($false, $true)
+  try {
+    $rawUtf8Strict = [System.IO.File]::ReadAllText($Path, $utf8Strict)
+    if ($null -ne $rawUtf8Strict) { [void]$rawCandidates.Add([string]$rawUtf8Strict) }
+  } catch {}
+  try {
+    $rawUtf8 = [System.IO.File]::ReadAllText($Path, [System.Text.Encoding]::UTF8)
+    if ($null -ne $rawUtf8) { [void]$rawCandidates.Add([string]$rawUtf8) }
+  } catch {}
+  try {
+    $rawDefault = [System.IO.File]::ReadAllText($Path)
+    if ($null -ne $rawDefault) { [void]$rawCandidates.Add([string]$rawDefault) }
+  } catch {}
+  try {
+    $rawContent = Get-Content -LiteralPath $Path -Raw
+    if ($null -ne $rawContent) { [void]$rawCandidates.Add([string]$rawContent) }
+  } catch {}
+
+  foreach ($candidate in @($rawCandidates.ToArray())) {
+    if ($null -eq $candidate) { continue }
+    return ([string]$candidate).TrimStart([char]0xFEFF)
+  }
+  return ""
+}
+
+function Try-ParseIntMetricValue {
+  param([string]$Text)
+  if ([string]::IsNullOrWhiteSpace($Text)) { return $null }
+
+  $trimmed = [string]$Text
+  $trimmed = $trimmed.Trim()
+  $parsed = 0
+  if ([int]::TryParse($trimmed, [ref]$parsed)) {
+    return [int]$parsed
+  }
+
+  $inline = [regex]::Match($trimmed, "(?<![0-9])([0-9]+)(?![0-9])")
+  if ($inline.Success) {
+    $fallback = 0
+    if ([int]::TryParse([string]$inline.Groups[1].Value, [ref]$fallback)) {
+      return [int]$fallback
+    }
+  }
+  return $null
+}
+
+function Get-IntMetricFromRaw {
+  param(
+    [string]$Raw,
+    [string]$Key
+  )
+  if ([string]::IsNullOrWhiteSpace($Raw)) { return $null }
+  if ([string]::IsNullOrWhiteSpace($Key)) { return $null }
+
+  $escaped = [regex]::Escape($Key)
+
+  # Strict line-boundary parse keeps metric semantics aligned with key=value evidence files.
+  $linePattern = "(?im)^\s*$escaped\s*[:=]\s*([^\r\n]+)\s*$"
+  $lineMatch = [regex]::Match($Raw, $linePattern)
+  if ($lineMatch.Success) {
+    $parsed = Try-ParseIntMetricValue -Text ([string]$lineMatch.Groups[1].Value)
+    if ($null -ne $parsed) { return [int]$parsed }
+  }
+
+  # Fallback for legacy PowerShell decoding quirks where adjacent key/value lines may collapse.
+  $inlinePattern = "(?i)\b$escaped\b\s*[:=]\s*([0-9]+)"
+  $inlineMatch = [regex]::Match($Raw, $inlinePattern)
+  if ($inlineMatch.Success) {
+    $parsed = Try-ParseIntMetricValue -Text ([string]$inlineMatch.Groups[1].Value)
+    if ($null -ne $parsed) { return [int]$parsed }
+  }
+
+  return $null
+}
+
 function Get-TokenQualitySnapshot {
   param([System.IO.FileInfo[]]$EvidenceFiles)
 
@@ -82,32 +163,28 @@ function Get-TokenQualitySnapshot {
   $taskTokens = [System.Collections.Generic.List[int]]::new()
 
   foreach ($f in @($EvidenceFiles)) {
-    $raw = ""
-    try {
-      $raw = Get-Content -LiteralPath $f.FullName -Raw
-    } catch {
+    $raw = Read-TextWithEncodingFallback -Path $f.FullName
+    if ([string]::IsNullOrWhiteSpace($raw)) {
       continue
     }
 
-    $attemptMatch = [regex]::Match($raw, "(?im)^\s*attempt_count\s*[:=]\s*([0-9]+)\s*$")
-    if ($attemptMatch.Success) {
-      $attempt = [int]$attemptMatch.Groups[1].Value
+    $attempt = Get-IntMetricFromRaw -Raw $raw -Key "attempt_count"
+    if ($null -ne $attempt) {
       $attemptTotal++
       if ($attempt -le 1) { $attemptFirstPass++ }
       if ($attempt -ge 2) { $attemptRework++ }
     }
 
-    $respMatch = [regex]::Match($raw, "(?im)^\s*average_response_token\s*[:=]\s*([0-9]+)\s*$")
-    if ($respMatch.Success) {
-      [void]$responseTokens.Add([int]$respMatch.Groups[1].Value)
+    $respValue = Get-IntMetricFromRaw -Raw $raw -Key "average_response_token"
+    if ($null -ne $respValue) {
+      [void]$responseTokens.Add([int]$respValue)
     } else {
       try {
         $kv = Parse-KeyValueFile $f.FullName
         if ($kv.ContainsKey("average_response_token")) {
-          $rawResp = [string]$kv["average_response_token"]
-          $respValue = 0
-          if ([int]::TryParse($rawResp, [ref]$respValue)) {
-            [void]$responseTokens.Add([int]$respValue)
+          $parsedResp = Try-ParseIntMetricValue -Text ([string]$kv["average_response_token"])
+          if ($null -ne $parsedResp) {
+            [void]$responseTokens.Add([int]$parsedResp)
           }
         }
       } catch {
@@ -115,17 +192,16 @@ function Get-TokenQualitySnapshot {
       }
     }
 
-    $taskMatch = [regex]::Match($raw, "(?im)^\s*single_task_token\s*[:=]\s*([0-9]+)\s*$")
-    if ($taskMatch.Success) {
-      [void]$taskTokens.Add([int]$taskMatch.Groups[1].Value)
+    $taskValue = Get-IntMetricFromRaw -Raw $raw -Key "single_task_token"
+    if ($null -ne $taskValue) {
+      [void]$taskTokens.Add([int]$taskValue)
     } else {
       try {
         $kv = Parse-KeyValueFile $f.FullName
         if ($kv.ContainsKey("single_task_token")) {
-          $rawTask = [string]$kv["single_task_token"]
-          $taskValue = 0
-          if ([int]::TryParse($rawTask, [ref]$taskValue)) {
-            [void]$taskTokens.Add([int]$taskValue)
+          $parsedTask = Try-ParseIntMetricValue -Text ([string]$kv["single_task_token"])
+          if ($null -ne $parsedTask) {
+            [void]$taskTokens.Add([int]$parsedTask)
           }
         }
       } catch {
@@ -143,19 +219,11 @@ function Get-TokenQualitySnapshot {
     # Secondary fallback: direct full-scan match to avoid silent parser drift.
     $responseFallback = [System.Collections.Generic.List[int]]::new()
     foreach ($f in @($EvidenceFiles)) {
-      $raw = ""
-      try {
-        $raw = Get-Content -LiteralPath $f.FullName -Raw
-      } catch {
-        continue
-      }
-      $matches = [regex]::Matches($raw, "(?im)^\s*average_response_token\s*[:=]\s*([0-9]+)\s*$")
-      foreach ($m in @($matches)) {
-        if ($null -eq $m -or -not $m.Success) { continue }
-        $v = 0
-        if ([int]::TryParse([string]$m.Groups[1].Value, [ref]$v)) {
-          [void]$responseFallback.Add($v)
-        }
+      $raw = Read-TextWithEncodingFallback -Path $f.FullName
+      if ([string]::IsNullOrWhiteSpace($raw)) { continue }
+      $value = Get-IntMetricFromRaw -Raw $raw -Key "average_response_token"
+      if ($null -ne $value) {
+        [void]$responseFallback.Add([int]$value)
       }
     }
     $responseTokenValues = @($responseFallback.ToArray())
@@ -169,19 +237,11 @@ function Get-TokenQualitySnapshot {
   if ($singleTaskTokenValues.Count -eq 0) {
     $singleTaskFallback = [System.Collections.Generic.List[int]]::new()
     foreach ($f in @($EvidenceFiles)) {
-      $raw = ""
-      try {
-        $raw = Get-Content -LiteralPath $f.FullName -Raw
-      } catch {
-        continue
-      }
-      $matches = [regex]::Matches($raw, "(?im)^\s*single_task_token\s*[:=]\s*([0-9]+)\s*$")
-      foreach ($m in @($matches)) {
-        if ($null -eq $m -or -not $m.Success) { continue }
-        $v = 0
-        if ([int]::TryParse([string]$m.Groups[1].Value, [ref]$v)) {
-          [void]$singleTaskFallback.Add($v)
-        }
+      $raw = Read-TextWithEncodingFallback -Path $f.FullName
+      if ([string]::IsNullOrWhiteSpace($raw)) { continue }
+      $value = Get-IntMetricFromRaw -Raw $raw -Key "single_task_token"
+      if ($null -ne $value) {
+        [void]$singleTaskFallback.Add([int]$value)
       }
     }
     $singleTaskTokenValues = @($singleTaskFallback.ToArray())

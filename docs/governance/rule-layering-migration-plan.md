@@ -116,10 +116,10 @@
 5. 输出一次周度对照（token + 一次通过率 + 返工率）。
 
 ## 9) 当前执行状态（2026-04-13）
-- Phase 0：`暂缓（不阻断）`
+- Phase 0：`已完成`
   - 规则盘点已完成。
-  - token 基线采样仍需补齐（`average_response_token` 当前为 N/A）；已尝试增强 `collect-governance-metrics.ps1` 兜底解析与诊断字段，当前 `response_token_sample_count=0`。
-  - 阶段决策：先暂缓该阻塞并继续执行 Phase 2/3/4，待观察窗口收口后再回补。
+  - token 基线采样已闭环：`average_response_token=980`、`response_token_sample_count=1`。
+  - 通过脚本修复 + 回归测试完成收敛（见变更证据）。
 - Phase 1：`已完成（本轮范围）`
   - 主规则瘦身与索引分流已完成。
   - `verification-entrypoints / global-repo-mapping / evidence-and-rollback-runbook / backflow-runbook / git-scope-and-tracked-files` 已落地。

@@ -775,6 +775,7 @@ Fixture body.
       Set-StubScript -Path (Join-Path $tmp "scripts\governance\check-cross-repo-compatibility.ps1")
       Set-StubScript -Path (Join-Path $tmp "scripts\governance\check-token-efficiency-trend.ps1")
       Set-StubScript -Path (Join-Path $tmp "scripts\governance\check-token-balance.ps1")
+      Set-StubScript -Path (Join-Path $tmp "scripts\governance\check-trace-grading-readiness.ps1")
 
       $src = Join-Path $tmp "source\AGENTS.md"
       $dst = Join-Path $tmp "target\AGENTS.md"
@@ -1495,6 +1496,58 @@ single_task_token=6094
       $metrics | should match "external_baseline_status=ADVISORY"
       $metrics | should match "external_baseline_advisory_count=4"
       $metrics | should match "external_baseline_warn_count=0"
+    } finally {
+      if (Test-Path $tmp) { Remove-Item -LiteralPath $tmp -Recurse -Force }
+    }
+  }
+
+  it "collect-governance-metrics extracts response token from UTF-8 no BOM CJK evidence" {
+    $tmp = Join-Path $env:TEMP ("govkit-test-" + [guid]::NewGuid().ToString("N"))
+    $repo = Join-Path $tmp "repo"
+    try {
+      New-Item -ItemType Directory -Path (Join-Path $tmp "scripts\lib") -Force | Out-Null
+      New-Item -ItemType Directory -Path (Join-Path $tmp "scripts") -Force | Out-Null
+      New-Item -ItemType Directory -Path (Join-Path $tmp "source\global") -Force | Out-Null
+      New-Item -ItemType Directory -Path (Join-Path $tmp "config") -Force | Out-Null
+      New-Item -ItemType Directory -Path (Join-Path $repo "docs\change-evidence") -Force | Out-Null
+      New-Item -ItemType Directory -Path $repo -Force | Out-Null
+
+      Copy-Item -Path (Join-Path $repoRoot "scripts\collect-governance-metrics.ps1") -Destination (Join-Path $tmp "scripts\collect-governance-metrics.ps1") -Force
+      Copy-Item -Path (Join-Path $repoRoot "scripts\lib\common.ps1") -Destination (Join-Path $tmp "scripts\lib\common.ps1") -Force
+
+      @($repo) | ConvertTo-Json -Depth 3 | Set-Content -Path (Join-Path $tmp "config\repositories.json") -Encoding UTF8
+
+      @"
+# AGENTS
+**Version**: 7.77
+**Last Updated**: 2026-03-30
+"@ | Set-Content -Path (Join-Path $tmp "source\global\AGENTS.md") -Encoding UTF8
+
+      $evidence = @'
+规则ID=utf8-no-bom-cjk-token-sample
+规则版本=9.38
+风险等级=medium
+执行命令=powershell -File scripts/collect-governance-metrics.ps1
+验证证据=utf8 no bom evidence parsing
+回滚动作=restore sample
+attempt_count=1
+learning_points_3=1) sample
+reusable_checklist=改 policy->改 gate script->补测试->install 分发->四门禁复验
+open_questions=是否对 missing_metric 引入“连续天数超阈值再阻断”的硬策略
+average_response_token=980
+single_task_token=6094
+'@
+      Write-Utf8NoBomFile -Path (Join-Path $repo "docs\change-evidence\20260413-utf8-no-bom-cjk-token-sample.md") -Content $evidence
+
+      $output = & powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $tmp "scripts\collect-governance-metrics.ps1") 2>&1 | Out-String
+      if ($LASTEXITCODE -ne 0) { throw "collect-governance-metrics failed with exit code $LASTEXITCODE" }
+      $output | should match "collect-governance-metrics done"
+
+      $metrics = Get-Content -Raw (Join-Path $repo "docs\governance\metrics-auto.md")
+      $metrics | should match "average_response_token=980"
+      $metrics | should match "single_task_token=6094"
+      $metrics | should match "response_token_sample_count=1"
+      $metrics | should match "single_task_token_sample_count=1"
     } finally {
       if (Test-Path $tmp) { Remove-Item -LiteralPath $tmp -Recurse -Force }
     }
