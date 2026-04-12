@@ -1,10 +1,10 @@
 #!/bin/sh
 # repo-governance-hub global pre-push
 HOOK_DIR="$(cd "$(dirname "$0")" && pwd)"
-KIT_ROOT="$(cd "$HOOK_DIR/.." && pwd)"
+ROOT="$(cd "$HOOK_DIR/.." && pwd)"
 
-if [ -f "$KIT_ROOT/scripts/verify.ps1" ]; then
-  powershell -NoProfile -ExecutionPolicy Bypass -File "$KIT_ROOT/scripts/verify.ps1" -TrackedFilesScope outgoing
+if [ -f "$ROOT/scripts/verify.ps1" ]; then
+  powershell -NoProfile -ExecutionPolicy Bypass -File "$ROOT/scripts/verify.ps1" -TrackedFilesScope outgoing
   status=$?
   if [ $status -ne 0 ]; then
     echo "[BLOCK] governance target verification failed"

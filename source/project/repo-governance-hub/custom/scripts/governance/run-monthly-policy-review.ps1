@@ -75,6 +75,10 @@ $lines = [System.Collections.Generic.List[string]]::new()
 [void]$lines.Add(("external_baseline_status={0}" -f [string]$review.summary.external_baseline_status))
 [void]$lines.Add(("external_baseline_advisory_count={0}" -f [int]$review.summary.external_baseline_advisory_count))
 [void]$lines.Add(("external_baseline_warn_count={0}" -f [int]$review.summary.external_baseline_warn_count))
+[void]$lines.Add(("skill_trigger_eval_status={0}" -f [string]$review.summary.skill_trigger_eval_status))
+[void]$lines.Add(("skill_trigger_eval_grouped_query_count={0}" -f [int]$review.summary.skill_trigger_eval_grouped_query_count))
+[void]$lines.Add(("skill_trigger_eval_validation_pass_rate={0}" -f [string]$review.summary.skill_trigger_eval_validation_pass_rate))
+[void]$lines.Add(("skill_trigger_eval_validation_false_trigger_rate={0}" -f [string]$review.summary.skill_trigger_eval_validation_false_trigger_rate))
 [void]$lines.Add(("alert_snapshot_path={0}" -f [string]$review.alert_snapshot_path))
 [void]$lines.Add("")
 [void]$lines.Add("## Alerts")
@@ -93,6 +97,7 @@ if ([bool]$review.ok) {
 } else {
   [void]$lines.Add("- Resolve alerts in priority order: doctor -> rollout -> waiver -> metrics.")
   [void]$lines.Add("- Resolve periodic update trigger alerts (CLI drift, stale metrics, expired platform_na, overdue rollout).")
+  [void]$lines.Add("- Generate and validate trigger-eval summary before create promotion is allowed.")
   [void]$lines.Add("- Re-run scripts/governance/run-recurring-review.ps1 until status=OK.")
 }
 

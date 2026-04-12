@@ -23,6 +23,8 @@ $rolloutScript = Join-Path $kitRoot "scripts\rollout-status.ps1"
 $waiverScript = Join-Path $kitRoot "scripts\check-waivers.ps1"
 $metricsScript = Join-Path $kitRoot "scripts\collect-governance-metrics.ps1"
 $triggerScript = Join-Path $kitRoot "scripts\governance\check-update-triggers.ps1"
+$skillTriggerEvalScript = Join-Path $kitRoot "scripts\governance\check-skill-trigger-evals.ps1"
+$tokenBalanceScript = Join-Path $kitRoot "scripts\governance\check-token-balance.ps1"
 $externalBaselineScript = Join-Path $kitRoot "scripts\governance\check-external-baselines.ps1"
 $requiredScripts = @($doctorScript, $rolloutScript, $waiverScript, $metricsScript, $triggerScript)
 foreach ($script in $requiredScripts) {
@@ -31,6 +33,8 @@ foreach ($script in $requiredScripts) {
   }
 }
 $hasExternalBaselineScript = (Test-Path -LiteralPath $externalBaselineScript -PathType Leaf)
+$hasTokenBalanceScript = (Test-Path -LiteralPath $tokenBalanceScript -PathType Leaf)
+$hasSkillTriggerEvalScript = (Test-Path -LiteralPath $skillTriggerEvalScript -PathType Leaf)
 
 $psExe = Get-CurrentPowerShellPath
 
@@ -43,6 +47,24 @@ function Invoke-StepText([string]$Name, [string]$ScriptPath, [string[]]$Args) {
     exit_code = [int]$exitCode
     output = $text
   }
+}
+
+function Parse-JsonLoose([string]$RawText) {
+  if ([string]::IsNullOrWhiteSpace($RawText)) { return $null }
+  try {
+    return ($RawText | ConvertFrom-Json)
+  } catch {
+    $start = $RawText.IndexOf("{")
+    $end = $RawText.LastIndexOf("}")
+    if ($start -ge 0 -and $end -ge $start) {
+      try {
+        return ($RawText.Substring($start, $end - $start + 1) | ConvertFrom-Json)
+      } catch {
+        return $null
+      }
+    }
+  }
+  return $null
 }
 
 function Write-AlertSnapshot([object]$ReviewResult, [string]$RootPath) {
@@ -78,6 +100,24 @@ $rollout = Invoke-StepText -Name "rollout-status" -ScriptPath $rolloutScript -Ar
 $waiver = Invoke-StepText -Name "check-waivers" -ScriptPath $waiverScript -Args @()
 $metrics = Invoke-StepText -Name "collect-governance-metrics" -ScriptPath $metricsScript -Args @()
 $trigger = Invoke-StepText -Name "check-update-triggers" -ScriptPath $triggerScript -Args @("-RepoRoot", $repoPath, "-AsJson")
+if ($hasSkillTriggerEvalScript) {
+  $skillTriggerEval = Invoke-StepText -Name "check-skill-trigger-evals" -ScriptPath $skillTriggerEvalScript -Args @("-RepoRoot", $repoPath, "-AsJson")
+} else {
+  $skillTriggerEval = [pscustomobject]@{
+    name = "check-skill-trigger-evals"
+    exit_code = 0
+    output = ""
+  }
+}
+if ($hasTokenBalanceScript) {
+  $tokenBalance = Invoke-StepText -Name "check-token-balance" -ScriptPath $tokenBalanceScript -Args @("-RepoRoot", $repoPath)
+} else {
+  $tokenBalance = [pscustomobject]@{
+    name = "check-token-balance"
+    exit_code = 0
+    output = ""
+  }
+}
 if ($hasExternalBaselineScript) {
   $externalBaseline = Invoke-StepText -Name "check-external-baselines" -ScriptPath $externalBaselineScript -Args @("-RepoRoot", $repoPath, "-AsJson")
 } else {
@@ -136,12 +176,45 @@ if ($metrics.exit_code -ne 0) {
   [void]$alerts.Add("collect-governance-metrics failed")
 }
 
+if ($hasSkillTriggerEvalScript) {
+  $skillTriggerEvalStatus = "UNKNOWN"
+  if (-not [string]::IsNullOrWhiteSpace($skillTriggerEval.output)) {
+    $skillEvalObj = Parse-JsonLoose -RawText ([string]$skillTriggerEval.output)
+    if ($null -ne $skillEvalObj) {
+      if ($skillEvalObj.PSObject.Properties.Name -contains "status") {
+        $skillTriggerEvalStatus = [string]$skillEvalObj.status
+      }
+      if ($skillEvalObj.PSObject.Properties.Name -contains "validation_pass_rate") {
+        try { $skillTriggerEvalValidationPassRate = [double]$skillEvalObj.validation_pass_rate } catch { $skillTriggerEvalValidationPassRate = $null }
+      }
+      if ($skillEvalObj.PSObject.Properties.Name -contains "validation_false_trigger_rate") {
+        try { $skillTriggerEvalValidationFalseTriggerRate = [double]$skillEvalObj.validation_false_trigger_rate } catch { $skillTriggerEvalValidationFalseTriggerRate = $null }
+      }
+      if ($skillEvalObj.PSObject.Properties.Name -contains "grouped_query_count") {
+        try { $skillTriggerEvalGroupedQueryCount = [int]$skillEvalObj.grouped_query_count } catch { $skillTriggerEvalGroupedQueryCount = 0 }
+      }
+    } else {
+      $skillTriggerEvalStatus = "PARSE_ERROR"
+    }
+  }
+  if ($skillTriggerEval.exit_code -ne 0 -or $skillTriggerEvalStatus -eq "PARSE_ERROR") {
+    [void]$alerts.Add(("skill trigger eval status={0} grouped_query_count={1}" -f $skillTriggerEvalStatus, $skillTriggerEvalGroupedQueryCount))
+  }
+}
+
 $updateTriggerAlertCount = 0
 $orphanCustomSourceCount = 0
 $releaseDistributionPolicyDriftCount = 0
- $externalBaselineStatus = "UNKNOWN"
- $externalBaselineAdvisoryCount = 0
- $externalBaselineWarnCount = 0
+$tokenBalanceStatus = "UNKNOWN"
+$tokenBalanceWarningCount = 0
+$tokenBalanceViolationCount = 0
+$externalBaselineStatus = "UNKNOWN"
+$externalBaselineAdvisoryCount = 0
+$externalBaselineWarnCount = 0
+$skillTriggerEvalStatus = "UNAVAILABLE"
+$skillTriggerEvalGroupedQueryCount = 0
+$skillTriggerEvalValidationPassRate = $null
+$skillTriggerEvalValidationFalseTriggerRate = $null
 if ($trigger.exit_code -ne 0) {
   $triggerObj = $null
   $rawTriggerText = [string]$trigger.output
@@ -180,6 +253,41 @@ if ($trigger.exit_code -ne 0) {
   } else {
     [void]$alerts.Add("check-update-triggers failed")
   }
+}
+
+if (-not $hasTokenBalanceScript) {
+  $tokenBalanceStatus = "UNAVAILABLE"
+} elseif (-not [string]::IsNullOrWhiteSpace($tokenBalance.output)) {
+  $rawTokenBalanceText = [string]$tokenBalance.output
+  $statusMatch = [regex]::Match($rawTokenBalanceText, "(?m)^token_balance\.status=([A-Z_]+)\s*$")
+  $warningMatch = [regex]::Match($rawTokenBalanceText, "(?m)^token_balance\.warning_count=([0-9]+)\s*$")
+  $violationMatch = [regex]::Match($rawTokenBalanceText, "(?m)^token_balance\.violation_count=([0-9]+)\s*$")
+  if ($statusMatch.Success) {
+    $tokenBalanceStatus = $statusMatch.Groups[1].Value
+  }
+  if ($warningMatch.Success) {
+    $tokenBalanceWarningCount = [int]$warningMatch.Groups[1].Value
+  }
+  if ($violationMatch.Success) {
+    $tokenBalanceViolationCount = [int]$violationMatch.Groups[1].Value
+  } else {
+    $tokenBalanceObj = Parse-JsonLoose -RawText $rawTokenBalanceText
+    if ($null -ne $tokenBalanceObj) {
+      if ($tokenBalanceObj.PSObject.Properties.Name -contains "status") {
+        $tokenBalanceStatus = [string]$tokenBalanceObj.status
+      }
+      if ($tokenBalanceObj.PSObject.Properties.Name -contains "warning_count") {
+        $tokenBalanceWarningCount = [int]$tokenBalanceObj.warning_count
+      }
+      if ($tokenBalanceObj.PSObject.Properties.Name -contains "violation_count") {
+        $tokenBalanceViolationCount = [int]$tokenBalanceObj.violation_count
+      }
+    }
+  }
+}
+
+if ($hasTokenBalanceScript -and ($tokenBalance.exit_code -ne 0 -or $tokenBalanceViolationCount -gt 0 -or $tokenBalanceStatus -eq "ALERT")) {
+  [void]$alerts.Add(("token balance status={0} violation_count={1}" -f $tokenBalanceStatus, $tokenBalanceViolationCount))
 }
 
 if (-not $hasExternalBaselineScript) {
@@ -245,10 +353,19 @@ $result = [pscustomobject]@{
     update_trigger_alert_count = [int]$updateTriggerAlertCount
     orphan_custom_source_count = [int]$orphanCustomSourceCount
     release_distribution_policy_drift_count = [int]$releaseDistributionPolicyDriftCount
+    token_balance_status = $tokenBalanceStatus
+    token_balance_warning_count = [int]$tokenBalanceWarningCount
+    token_balance_violation_count = [int]$tokenBalanceViolationCount
     external_baseline_status = $externalBaselineStatus
     external_baseline_advisory_count = [int]$externalBaselineAdvisoryCount
     external_baseline_warn_count = [int]$externalBaselineWarnCount
+    skill_trigger_eval_status = $skillTriggerEvalStatus
+    skill_trigger_eval_grouped_query_count = [int]$skillTriggerEvalGroupedQueryCount
+    skill_trigger_eval_validation_pass_rate = $skillTriggerEvalValidationPassRate
+    skill_trigger_eval_validation_false_trigger_rate = $skillTriggerEvalValidationFalseTriggerRate
     update_trigger_exit_code = [int]$trigger.exit_code
+    skill_trigger_eval_exit_code = [int]$skillTriggerEval.exit_code
+    token_balance_exit_code = [int]$tokenBalance.exit_code
     external_baseline_exit_code = [int]$externalBaseline.exit_code
   }
   steps = @(
@@ -257,6 +374,8 @@ $result = [pscustomobject]@{
     [pscustomobject]@{ name = "check-waivers"; exit_code = [int]$waiver.exit_code },
     [pscustomobject]@{ name = "collect-governance-metrics"; exit_code = [int]$metrics.exit_code },
     [pscustomobject]@{ name = "check-update-triggers"; exit_code = [int]$trigger.exit_code },
+    [pscustomobject]@{ name = "check-skill-trigger-evals"; exit_code = [int]$skillTriggerEval.exit_code },
+    [pscustomobject]@{ name = "check-token-balance"; exit_code = [int]$tokenBalance.exit_code },
     [pscustomobject]@{ name = "check-external-baselines"; exit_code = [int]$externalBaseline.exit_code }
   )
 }
@@ -283,9 +402,16 @@ Write-Host ("waiver_block_count={0}" -f $result.summary.waiver_block_count)
 Write-Host ("update_trigger_alert_count={0}" -f $result.summary.update_trigger_alert_count)
 Write-Host ("orphan_custom_source_count={0}" -f $result.summary.orphan_custom_source_count)
 Write-Host ("release_distribution_policy_drift_count={0}" -f $result.summary.release_distribution_policy_drift_count)
+Write-Host ("token_balance_status={0}" -f $result.summary.token_balance_status)
+Write-Host ("token_balance_warning_count={0}" -f $result.summary.token_balance_warning_count)
+Write-Host ("token_balance_violation_count={0}" -f $result.summary.token_balance_violation_count)
 Write-Host ("external_baseline_status={0}" -f $result.summary.external_baseline_status)
 Write-Host ("external_baseline_advisory_count={0}" -f $result.summary.external_baseline_advisory_count)
 Write-Host ("external_baseline_warn_count={0}" -f $result.summary.external_baseline_warn_count)
+Write-Host ("skill_trigger_eval_status={0}" -f $result.summary.skill_trigger_eval_status)
+Write-Host ("skill_trigger_eval_grouped_query_count={0}" -f $result.summary.skill_trigger_eval_grouped_query_count)
+Write-Host ("skill_trigger_eval_validation_pass_rate={0}" -f $result.summary.skill_trigger_eval_validation_pass_rate)
+Write-Host ("skill_trigger_eval_validation_false_trigger_rate={0}" -f $result.summary.skill_trigger_eval_validation_false_trigger_rate)
 if ($result.ok) {
   Write-Host "result=OK"
   if (-not [string]::IsNullOrWhiteSpace($alertSnapshotPath)) {

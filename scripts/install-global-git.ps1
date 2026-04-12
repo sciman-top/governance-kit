@@ -17,9 +17,9 @@ $commitTplGit = $commitTpl -replace '\\','/'
 
 git config --global core.hooksPath $hooksPathGit
 git config --global commit.template $commitTplGit
-git config --global governance.kitRoot ($kitRoot -replace '\\','/')
+git config --global governance.root ($kitRoot -replace '\\','/')
 
 Write-Host "[SET] git config --global core.hooksPath=$hooksPathGit"
 Write-Host "[SET] git config --global commit.template=$commitTplGit"
-Write-Host "[SET] git config --global governance.kitRoot=$($kitRoot -replace '\\','/')"
+Write-Host "[SET] git config --global governance.root=$($kitRoot -replace '\\','/')"
 Write-Host "install-global-git done"

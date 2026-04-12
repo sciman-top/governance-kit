@@ -154,14 +154,15 @@ $prePushText = Read-TextIfExists -Path $hooksPrePush
 $hookBlockInstalled = (($preCommitText -match "# >>> repo-governance-hub begin") -and ($prePushText -match "# >>> repo-governance-hub begin"))
 
 $commitTemplateConfigured = $false
+$governanceRootConfigured = $false
 $governanceKitRootConfigured = $false
 try {
   $templateValue = (& git -C $repo config --local --get commit.template 2>$null)
   $commitTemplateConfigured = -not [string]::IsNullOrWhiteSpace($templateValue)
 } catch {}
 try {
-  $kitRootValue = (& git -C $repo config --local --get governance.kitRoot 2>$null)
-  $governanceKitRootConfigured = -not [string]::IsNullOrWhiteSpace($kitRootValue)
+  $rootValue = (& git -C $repo config --local --get governance.root 2>$null)
+  $governanceRootConfigured = -not [string]::IsNullOrWhiteSpace($rootValue)
 } catch {}
 
 $templatePresence = [pscustomobject]@{
@@ -192,7 +193,7 @@ $facts = [pscustomobject]@{
     }
     git_config_state = [pscustomobject]@{
       commit_template_configured = $commitTemplateConfigured
-      governance_kit_root_configured = $governanceKitRootConfigured
+      governance_root_configured = $governanceRootConfigured
     }
     templates = $templatePresence
   }
@@ -227,7 +228,7 @@ Write-Host "quick_gate_script_relative=$($facts.detected.quick_gate_script_relat
 Write-Host "quality_gate_workflow_relative=$($facts.detected.quality_gate_workflow_relative)"
 Write-Host "hook.governance_block_installed=$($facts.detected.hook_state.governance_block_installed)"
 Write-Host "git.commit_template_configured=$($facts.detected.git_config_state.commit_template_configured)"
-Write-Host "git.governance_kit_root_configured=$($facts.detected.git_config_state.governance_kit_root_configured)"
+Write-Host "git.governance_root_configured=$($facts.detected.git_config_state.governance_root_configured)"
 if ($facts.detected.src_modules.Count -gt 0) {
   Write-Host ("src_modules=" + ($facts.detected.src_modules -join ","))
 }

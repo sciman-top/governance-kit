@@ -1,16 +1,16 @@
 #!/bin/sh
 # repo-governance-hub pre-commit hook
-KIT_ROOT="$(git config --get governance.kitRoot)"
-if [ -z "$KIT_ROOT" ]; then
-  KIT_ROOT="${GOVERNANCE_KIT_ROOT}"
+ROOT="$(git config --get governance.root)"
+if [ -z "$ROOT" ]; then
+  ROOT="${GOVERNANCE_ROOT}"
 fi
 
-if [ -z "$KIT_ROOT" ]; then
-  echo "[WARN] governance.kitRoot is not configured; skip governance verify"
+if [ -z "$ROOT" ]; then
+  echo "[WARN] governance.root is not configured; skip governance verify"
   exit 0
 fi
 
-powershell -NoProfile -ExecutionPolicy Bypass -File "$KIT_ROOT/scripts/verify.ps1" -TrackedFilesScope staged
+powershell -NoProfile -ExecutionPolicy Bypass -File "$ROOT/scripts/verify.ps1" -TrackedFilesScope staged
 status=$?
 if [ $status -ne 0 ]; then
   echo "[BLOCK] governance verify failed"

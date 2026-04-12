@@ -31,7 +31,7 @@ function Run-Step([string]$Name, [scriptblock]$Action) {
 
 if (-not $SkipInstallGlobalGit) {
   if ($Mode -eq "plan") {
-    Run-Step "install-global-git" { Write-Host "[PLAN] SET global git core.hooksPath/commit.template/governance.kitRoot" }
+    Run-Step "install-global-git" { Write-Host "[PLAN] SET global git core.hooksPath/commit.template/governance.root" }
   } else {
     Run-Step "install-global-git" { Invoke-ChildScript -ScriptPath (Join-Path $scriptRoot 'install-global-git.ps1') }
   }

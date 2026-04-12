@@ -351,7 +351,7 @@ if ($Mode -ne "plan") {
         throw "Missing target autopilot script after install: $targetAutopilot"
       }
 
-      Invoke-ChildScript -ScriptPath $targetAutopilot -ScriptArgs @("-RepoRoot", $repo, "-GovernanceKitRoot", $kitRoot, "-DryRun")
+      Invoke-ChildScript -ScriptPath $targetAutopilot -ScriptArgs @("-RepoRoot", $repo, "-GovernanceRoot", $kitRoot, "-DryRun")
     }
   }
 

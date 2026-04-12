@@ -27,7 +27,7 @@
   - 两个 autopilot 脚本中 `Assert-Command`/`Invoke-LoggedCommand` 重复，存在维护漂移风险。
 - 命令:
   - `powershell -NoProfile -ExecutionPolicy Bypass -File scripts/automation/run-safe-autopilot.ps1 -RepoRoot . -DryRun -MaxCycles 1`
-  - `powershell -NoProfile -ExecutionPolicy Bypass -File scripts/governance/run-target-autopilot.ps1 -RepoRoot . -GovernanceKitRoot . -DryRun -MaxCycles 1`
+  - `powershell -NoProfile -ExecutionPolicy Bypass -File scripts/governance/run-target-autopilot.ps1 -RepoRoot . -GovernanceRoot . -DryRun -MaxCycles 1`
   - `powershell -NoProfile -ExecutionPolicy Bypass -File scripts/verify-kit.ps1`
   - `powershell -NoProfile -ExecutionPolicy Bypass -File tests/repo-governance-hub.optimization.tests.ps1`
   - `powershell -NoProfile -ExecutionPolicy Bypass -File scripts/validate-config.ps1`

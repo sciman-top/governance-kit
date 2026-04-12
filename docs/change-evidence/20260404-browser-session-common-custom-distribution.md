@@ -42,7 +42,7 @@
 - powershell -File source/project/_common/custom/tools/browser-session/start-browser-session.ps1 -Action cleanup -Name smoke-opt -Port 65529
 - powershell -File scripts/install.ps1 -Mode safe
 - powershell -File scripts/doctor.ps1
-- powershell -File E:/CODE/skills-manager/scripts/governance/run-target-autopilot.ps1 -RepoRoot E:/CODE/skills-manager -GovernanceKitRoot E:/CODE/repo-governance-hub -DryRun
+- powershell -File E:/CODE/skills-manager/scripts/governance/run-target-autopilot.ps1 -RepoRoot E:/CODE/skills-manager -GovernanceRoot E:/CODE/repo-governance-hub -DryRun
 回滚动作=
 - 从 config/project-custom-files.json 删除 browser-session 默认分发项
 - 删除 source/project/_common/custom/tools/browser-session/*

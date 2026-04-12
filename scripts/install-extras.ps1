@@ -51,13 +51,13 @@ function Get-HookBlock([string]$Kind) {
   $trackedScope = if ($Kind -eq "pre-push") { "outgoing" } else { "staged" }
   return @'
 # >>> repo-governance-hub begin
-KIT_ROOT="$(git config --get governance.kitRoot)"
-if [ -z "$KIT_ROOT" ]; then
-  KIT_ROOT="${GOVERNANCE_KIT_ROOT}"
+ROOT="$(git config --get governance.root)"
+if [ -z "$ROOT" ]; then
+  ROOT="${GOVERNANCE_ROOT}"
 fi
 
-if [ -n "$KIT_ROOT" ]; then
-  powershell -NoProfile -ExecutionPolicy Bypass -File "$KIT_ROOT/scripts/verify.ps1" -TrackedFilesScope __TRACKED_SCOPE__
+if [ -n "$ROOT" ]; then
+  powershell -NoProfile -ExecutionPolicy Bypass -File "$ROOT/scripts/verify.ps1" -TrackedFilesScope __TRACKED_SCOPE__
   status=$?
   if [ $status -ne 0 ]; then
     echo "[BLOCK] governance verify failed"
@@ -192,7 +192,7 @@ foreach ($repo in $repos) {
 
     if ($planMode) {
       Write-Host "[PLAN] SET git commit.template=.gitmessage.txt"
-      Write-Host "[PLAN] SET git governance.kitRoot"
+      Write-Host "[PLAN] SET git governance.root"
     } else {
       $setCommit = Invoke-GitConfigSet -RepoPath $repoPath -GitArgs @("config", "commit.template", ".gitmessage.txt")
       if ($setCommit.exit_code -eq 0) {
@@ -204,13 +204,13 @@ foreach ($repo in $repos) {
         }
       }
 
-      $setKitRoot = Invoke-GitConfigSet -RepoPath $repoPath -GitArgs @("config", "governance.kitRoot", ($kitRoot -replace '\\','/'))
-      if ($setKitRoot.exit_code -eq 0) {
-        Write-Host "[SET] git governance.kitRoot"
+      $setGovernanceRoot = Invoke-GitConfigSet -RepoPath $repoPath -GitArgs @("config", "governance.root", ($kitRoot -replace '\\','/'))
+      if ($setGovernanceRoot.exit_code -eq 0) {
+        Write-Host "[SET] git governance.root"
       } else {
-        Write-Host "[WARN] failed to set git governance.kitRoot (exit=$($setKitRoot.exit_code))"
-        if (-not [string]::IsNullOrWhiteSpace($setKitRoot.output)) {
-          Write-Host ("       " + $setKitRoot.output.Trim())
+        Write-Host "[WARN] failed to set git governance.root (exit=$($setGovernanceRoot.exit_code))"
+        if (-not [string]::IsNullOrWhiteSpace($setGovernanceRoot.output)) {
+          Write-Host ("       " + $setGovernanceRoot.output.Trim())
         }
       }
     }

@@ -86,7 +86,7 @@ if ($ciItems.Count -eq 0) { $ciItems += "- No standard CI entry file detected in
 $installItems = @(
   ("- hooks/pre-commit+pre-push governance block installed: " + [bool]$hookState.governance_block_installed),
   ("- git commit.template configured: " + [bool]$gitConfigState.commit_template_configured),
-  ("- git governance.kitRoot configured: " + [bool]$gitConfigState.governance_kit_root_configured),
+  ("- git governance.root configured: " + [bool]$gitConfigState.governance_root_configured),
   ("- docs/change-evidence/template.md exists: " + [bool]$templatesState.change_evidence_template),
   ("- docs/governance/waiver-template.md exists: " + [bool]$templatesState.governance_waiver_template),
   ("- docs/governance/metrics-template.md exists: " + [bool]$templatesState.governance_metrics_template)

@@ -21,9 +21,9 @@
 - powershell -NoProfile -ExecutionPolicy Bypass -File scripts/doctor.ps1
 - powershell -NoProfile -ExecutionPolicy Bypass -File scripts/install.ps1 -Mode plan -ShowScope
 - powershell -NoProfile -ExecutionPolicy Bypass -File scripts/install.ps1 -Mode safe -ShowScope
-- powershell -NoProfile -ExecutionPolicy Bypass -File E:/CODE/ClassroomToolkit/scripts/governance/run-target-autopilot.ps1 -RepoRoot E:/CODE/ClassroomToolkit -GovernanceKitRoot E:/CODE/repo-governance-hub -DryRun
-- powershell -NoProfile -ExecutionPolicy Bypass -File E:/CODE/skills-manager/scripts/governance/run-target-autopilot.ps1 -RepoRoot E:/CODE/skills-manager -GovernanceKitRoot E:/CODE/repo-governance-hub -DryRun
-- powershell -NoProfile -ExecutionPolicy Bypass -File E:/CODE/repo-governance-hub/scripts/governance/run-target-autopilot.ps1 -RepoRoot E:/CODE/repo-governance-hub -GovernanceKitRoot E:/CODE/repo-governance-hub -DryRun
+- powershell -NoProfile -ExecutionPolicy Bypass -File E:/CODE/ClassroomToolkit/scripts/governance/run-target-autopilot.ps1 -RepoRoot E:/CODE/ClassroomToolkit -GovernanceRoot E:/CODE/repo-governance-hub -DryRun
+- powershell -NoProfile -ExecutionPolicy Bypass -File E:/CODE/skills-manager/scripts/governance/run-target-autopilot.ps1 -RepoRoot E:/CODE/skills-manager -GovernanceRoot E:/CODE/repo-governance-hub -DryRun
+- powershell -NoProfile -ExecutionPolicy Bypass -File E:/CODE/repo-governance-hub/scripts/governance/run-target-autopilot.ps1 -RepoRoot E:/CODE/repo-governance-hub -GovernanceRoot E:/CODE/repo-governance-hub -DryRun
 
 关键变更=
 - `run-project-governance-cycle.ps1` 新增 `Assert-PreflightWorkspaceClean`：safe 模式进入循环前强制检查 git 工作区是否干净；若不干净直接阻断并输出清晰错误。

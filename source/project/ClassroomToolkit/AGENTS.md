@@ -132,7 +132,7 @@
 - quick gate：`scripts/validation/run-stable-tests.ps1`
 - hotspot script：`scripts/quality/check-hotspot-line-budgets.ps1`
 - hooks 校验：`Test-Path .git/hooks/pre-commit`、`Test-Path .git/hooks/pre-push`
-- git config 校验：`git config --get commit.template`、`git config --get governance.kitRoot`
+- git config 校验：`git config --get commit.template`、`git config --get governance.root`
 - 里程碑自动提交：治理闭环在策略允许时可于 `after_backflow`、`after_redistribute_verify`、`cycle_complete` 执行 `git add -A + 中文提交说明`，并在提交后强校验工作区干净；执行前必须先识别并隔离非本次治理改动，避免误纳入提交。
 - 模板校验：`Test-Path docs/change-evidence/template.md`、`Test-Path docs/governance/waiver-template.md`、`Test-Path docs/governance/metrics-template.md`
 

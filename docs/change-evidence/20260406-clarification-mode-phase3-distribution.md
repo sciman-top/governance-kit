@@ -19,8 +19,8 @@ final_acceptance_examples=target repos run-target-autopilot accepts -IssueId in 
 执行命令=
 - powershell -NoProfile -ExecutionPolicy Bypass -File scripts/install.ps1 -Mode safe
 - powershell -NoProfile -ExecutionPolicy Bypass -File scripts/doctor.ps1 -AsJson
-- powershell -NoProfile -ExecutionPolicy Bypass -File E:/CODE/ClassroomToolkit/scripts/governance/run-target-autopilot.ps1 -RepoRoot E:/CODE/ClassroomToolkit -GovernanceKitRoot E:/CODE/repo-governance-hub -DryRun -IssueId smoke-classroom
-- powershell -NoProfile -ExecutionPolicy Bypass -File E:/CODE/skills-manager/scripts/governance/run-target-autopilot.ps1 -RepoRoot E:/CODE/skills-manager -GovernanceKitRoot E:/CODE/repo-governance-hub -DryRun -IssueId smoke-skills
+- powershell -NoProfile -ExecutionPolicy Bypass -File E:/CODE/ClassroomToolkit/scripts/governance/run-target-autopilot.ps1 -RepoRoot E:/CODE/ClassroomToolkit -GovernanceRoot E:/CODE/repo-governance-hub -DryRun -IssueId smoke-classroom
+- powershell -NoProfile -ExecutionPolicy Bypass -File E:/CODE/skills-manager/scripts/governance/run-target-autopilot.ps1 -RepoRoot E:/CODE/skills-manager -GovernanceRoot E:/CODE/repo-governance-hub -DryRun -IssueId smoke-skills
 验证证据=
 - install safe: copied updated governance entry scripts to ClassroomToolkit and skills-manager
 - doctor(asJson): health=GREEN and clarification observability fields present

@@ -1,6 +1,6 @@
 ﻿param(
   [string]$RepoRoot = ".",
-  [string]$GovernanceKitRoot = "",
+  [string]$GovernanceRoot = "",
   [string]$IssueId = "target-autopilot-default",
   [ValidateSet("auto", "plan", "requirement", "bugfix", "acceptance")]
   [string]$ClarificationScenario = "auto",
@@ -18,7 +18,7 @@ $ErrorActionPreference = "Stop"
 
 $repoPath = (Resolve-Path -LiteralPath $RepoRoot).Path
 
-function Resolve-KitRoot {
+function Resolve-GovernanceRoot {
   param([string]$ProvidedPath)
 
   if (-not [string]::IsNullOrWhiteSpace($ProvidedPath)) {
@@ -29,7 +29,7 @@ function Resolve-KitRoot {
 
   $gitValue = ""
   try {
-    $gitValue = (& git -C $repoPath config --local --get governance.kitRoot 2>$null)
+    $gitValue = (& git -C $repoPath config --local --get governance.root 2>$null)
   }
   catch {
     $gitValue = ""
@@ -40,12 +40,12 @@ function Resolve-KitRoot {
     if ($null -ne $resolved) { return $resolved.Path }
   }
 
-  if (-not [string]::IsNullOrWhiteSpace($env:GOVERNANCE_KIT_ROOT)) {
-    $resolved = Resolve-Path -LiteralPath $env:GOVERNANCE_KIT_ROOT -ErrorAction SilentlyContinue
+  if (-not [string]::IsNullOrWhiteSpace($env:GOVERNANCE_ROOT)) {
+    $resolved = Resolve-Path -LiteralPath $env:GOVERNANCE_ROOT -ErrorAction SilentlyContinue
     if ($null -ne $resolved) { return $resolved.Path }
   }
 
-  throw "Cannot resolve repo-governance-hub root. Set git config governance.kitRoot or pass -GovernanceKitRoot."
+  throw "Cannot resolve repo-governance-hub root. Set git config governance.root or pass -GovernanceRoot."
 }
 
 function Invoke-ShellCommand {
@@ -122,7 +122,7 @@ function Try-RegisterSkillCandidate {
 function Try-PromoteSkillCandidates {
   param(
     [Parameter(Mandatory = $true)][string]$RepoPath,
-    [Parameter(Mandatory = $true)][string]$GovernanceKitRoot,
+    [Parameter(Mandatory = $true)][string]$GovernanceRoot,
     [Parameter(Mandatory = $true)][string]$PowerShellPath
   )
 
@@ -136,7 +136,7 @@ function Try-PromoteSkillCandidates {
       "-NoProfile",
       "-ExecutionPolicy", "Bypass",
       "-File", $promoteScript,
-      "-GovernanceKitRoot", $GovernanceKitRoot,
+      "-GovernanceRoot", $GovernanceRoot,
       "-AsJson"
     )
     $raw = & $PowerShellPath @args
@@ -423,7 +423,7 @@ function Resolve-SubagentDecision {
   }
 }
 
-$kitRoot = Resolve-KitRoot -ProvidedPath $GovernanceKitRoot
+$kitRoot = Resolve-GovernanceRoot -ProvidedPath $GovernanceRoot
 $commonPath = Join-Path $kitRoot "scripts/lib/common.ps1"
 $analyzeScript = Join-Path $kitRoot "scripts/analyze-repo-governance.ps1"
 $trackerScript = Join-Path $kitRoot "scripts/governance/track-issue-state.ps1"
@@ -485,7 +485,7 @@ $gateSteps = @(
 Write-Host "TARGET_SAFE_AUTOPILOT"
 Write-Host "run_id=$runId"
 Write-Host "repo_root=$repoPath"
-Write-Host "governance_kit_root=$kitRoot"
+Write-Host "governance_root=$kitRoot"
 Write-Host "logs=$logRoot"
 Write-Host "mode=gate-orchestrator"
 Write-Host "issue_id=$IssueId"
@@ -582,7 +582,7 @@ for ($cycle = 1; $cycle -le $effectiveMaxCycles; $cycle++) {
         Write-Host ("CLARIFICATION_REQUIRED issue_id={0} attempt_count={1} scenario={2}" -f $IssueId, $clarificationState.attempt_count, $clarificationState.scenario)
         Write-Host ("[CLARIFICATION_STATE_JSON] " + ($clarificationState | ConvertTo-Json -Depth 8 -Compress))
       }
-      Try-PromoteSkillCandidates -RepoPath $repoPath -GovernanceKitRoot $kitRoot -PowerShellPath $psExe
+      Try-PromoteSkillCandidates -RepoPath $repoPath -GovernanceRoot $kitRoot -PowerShellPath $psExe
       throw "Gate step '$($step.name)' failed. log=$($result.log_path)"
     }
   }
@@ -603,7 +603,7 @@ for ($cycle = 1; $cycle -le $effectiveMaxCycles; $cycle++) {
   }
 }
 
-Try-PromoteSkillCandidates -RepoPath $repoPath -GovernanceKitRoot $kitRoot -PowerShellPath $psExe
+Try-PromoteSkillCandidates -RepoPath $repoPath -GovernanceRoot $kitRoot -PowerShellPath $psExe
 Write-Host "STATUS: ITERATION_COMPLETE_CONTINUE"
 Write-Host "target safe autopilot completed"
 Invoke-ClarificationTracker -TrackerScript $trackerScript -RepoPath $repoPath -IssueId $IssueId -Scenario $effectiveClarificationScenario -Mode "record" -Outcome "success" -PowerShellPath $psExe | Out-Null

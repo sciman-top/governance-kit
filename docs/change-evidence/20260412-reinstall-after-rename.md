@@ -1,4 +1,4 @@
-# 2026-04-12 一键安装重分发（governance-kit -> repo-governance-hub）
+# 2026-04-12 一键安装重分发（目录重命名后）
 
 - issue_id: reinstall-after-rename-20260412
 - current_landing: E:/CODE/repo-governance-hub
@@ -54,7 +54,7 @@
 
 ### 5) 发现并修复的问题（即时）
 - finding:
-  - `E:/CODE/ClassroomToolkit/scripts/automation/run-safe-autopilot.ps1` 仍硬编码旧路径 `E:/CODE/governance-kit`，改名后会导致缺脚本报错。
+  - `E:/CODE/ClassroomToolkit/scripts/automation/run-safe-autopilot.ps1` 仍硬编码旧路径，重命名后会导致缺脚本报错。
 - fix:
   - 默认参数改为 `E:/CODE/repo-governance-hub`
   - 缺失脚本报错改为基于 `$kitPath` 动态拼接

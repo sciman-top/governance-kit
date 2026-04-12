@@ -21,8 +21,8 @@
 - powershell -NoProfile -ExecutionPolicy Bypass -File scripts/validate-config.ps1
 - powershell -NoProfile -ExecutionPolicy Bypass -File scripts/verify.ps1
 - powershell -NoProfile -ExecutionPolicy Bypass -File scripts/doctor.ps1
-- powershell -NoProfile -ExecutionPolicy Bypass -File E:/CODE/skills-manager/scripts/governance/run-target-autopilot.ps1 -RepoRoot E:/CODE/skills-manager -GovernanceKitRoot E:/CODE/repo-governance-hub -DryRun
-- powershell -NoProfile -ExecutionPolicy Bypass -File E:/CODE/repo-governance-hub/scripts/governance/run-target-autopilot.ps1 -RepoRoot E:/CODE/repo-governance-hub -GovernanceKitRoot E:/CODE/repo-governance-hub -DryRun
+- powershell -NoProfile -ExecutionPolicy Bypass -File E:/CODE/skills-manager/scripts/governance/run-target-autopilot.ps1 -RepoRoot E:/CODE/skills-manager -GovernanceRoot E:/CODE/repo-governance-hub -DryRun
+- powershell -NoProfile -ExecutionPolicy Bypass -File E:/CODE/repo-governance-hub/scripts/governance/run-target-autopilot.ps1 -RepoRoot E:/CODE/repo-governance-hub -GovernanceRoot E:/CODE/repo-governance-hub -DryRun
 
 验证证据=
 - `codex status` 在非交互环境报 `stdin is not a terminal`，按 `platform_na` 处理。

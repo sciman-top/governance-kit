@@ -36,7 +36,7 @@
   - dual GitHub workflow entries (`quality-gate.yml` + `quality-gates.yml`)
   - `scripts/validation/run-stable-tests.ps1` quick-gate fallback
   - installed governance hook block state
-  - local git config state (`commit.template`, `governance.kitRoot`)
+  - local git config state (`commit.template`, `governance.root`)
   - governance template presence in target repo.
 - Enhanced `scripts/optimize-project-rules.ps1` to write C.8/C.9 with CI differences and hooks/templates/git-config snapshot from real target facts.
 - Added `scripts/analyze-repo-governance.ps1` for step-2 repository fact discovery (structure/gates/CI/evidence recommendations).

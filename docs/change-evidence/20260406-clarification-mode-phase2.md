@@ -18,8 +18,8 @@ final_acceptance_examples=run-project-governance-cycle emits CLARIFICATION_REQUI
 豁免回收计划=
 执行命令=
 - powershell -NoProfile -ExecutionPolicy Bypass -File scripts/validate-config.ps1
-- powershell -NoProfile -ExecutionPolicy Bypass -File scripts/governance/run-project-governance-cycle.ps1 -RepoRoot E:/CODE/repo-governance-hub -GovernanceKitRoot E:/CODE/repo-governance-hub -Mode plan -IssueId demo-cycle
-- powershell -NoProfile -ExecutionPolicy Bypass -File scripts/governance/run-target-autopilot.ps1 -RepoRoot E:/CODE/repo-governance-hub -GovernanceKitRoot E:/CODE/repo-governance-hub -DryRun -IssueId demo-target
+- powershell -NoProfile -ExecutionPolicy Bypass -File scripts/governance/run-project-governance-cycle.ps1 -RepoRoot E:/CODE/repo-governance-hub -GovernanceRoot E:/CODE/repo-governance-hub -Mode plan -IssueId demo-cycle
+- powershell -NoProfile -ExecutionPolicy Bypass -File scripts/governance/run-target-autopilot.ps1 -RepoRoot E:/CODE/repo-governance-hub -GovernanceRoot E:/CODE/repo-governance-hub -DryRun -IssueId demo-target
 验证证据=
 - validation passed
 - governance wrapper accepts IssueId and forwards
