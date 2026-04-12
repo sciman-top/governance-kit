@@ -40,8 +40,7 @@ if ([string]::IsNullOrWhiteSpace($jsonText)) {
 $result = $jsonText | ConvertFrom-Json
 
 if ([string]::IsNullOrWhiteSpace($OutputPath)) {
-  $reportName = "growth-readiness-{0}.md" -f (Get-Date -Format "yyyyMMdd-HHmmss")
-  $OutputPath = Join-Path $kitRoot ("docs\change-evidence\" + $reportName)
+  $OutputPath = Join-Path $kitRoot "docs\governance\reviews\growth-readiness-latest.md"
 }
 
 $lines = [System.Collections.Generic.List[string]]::new()

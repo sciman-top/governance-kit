@@ -132,6 +132,8 @@
 - Phase 3：`进行中`
   - 已落地 `docs/governance/output-filter-policy.md`（先 advisory 再 enforce）。
   - 已补充 W0 试点对照报告（见变更证据）。
+  - 已完成运行态噪声收敛：`report-growth-readiness` 默认输出改为 `docs/governance/reviews/growth-readiness-latest.md`，避免在 `docs/change-evidence/` 持续生成未跟踪文件。
+  - 证据：`docs/change-evidence/20260413-phase3-growth-readiness-output-noise-fix.md`。
   - 下一步：按周对照质量指标并评估是否扩展到目标仓。
 - Phase 4：`进行中`
   - 已启动观察窗口（2026-04-13~2026-04-27），证据：`docs/change-evidence/20260413-rule-layering-pilot-kickoff.md`。
