@@ -217,6 +217,22 @@ describe "repo-governance-hub optimization guardrails" {
     $check.target_layer | should be "global-user"
   }
 
+  it "keeps local plugin marketplace aligned with repo-governance-hub-internal" {
+    $marketplaceFiles = @(
+      (Join-Path $repoRoot "source\project\_common\custom\.agents\plugins\marketplace.json"),
+      (Join-Path $repoRoot "source\project\ClassroomToolkit\custom\.agents\plugins\marketplace.json"),
+      (Join-Path $repoRoot "source\project\skills-manager\custom\.agents\plugins\marketplace.json")
+    )
+
+    foreach ($path in $marketplaceFiles) {
+      $json = Get-Content -Path $path -Raw | ConvertFrom-Json
+      $json.plugins.Count | should be 1
+      $plugin = $json.plugins[0]
+      $plugin.name | should be "repo-governance-hub-internal"
+      $plugin.source.path | should be "./plugins/repo-governance-hub-internal"
+    }
+  }
+
   it "treats shared templates as project-layer distributions" {
     . (Join-Path $repoRoot "scripts\lib\common.ps1")
 
@@ -3428,6 +3444,51 @@ exit 0
     }
   }
 
+  it "check-update-triggers reports skill trigger eval summary stale when enabled and required" {
+    $tmp = Join-Path $env:TEMP ("govkit-test-" + [guid]::NewGuid().ToString("N"))
+    try {
+      New-Item -ItemType Directory -Path (Join-Path $tmp "scripts\governance") -Force | Out-Null
+      New-Item -ItemType Directory -Path (Join-Path $tmp "scripts\lib") -Force | Out-Null
+      New-Item -ItemType Directory -Path (Join-Path $tmp "config") -Force | Out-Null
+      New-Item -ItemType Directory -Path (Join-Path $tmp ".governance\skill-candidates") -Force | Out-Null
+
+      Copy-Item -Path (Join-Path $repoRoot "scripts\governance\check-update-triggers.ps1") -Destination (Join-Path $tmp "scripts\governance\check-update-triggers.ps1") -Force
+      Copy-Item -Path (Join-Path $repoRoot "scripts\lib\common.ps1") -Destination (Join-Path $tmp "scripts\lib\common.ps1") -Force
+
+      @'
+{
+  "require_trigger_eval_for_create": true,
+  "trigger_eval_summary_relative_path": ".governance/skill-candidates/trigger-eval-summary.json"
+}
+'@ | Set-Content -Path (Join-Path $tmp ".governance\skill-promotion-policy.json") -Encoding UTF8
+
+      @'
+{
+  "schema_version": "1.0",
+  "cadence": { "recurring_review_days": 7, "monthly_review_day": 1 },
+  "triggers": {
+    "cli_version_drift": { "enabled": false, "severity": "high" },
+    "rollout_observe_overdue": { "enabled": false, "severity": "medium" },
+    "metrics_snapshot_stale": { "enabled": false, "severity": "medium", "max_age_days": 8 },
+    "waiver_expired_unrecovered": { "enabled": false, "severity": "high" },
+    "platform_na_expired": { "enabled": false, "severity": "medium" },
+    "release_distribution_policy_drift": { "enabled": false, "severity": "high" },
+    "skill_trigger_eval_summary_stale": { "enabled": true, "severity": "medium", "max_age_days": 8 },
+    "low_value_orphan_custom_sources": { "enabled": false, "severity": "medium" }
+  }
+}
+'@ | Set-Content -Path (Join-Path $tmp "config\update-trigger-policy.json") -Encoding UTF8
+
+      $json = & powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $tmp "scripts\governance\check-update-triggers.ps1") -RepoRoot $tmp -AsJson
+      $LASTEXITCODE | should be 1
+      $obj = $json | ConvertFrom-Json
+      [int]$obj.skill_trigger_eval_alert_count | should be 1
+      @($obj.alerts | Where-Object { $_.id -eq "skill_trigger_eval_summary_stale" }).Count | should be 1
+    } finally {
+      if (Test-Path $tmp) { Remove-Item -LiteralPath $tmp -Recurse -Force }
+    }
+  }
+
   it "common Get-CodexRuntimeFilesForRepo respects policy default disabled and repo opt-in" {
     $tmp = Join-Path $env:TEMP ("govkit-test-" + [guid]::NewGuid().ToString("N"))
     try {
@@ -3963,7 +4024,7 @@ param(
 }
 '@ | Set-Content -Path (Join-Path $repo ".governance\skill-promotion-policy.json") -Encoding UTF8
 
-      $output = & powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $tmp "scripts\governance\run-target-autopilot.ps1") -RepoRoot $repo -GovernanceKitRoot $tmp -IssueId "issue-auto-eval-enabled" -MaxCycles 1 -SkipWorkIteration 2>&1 | Out-String
+      $output = & powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $tmp "scripts\governance\run-target-autopilot.ps1") -RepoRoot $repo -GovernanceRoot $tmp -IssueId "issue-auto-eval-enabled" -MaxCycles 1 -SkipWorkIteration 2>&1 | Out-String
       $LASTEXITCODE | should be 0
       $output | should match "\[SKILL_TRIGGER_EVAL\] split=validation should_trigger=False triggered=False"
 
@@ -4028,12 +4089,334 @@ param(
 }
 '@ | Set-Content -Path (Join-Path $repo ".governance\skill-promotion-policy.json") -Encoding UTF8
 
-      $output = & powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $tmp "scripts\governance\run-target-autopilot.ps1") -RepoRoot $repo -GovernanceKitRoot $tmp -IssueId "issue-auto-eval-disabled" -MaxCycles 1 -SkipWorkIteration 2>&1 | Out-String
+      $output = & powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $tmp "scripts\governance\run-target-autopilot.ps1") -RepoRoot $repo -GovernanceRoot $tmp -IssueId "issue-auto-eval-disabled" -MaxCycles 1 -SkipWorkIteration 2>&1 | Out-String
       $LASTEXITCODE | should be 0
       $output | should match "\[SKILL_TRIGGER_EVAL\] skipped reason=policy_disabled"
 
       $eventPath = Join-Path $repo ".governance\skill-candidates\trigger-eval-runs.jsonl"
       (Test-Path -LiteralPath $eventPath) | should be $false
+    } finally {
+      if (Test-Path $tmp) { Remove-Item -LiteralPath $tmp -Recurse -Force }
+    }
+  }
+
+  it "migrate-skill-registry-v2 upgrades schema and lifecycle fields" {
+    $tmp = Join-Path $env:TEMP ("govkit-test-" + [guid]::NewGuid().ToString("N"))
+    try {
+      New-Item -ItemType Directory -Path (Join-Path $tmp "scripts\governance") -Force | Out-Null
+      New-Item -ItemType Directory -Path (Join-Path $tmp ".governance\skill-candidates") -Force | Out-Null
+      Copy-Item -Path (Join-Path $repoRoot "scripts\governance\migrate-skill-registry-v2.ps1") -Destination (Join-Path $tmp "scripts\governance\migrate-skill-registry-v2.ps1") -Force
+
+      @'
+{
+  "schema_version": "1.0",
+  "promoted": [
+    {
+      "issue_signature": "pwsh-encoding-mojibake-loop-20260411-a",
+      "skill_name": "custom-auto-legacy-name",
+      "promoted_at": "2026-04-11T12:00:00+08:00",
+      "hit_count": 4,
+      "repos": ["E:/CODE/skills-manager"],
+      "signature_variants": ["pwsh-encoding-mojibake-loop-20260411-a"]
+    }
+  ]
+}
+'@ | Set-Content -Path (Join-Path $tmp ".governance\skill-candidates\promotion-registry.json") -Encoding UTF8
+
+      $json = & powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $tmp "scripts\governance\migrate-skill-registry-v2.ps1") -RepoRoot $tmp -AsJson
+      if ($LASTEXITCODE -ne 0) { throw "migrate-skill-registry-v2.ps1 failed with exit code $LASTEXITCODE" }
+      $obj = $json | ConvertFrom-Json
+      [bool]$obj.ok | should be $true
+      [string]$obj.schema_after | should be "2.0"
+
+      $registry = Get-Content -Path (Join-Path $tmp ".governance\skill-candidates\promotion-registry.json") -Raw | ConvertFrom-Json
+      [string]$registry.schema_version | should be "2.0"
+      [int]$registry.registry_schema_version | should be 2
+      $entry = $registry.promoted[0]
+      [string]$entry.family_signature | should be "pwsh-encoding-mojibake-loop-20260411"
+      [string]$entry.lifecycle_state | should be "active"
+      ([double]$entry.health_score -ge 1.0) | should be $true
+    } finally {
+      if (Test-Path $tmp) { Remove-Item -LiteralPath $tmp -Recurse -Force }
+    }
+  }
+
+  it "promote-skill-candidates forbids create when family already exists in overrides" {
+    $tmp = Join-Path $env:TEMP ("govkit-test-" + [guid]::NewGuid().ToString("N"))
+    try {
+      $repo = Join-Path $tmp "RepoA"
+      $skills = Join-Path $tmp "skills-root"
+      New-Item -ItemType Directory -Path (Join-Path $tmp "scripts\governance") -Force | Out-Null
+      New-Item -ItemType Directory -Path (Join-Path $tmp "config") -Force | Out-Null
+      New-Item -ItemType Directory -Path (Join-Path $tmp ".governance") -Force | Out-Null
+      New-Item -ItemType Directory -Path (Join-Path $repo ".governance\skill-candidates") -Force | Out-Null
+      New-Item -ItemType Directory -Path (Join-Path $skills "overrides\custom-auto-dup-family-20260412-4f9ba0d0") -Force | Out-Null
+
+      Copy-Item -Path (Join-Path $repoRoot "scripts\governance\promote-skill-candidates.ps1") -Destination (Join-Path $tmp "scripts\governance\promote-skill-candidates.ps1") -Force
+
+      @(
+        ($repo -replace '\\','/')
+      ) | ConvertTo-Json | Set-Content -Path (Join-Path $tmp "config\repositories.json") -Encoding UTF8
+
+      @'
+{
+  "enabled": true,
+  "threshold_count": 3,
+  "window_days": 14,
+  "cooldown_days": 14,
+  "max_promotions_per_run": 3,
+  "event_relative_path": ".governance/skill-candidates/events.jsonl",
+  "registry_relative_path": ".governance/skill-candidates/promotion-registry.json",
+  "skills_root": "__SKILLS_ROOT__",
+  "overrides_relative_path": "overrides",
+  "auto_run_skills_manager_gates": false,
+  "require_user_ack": false,
+  "optimize_existing_without_ack": true,
+  "create_min_unique_repos": 1,
+  "optimize_min_new_variants": 1,
+  "require_trigger_eval_for_create": false
+}
+'@.Replace("__SKILLS_ROOT__", ($skills -replace '\\','/')) | Set-Content -Path (Join-Path $tmp ".governance\skill-promotion-policy.json") -Encoding UTF8
+
+      @'
+{"schema_version":"1.0","timestamp":"2026-04-12T01:00:00+08:00","repo":"RepoA","issue_signature":"dup-family-20260412-a","issue_id":"x","step_name":"test","command_text":"cmd","failure_reason":"x","evidence_link":"x"}
+{"schema_version":"1.0","timestamp":"2026-04-12T01:01:00+08:00","repo":"RepoA","issue_signature":"dup-family-20260412-a","issue_id":"x","step_name":"test","command_text":"cmd","failure_reason":"x","evidence_link":"x"}
+{"schema_version":"1.0","timestamp":"2026-04-12T01:02:00+08:00","repo":"RepoA","issue_signature":"dup-family-20260412-a","issue_id":"x","step_name":"test","command_text":"cmd","failure_reason":"x","evidence_link":"x"}
+'@ | Set-Content -Path (Join-Path $repo ".governance\skill-candidates\events.jsonl") -Encoding UTF8
+
+      @'
+---
+name: custom-auto-dup-family-20260412-4f9ba0d0
+description: Auto-promoted from repeated issue signature 'dup-family-20260412' (hits=3).
+---
+# Existing skill
+'@ | Set-Content -Path (Join-Path $skills "overrides\custom-auto-dup-family-20260412-4f9ba0d0\SKILL.md") -Encoding UTF8
+
+      $json = & powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $tmp "scripts\governance\promote-skill-candidates.ps1") -GovernanceRoot $tmp -AsJson
+      if ($LASTEXITCODE -ne 0) { throw "promote-skill-candidates.ps1 failed with exit code $LASTEXITCODE" }
+      $obj = $json | ConvertFrom-Json
+      [int]$obj.created_count | should be 0
+      ([int]$obj.optimized_count -ge 1) | should be $true
+      $optDecision = @($obj.decision_audit | Where-Object { [string]$_.action -eq "optimize" }) | Select-Object -First 1
+      ($null -ne $optDecision) | should be $true
+      ((@($optDecision.reason_codes) -contains "existing_family_detected_in_overrides")) | should be $true
+    } finally {
+      if (Test-Path $tmp) { Remove-Item -LiteralPath $tmp -Recurse -Force }
+    }
+  }
+
+  it "promote-skill-candidates refreshes trigger eval summary before create when required" {
+    $tmp = Join-Path $env:TEMP ("govkit-test-" + [guid]::NewGuid().ToString("N"))
+    try {
+      $repo = Join-Path $tmp "RepoA"
+      $skills = Join-Path $tmp "skills-root"
+      New-Item -ItemType Directory -Path (Join-Path $tmp "scripts\governance") -Force | Out-Null
+      New-Item -ItemType Directory -Path (Join-Path $tmp "config") -Force | Out-Null
+      New-Item -ItemType Directory -Path (Join-Path $tmp ".governance") -Force | Out-Null
+      New-Item -ItemType Directory -Path (Join-Path $repo ".governance\skill-candidates") -Force | Out-Null
+      New-Item -ItemType Directory -Path (Join-Path $skills ".governance\skill-candidates") -Force | Out-Null
+      New-Item -ItemType Directory -Path (Join-Path $skills "overrides") -Force | Out-Null
+
+      Copy-Item -Path (Join-Path $repoRoot "scripts\governance\promote-skill-candidates.ps1") -Destination (Join-Path $tmp "scripts\governance\promote-skill-candidates.ps1") -Force
+      Copy-Item -Path (Join-Path $repoRoot "scripts\governance\check-skill-trigger-evals.ps1") -Destination (Join-Path $tmp "scripts\governance\check-skill-trigger-evals.ps1") -Force
+
+      @(
+        ($repo -replace '\\','/')
+      ) | ConvertTo-Json | Set-Content -Path (Join-Path $tmp "config\repositories.json") -Encoding UTF8
+
+      @'
+{
+  "enabled": true,
+  "threshold_count": 1,
+  "window_days": 14,
+  "cooldown_days": 14,
+  "max_promotions_per_run": 3,
+  "event_relative_path": ".governance/skill-candidates/events.jsonl",
+  "registry_relative_path": ".governance/skill-candidates/promotion-registry.json",
+  "skills_root": "__SKILLS_ROOT__",
+  "overrides_relative_path": "overrides",
+  "auto_run_skills_manager_gates": false,
+  "require_user_ack": false,
+  "optimize_existing_without_ack": true,
+  "create_min_unique_repos": 1,
+  "optimize_min_new_variants": 1,
+  "require_trigger_eval_for_create": true,
+  "trigger_eval_summary_relative_path": ".governance/skill-candidates/trigger-eval-summary.json",
+  "trigger_eval_min_validation_pass_rate": 0.8,
+  "trigger_eval_max_validation_false_trigger_rate": 0.2
+}
+'@.Replace("__SKILLS_ROOT__", ($skills -replace '\\','/')) | Set-Content -Path (Join-Path $tmp ".governance\skill-promotion-policy.json") -Encoding UTF8
+
+      @'
+{"schema_version":"1.0","timestamp":"2026-04-12T01:00:00+08:00","repo":"RepoA","issue_signature":"refresh-family-20260412-a","issue_id":"x","step_name":"test","command_text":"cmd","failure_reason":"x","evidence_link":"x"}
+'@ | Set-Content -Path (Join-Path $repo ".governance\skill-candidates\events.jsonl") -Encoding UTF8
+
+      @'
+{"query":"need refresh skill","should_trigger":true,"triggered":true,"split":"validation"}
+{"query":"no trigger path","should_trigger":false,"triggered":false,"split":"validation"}
+'@ | Set-Content -Path (Join-Path $skills ".governance\skill-candidates\trigger-eval-runs.jsonl") -Encoding UTF8
+
+      $json = & powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $tmp "scripts\governance\promote-skill-candidates.ps1") -GovernanceRoot $tmp -AsJson
+      if ($LASTEXITCODE -ne 0) { throw "promote-skill-candidates.ps1 failed with exit code $LASTEXITCODE" }
+      $obj = $json | ConvertFrom-Json
+
+      [bool]$obj.trigger_eval_summary_refresh_attempted | should be $true
+      [bool]$obj.trigger_eval_summary_refresh_succeeded | should be $true
+      [string]$obj.trigger_eval_summary_refresh_status | should be "ok"
+      [bool]$obj.trigger_eval_pass | should be $true
+      ([int]$obj.created_count -ge 1) | should be $true
+      (Test-Path -LiteralPath (Join-Path $skills ".governance\skill-candidates\trigger-eval-summary.json")) | should be $true
+    } finally {
+      if (Test-Path $tmp) { Remove-Item -LiteralPath $tmp -Recurse -Force }
+    }
+  }
+
+  it "run-skill-lifecycle-review plan reports merge and retire candidates" {
+    $tmp = Join-Path $env:TEMP ("govkit-test-" + [guid]::NewGuid().ToString("N"))
+    try {
+      New-Item -ItemType Directory -Path (Join-Path $tmp "scripts\governance") -Force | Out-Null
+      New-Item -ItemType Directory -Path (Join-Path $tmp ".governance\skill-candidates") -Force | Out-Null
+
+      Copy-Item -Path (Join-Path $repoRoot "scripts\governance\run-skill-lifecycle-review.ps1") -Destination (Join-Path $tmp "scripts\governance\run-skill-lifecycle-review.ps1") -Force
+
+      @'
+{
+  "enabled": true,
+  "actions": {
+    "merge": { "enabled": true, "similarity_threshold": 0.4 },
+    "retire": { "enabled": true, "inactive_days": 60, "min_invocations": 3 }
+  }
+}
+'@ | Set-Content -Path (Join-Path $tmp ".governance\skill-lifecycle-policy.json") -Encoding UTF8
+
+      @'
+{
+  "schema_version": "2.0",
+  "registry_schema_version": 2,
+  "lifecycle_version": "1.0",
+  "promoted": [
+    {
+      "issue_signature": "alpha-encoding-loop",
+      "family_signature": "alpha-encoding-loop",
+      "skill_name": "custom-auto-alpha-encoding-loop-1",
+      "promoted_at": "2026-04-12T00:00:00+08:00",
+      "hit_count": 10,
+      "invocation_count": 10,
+      "last_invoked_at": "2026-04-12T00:00:00+08:00",
+      "lifecycle_state": "active",
+      "signature_variants": []
+    },
+    {
+      "issue_signature": "alpha-encoding-issue",
+      "family_signature": "alpha-encoding-issue",
+      "skill_name": "custom-auto-alpha-encoding-issue-2",
+      "promoted_at": "2026-04-11T00:00:00+08:00",
+      "hit_count": 2,
+      "invocation_count": 2,
+      "last_invoked_at": "2026-04-11T00:00:00+08:00",
+      "lifecycle_state": "active",
+      "signature_variants": []
+    },
+    {
+      "issue_signature": "network-timeout-legacy",
+      "family_signature": "network-timeout-legacy",
+      "skill_name": "custom-auto-network-timeout-legacy-3",
+      "promoted_at": "2025-12-01T00:00:00+08:00",
+      "hit_count": 1,
+      "invocation_count": 1,
+      "last_invoked_at": "2025-12-01T00:00:00+08:00",
+      "lifecycle_state": "active",
+      "signature_variants": []
+    }
+  ]
+}
+'@ | Set-Content -Path (Join-Path $tmp ".governance\skill-candidates\promotion-registry.json") -Encoding UTF8
+
+      $json = & powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $tmp "scripts\governance\run-skill-lifecycle-review.ps1") -RepoRoot $tmp -Mode plan -AsJson
+      if ($LASTEXITCODE -ne 0) { throw "run-skill-lifecycle-review.ps1 failed with exit code $LASTEXITCODE" }
+      $obj = $json | ConvertFrom-Json
+
+      [int]$obj.merge_candidate_count | should be 1
+      [int]$obj.retire_candidate_count | should be 1
+      [int]$obj.applied_merge_count | should be 0
+      [int]$obj.applied_retire_count | should be 0
+    } finally {
+      if (Test-Path $tmp) { Remove-Item -LiteralPath $tmp -Recurse -Force }
+    }
+  }
+
+  it "run-skill-lifecycle-review safe applies merge and retire to registry" {
+    $tmp = Join-Path $env:TEMP ("govkit-test-" + [guid]::NewGuid().ToString("N"))
+    try {
+      New-Item -ItemType Directory -Path (Join-Path $tmp "scripts\governance") -Force | Out-Null
+      New-Item -ItemType Directory -Path (Join-Path $tmp ".governance\skill-candidates") -Force | Out-Null
+
+      Copy-Item -Path (Join-Path $repoRoot "scripts\governance\run-skill-lifecycle-review.ps1") -Destination (Join-Path $tmp "scripts\governance\run-skill-lifecycle-review.ps1") -Force
+
+      @'
+{
+  "enabled": true,
+  "actions": {
+    "merge": { "enabled": true, "similarity_threshold": 0.4 },
+    "retire": { "enabled": true, "inactive_days": 60, "min_invocations": 3 }
+  }
+}
+'@ | Set-Content -Path (Join-Path $tmp ".governance\skill-lifecycle-policy.json") -Encoding UTF8
+
+      @'
+{
+  "schema_version": "2.0",
+  "registry_schema_version": 2,
+  "lifecycle_version": "1.0",
+  "promoted": [
+    {
+      "issue_signature": "alpha-encoding-loop",
+      "family_signature": "alpha-encoding-loop",
+      "skill_name": "custom-auto-alpha-encoding-loop-1",
+      "promoted_at": "2026-04-12T00:00:00+08:00",
+      "hit_count": 10,
+      "invocation_count": 10,
+      "last_invoked_at": "2026-04-12T00:00:00+08:00",
+      "lifecycle_state": "active",
+      "signature_variants": []
+    },
+    {
+      "issue_signature": "alpha-encoding-issue",
+      "family_signature": "alpha-encoding-issue",
+      "skill_name": "custom-auto-alpha-encoding-issue-2",
+      "promoted_at": "2026-04-11T00:00:00+08:00",
+      "hit_count": 2,
+      "invocation_count": 2,
+      "last_invoked_at": "2026-04-11T00:00:00+08:00",
+      "lifecycle_state": "active",
+      "signature_variants": []
+    },
+    {
+      "issue_signature": "network-timeout-legacy",
+      "family_signature": "network-timeout-legacy",
+      "skill_name": "custom-auto-network-timeout-legacy-3",
+      "promoted_at": "2025-12-01T00:00:00+08:00",
+      "hit_count": 1,
+      "invocation_count": 1,
+      "last_invoked_at": "2025-12-01T00:00:00+08:00",
+      "lifecycle_state": "active",
+      "signature_variants": []
+    }
+  ]
+}
+'@ | Set-Content -Path (Join-Path $tmp ".governance\skill-candidates\promotion-registry.json") -Encoding UTF8
+
+      $json = & powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $tmp "scripts\governance\run-skill-lifecycle-review.ps1") -RepoRoot $tmp -Mode safe -AsJson
+      if ($LASTEXITCODE -ne 0) { throw "run-skill-lifecycle-review.ps1 failed with exit code $LASTEXITCODE" }
+      $obj = $json | ConvertFrom-Json
+      [int]$obj.applied_merge_count | should be 1
+      [int]$obj.applied_retire_count | should be 1
+
+      $registry = Get-Content -Path (Join-Path $tmp ".governance\skill-candidates\promotion-registry.json") -Raw | ConvertFrom-Json
+      $alphaIssue = @($registry.promoted | Where-Object { $_.family_signature -eq "alpha-encoding-issue" })[0]
+      $network = @($registry.promoted | Where-Object { $_.family_signature -eq "network-timeout-legacy" })[0]
+      [string]$alphaIssue.lifecycle_state | should be "deprecated"
+      [string]$network.lifecycle_state | should be "retired"
     } finally {
       if (Test-Path $tmp) { Remove-Item -LiteralPath $tmp -Recurse -Force }
     }

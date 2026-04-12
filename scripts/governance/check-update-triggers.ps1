@@ -114,6 +114,7 @@ if ($null -eq $policy) {
       waiver_expired_unrecovered = [pscustomobject]@{ enabled = $true; severity = "high" }
       platform_na_expired = [pscustomobject]@{ enabled = $true; severity = "medium" }
       release_distribution_policy_drift = [pscustomobject]@{ enabled = $true; severity = "high" }
+      skill_trigger_eval_summary_stale = [pscustomobject]@{ enabled = $false; severity = "medium"; max_age_days = 8 }
       low_value_orphan_custom_sources = [pscustomobject]@{ enabled = $false; severity = "medium" }
     }
   }
@@ -329,7 +330,88 @@ if ($null -ne $policy.triggers.PSObject.Properties['release_distribution_policy_
   }
 }
 
-# 6) low-value orphan custom source trigger
+# 6) skill trigger eval summary staleness
+$skillTriggerEvalAlertCount = 0
+if ($null -ne $policy.triggers.PSObject.Properties['skill_trigger_eval_summary_stale'] -and [bool]$policy.triggers.skill_trigger_eval_summary_stale.enabled) {
+  $promotionPolicyPath = Join-Path $kitRoot ".governance\skill-promotion-policy.json"
+  $summaryRel = ".governance/skill-candidates/trigger-eval-summary.json"
+  $requireEval = $false
+  if (Test-Path -LiteralPath $promotionPolicyPath -PathType Leaf) {
+    try {
+      $promotionPolicy = Read-JsonFile -Path $promotionPolicyPath -DisplayName $promotionPolicyPath
+      if ($null -ne $promotionPolicy.PSObject.Properties['require_trigger_eval_for_create']) {
+        $requireEval = [bool]$promotionPolicy.require_trigger_eval_for_create
+      }
+      if ($null -ne $promotionPolicy.PSObject.Properties['trigger_eval_summary_relative_path'] -and -not [string]::IsNullOrWhiteSpace([string]$promotionPolicy.trigger_eval_summary_relative_path)) {
+        $summaryRel = [string]$promotionPolicy.trigger_eval_summary_relative_path
+      }
+    } catch {
+      $requireEval = $false
+    }
+  }
+
+  if ($requireEval) {
+    $maxAge = 8
+    if ($null -ne $policy.triggers.skill_trigger_eval_summary_stale.PSObject.Properties['max_age_days']) {
+      $maxAge = [int]$policy.triggers.skill_trigger_eval_summary_stale.max_age_days
+    }
+    $summaryPath = Join-Path $kitRoot ($summaryRel -replace '/', '\')
+    if (-not (Test-Path -LiteralPath $summaryPath -PathType Leaf)) {
+      $skillTriggerEvalAlertCount++
+      Add-Alert -List $alerts `
+        -Id "skill_trigger_eval_summary_stale" `
+        -Severity ([string]$policy.triggers.skill_trigger_eval_summary_stale.severity) `
+        -Reason "trigger eval summary missing while create requires trigger eval" `
+        -RecommendedAction "Run scripts/governance/check-skill-trigger-evals.ps1 to generate summary before promote-skill-candidates create." `
+        -Evidence ($summaryPath -replace '\\', '/')
+    } else {
+      $summaryObj = $null
+      try { $summaryObj = Read-JsonFile -Path $summaryPath -DisplayName $summaryPath } catch { $summaryObj = $null }
+      if ($null -eq $summaryObj) {
+        $skillTriggerEvalAlertCount++
+        Add-Alert -List $alerts `
+          -Id "skill_trigger_eval_summary_stale" `
+          -Severity ([string]$policy.triggers.skill_trigger_eval_summary_stale.severity) `
+          -Reason "trigger eval summary parse error" `
+          -RecommendedAction "Regenerate trigger eval summary using check-skill-trigger-evals and re-run update triggers." `
+          -Evidence ($summaryPath -replace '\\', '/')
+      } else {
+        $generatedAt = $null
+        if ($null -ne $summaryObj.PSObject.Properties['generated_at']) {
+          try { $generatedAt = [datetime]$summaryObj.generated_at } catch { $generatedAt = $null }
+        }
+        $status = ""
+        if ($null -ne $summaryObj.PSObject.Properties['status']) { $status = [string]$summaryObj.status }
+        $validationCount = 0
+        if ($null -ne $summaryObj.PSObject.Properties['validation_query_count']) {
+          try { $validationCount = [int]$summaryObj.validation_query_count } catch { $validationCount = 0 }
+        }
+
+        $isStale = $false
+        if ($null -eq $generatedAt) {
+          $isStale = $true
+        } else {
+          $ageDays = [int](New-TimeSpan -Start $generatedAt -End (Get-Date)).TotalDays
+          if ($ageDays -gt $maxAge) { $isStale = $true }
+        }
+        if ($status -in @("no_data", "no_validation_split")) { $isStale = $true }
+        if ($validationCount -le 0) { $isStale = $true }
+
+        if ($isStale) {
+          $skillTriggerEvalAlertCount++
+          Add-Alert -List $alerts `
+            -Id "skill_trigger_eval_summary_stale" `
+            -Severity ([string]$policy.triggers.skill_trigger_eval_summary_stale.severity) `
+            -Reason ("trigger eval summary stale_or_insufficient status={0} validation_query_count={1}" -f $status, $validationCount) `
+            -RecommendedAction "Collect trigger eval runs and regenerate summary before create promotion." `
+            -Evidence ($summaryPath -replace '\\', '/')
+        }
+      }
+    }
+  }
+}
+
+# 7) low-value orphan custom source trigger
 $orphanCustomCount = 0
 if ($null -ne $policy.triggers.PSObject.Properties['low_value_orphan_custom_sources'] -and [bool]$policy.triggers.low_value_orphan_custom_sources.enabled) {
   $orphanScript = Join-Path $kitRoot "scripts\check-orphan-custom-sources.ps1"
@@ -362,6 +444,7 @@ $result = [pscustomobject]@{
   repo_root = ($repoPath -replace '\\', '/')
   status = if ($alerts.Count -eq 0) { "OK" } else { "ALERT" }
   alert_count = $alerts.Count
+  skill_trigger_eval_alert_count = [int]$skillTriggerEvalAlertCount
   orphan_custom_source_count = [int]$orphanCustomCount
   release_distribution_policy_drift_count = [int]$releasePolicyDriftCount
   alerts = @($alerts)

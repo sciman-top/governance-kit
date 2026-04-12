@@ -33,6 +33,11 @@
     "low_value_orphan_custom_sources": {
       "enabled": false,
       "severity": "medium"
+    },
+    "skill_trigger_eval_summary_stale": {
+      "enabled": false,
+      "severity": "medium",
+      "max_age_days": 8
     }
   }
 }

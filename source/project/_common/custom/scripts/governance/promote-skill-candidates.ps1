@@ -1,5 +1,5 @@
 param(
-  [string]$GovernanceKitRoot = ".",
+  [string]$GovernanceRoot = ".",
   [switch]$Diagnostics,
   [switch]$AsJson
 )
@@ -270,6 +270,29 @@ function Get-PromotedLookup([psobject]$Registry) {
   return $lookup
 }
 
+function Get-ExistingFamilyMapFromOverrides([string]$OverridesRoot, [string]$CollapsePattern, [object]$ExcludePatterns) {
+  $lookup = @{}
+  if (-not (Test-Path -LiteralPath $OverridesRoot -PathType Container)) { return $lookup }
+  foreach ($dir in @(Get-ChildItem -LiteralPath $OverridesRoot -Directory -ErrorAction SilentlyContinue | Where-Object { $_.Name -like "custom-auto-*" })) {
+    $skillFile = Join-Path $dir.FullName "SKILL.md"
+    $family = Get-SkillSignatureFromSkillFile -SkillFile $skillFile -CollapsePattern $CollapsePattern -ExcludePatterns $ExcludePatterns
+    if ([string]::IsNullOrWhiteSpace($family)) { continue }
+    $key = $family.Trim().ToLowerInvariant()
+    if (-not $lookup.ContainsKey($key)) {
+      $lookup[$key] = [pscustomobject]@{
+        issue_signature = $family
+        skill_name = [string]$dir.Name
+        promoted_at = ""
+        hit_count = 0
+        repos = @()
+        signature_variants = @($family)
+        source = "overrides"
+      }
+    }
+  }
+  return $lookup
+}
+
 function Build-SkillContent([string]$SkillName, [string]$Signature, [int]$Count, [string[]]$Repos, [string[]]$Variants = @()) {
   $repoText = if ($Repos.Count -gt 0) { ($Repos -join ", ") } else { "unknown-repo" }
   $variantLine = $null
@@ -291,6 +314,62 @@ function Build-SkillContent([string]$SkillName, [string]$Signature, [int]$Count,
     ("source_repos: {0}" -f $repoText),
     $variantLine
   ) -join "`n"
+}
+
+function Try-RefreshTriggerEvalSummary {
+  param(
+    [Parameter(Mandatory = $true)][string]$KitRoot,
+    [Parameter(Mandatory = $true)][string]$TargetRepoRoot,
+    [Parameter(Mandatory = $true)][string]$OutputRelativePath
+  )
+
+  $state = [ordered]@{
+    attempted = $false
+    succeeded = $false
+    status = ""
+    exit_code = $null
+    generated_at = ""
+    error = ""
+    script_path = ""
+  }
+
+  $scriptPath = Join-Path ($KitRoot -replace '/', '\') "scripts\governance\check-skill-trigger-evals.ps1"
+  $state.script_path = ($scriptPath -replace '\\', '/')
+  if (-not (Test-Path -LiteralPath $scriptPath -PathType Leaf)) {
+    $state.error = "check_skill_trigger_evals_script_missing"
+    return [pscustomobject]$state
+  }
+
+  $state.attempted = $true
+  $psExe = "powershell"
+  $pwshCmd = Get-Command -Name "pwsh" -ErrorAction SilentlyContinue
+  if ($null -ne $pwshCmd) { $psExe = $pwshCmd.Source }
+
+  try {
+    $rawOutput = & $psExe -NoProfile -ExecutionPolicy Bypass -File $scriptPath -RepoRoot $TargetRepoRoot -OutputRelativePath $OutputRelativePath -AsJson 2>&1
+    $state.exit_code = [int]$LASTEXITCODE
+    if ([int]$state.exit_code -ne 0) {
+      $state.error = "check_skill_trigger_evals_failed"
+      return [pscustomobject]$state
+    }
+    $jsonText = (@($rawOutput | ForEach-Object { [string]$_ }) -join "`n").Trim()
+    if ([string]::IsNullOrWhiteSpace($jsonText)) {
+      $state.error = "check_skill_trigger_evals_empty_output"
+      return [pscustomobject]$state
+    }
+    $parsed = $jsonText | ConvertFrom-Json
+    if ($null -ne $parsed -and $null -ne $parsed.PSObject.Properties['status']) {
+      $state.status = [string]$parsed.status
+    }
+    if ($null -ne $parsed -and $null -ne $parsed.PSObject.Properties['generated_at']) {
+      $state.generated_at = [string]$parsed.generated_at
+    }
+    $state.succeeded = $true
+  } catch {
+    $state.error = [string]$_.Exception.Message
+  }
+
+  return [pscustomobject]$state
 }
 
 function Get-TriggerEvalGateState {
@@ -399,7 +478,7 @@ function Invoke-SkillsManagerGates([string]$SkillsRoot) {
   }
 }
 
-$kitRoot = Resolve-NormalizedPath $GovernanceKitRoot
+$kitRoot = Resolve-NormalizedPath $GovernanceRoot
 $policyPath = Join-Path ($kitRoot -replace '/', '\') ".governance\skill-promotion-policy.json"
 $policyTemplatePath = Join-Path ($kitRoot -replace '/', '\') "source\project\_common\custom\.governance\skill-promotion-policy.json"
 
@@ -503,7 +582,39 @@ if ($null -ne $policy.PSObject.Properties['optimize_existing_without_ack']) {
 }
 $createMinUniqueRepos = [Math]::Max(1, [int]$policy.create_min_unique_repos)
 $optimizeMinNewVariants = [Math]::Max(1, [int]$policy.optimize_min_new_variants)
-$triggerEvalState = Get-TriggerEvalGateState -KitRoot $kitRoot -Policy $policy
+$skillsRoot = Resolve-NormalizedPath $policy.skills_root
+$triggerEvalSummaryRelativePath = [string]$policy.trigger_eval_summary_relative_path
+if ([string]::IsNullOrWhiteSpace($triggerEvalSummaryRelativePath)) {
+  $triggerEvalSummaryRelativePath = ".governance/skill-candidates/trigger-eval-summary.json"
+}
+$triggerEvalRefreshState = [pscustomobject]@{
+  attempted = $false
+  succeeded = $false
+  status = ""
+  exit_code = $null
+  generated_at = ""
+  error = ""
+  script_path = ""
+}
+$requireEvalForCreate = $false
+if ($null -ne $policy.PSObject.Properties['require_trigger_eval_for_create']) {
+  $requireEvalForCreate = [bool]$policy.require_trigger_eval_for_create
+}
+if ($requireEvalForCreate) {
+  $triggerEvalRefreshState = Try-RefreshTriggerEvalSummary -KitRoot $kitRoot -TargetRepoRoot $skillsRoot -OutputRelativePath $triggerEvalSummaryRelativePath
+}
+$triggerEvalState = Get-TriggerEvalGateState -KitRoot $skillsRoot -Policy $policy
+$overridesRoot = Join-Path ($skillsRoot -replace '/', '\') (($policy.overrides_relative_path -replace '/', '\'))
+$overridesFamilyLookup = Get-ExistingFamilyMapFromOverrides -OverridesRoot $overridesRoot -CollapsePattern $collapsePattern -ExcludePatterns $excludePatterns
+$knownExistingFamilies = @{}
+foreach ($k in @($promotedLookup.Keys)) {
+  $knownExistingFamilies[$k] = $promotedLookup[$k]
+}
+foreach ($k in @($overridesFamilyLookup.Keys)) {
+  if (-not $knownExistingFamilies.ContainsKey($k)) {
+    $knownExistingFamilies[$k] = $overridesFamilyLookup[$k]
+  }
+}
 
 $actionable = New-Object System.Collections.Generic.List[object]
 $decisionAudit = New-Object System.Collections.Generic.List[object]
@@ -514,7 +625,7 @@ foreach ($key in $groupMap.Keys) {
   $canonical = Get-CanonicalSkillName $family
   $repoCount = @($item.repos | Sort-Object).Count
 
-  if (-not $promotedLookup.ContainsKey($key)) {
+  if (-not $knownExistingFamilies.ContainsKey($key)) {
     $blockedReasons = New-Object System.Collections.Generic.List[string]
     if ($repoCount -lt $createMinUniqueRepos) { $blockedReasons.Add("insufficient_repo_diversity") | Out-Null }
     if (-not [bool]$triggerEvalState.trigger_eval_pass) {
@@ -553,7 +664,11 @@ foreach ($key in $groupMap.Keys) {
     continue
   }
 
-  $existing = $promotedLookup[$key]
+  $existing = $knownExistingFamilies[$key]
+  $existingSource = "registry"
+  if ($null -ne $existing.PSObject.Properties['source'] -and -not [string]::IsNullOrWhiteSpace([string]$existing.source)) {
+    $existingSource = [string]$existing.source
+  }
   $lastPromoted = $null
   try { $lastPromoted = [datetime]$existing.promoted_at } catch { $lastPromoted = $null }
   if ($null -ne $lastPromoted -and $cooldownDays -gt 0 -and $lastPromoted -gt $now.AddDays(-1 * $cooldownDays)) {
@@ -581,6 +696,7 @@ foreach ($key in $groupMap.Keys) {
   $countIncreased = ([int]$item.count -gt $prevHit)
   if ($newVariants.Count -ge $optimizeMinNewVariants -or $countIncreased) {
     $reasons = New-Object System.Collections.Generic.List[string]
+    if ($existingSource -eq "overrides") { $reasons.Add("existing_family_detected_in_overrides") | Out-Null }
     if ($newVariants.Count -gt 0) { $reasons.Add("new_signature_variant") | Out-Null }
     if ($countIncreased) { $reasons.Add("hit_count_increased") | Out-Null }
     $actionable.Add([pscustomobject]@{
@@ -603,21 +719,21 @@ foreach ($key in $groupMap.Keys) {
       reason_codes = @($reasons)
     }) | Out-Null
   } else {
+    $skipReasons = New-Object System.Collections.Generic.List[string]
+    if ($existingSource -eq "overrides") { $skipReasons.Add("existing_family_detected_in_overrides") | Out-Null }
+    $skipReasons.Add("no_material_delta") | Out-Null
     $decisionAudit.Add([pscustomobject]@{
       action = "skip"
       issue_signature = $family
       skill_name = $canonical
       hit_count = [int]$item.count
       unique_repo_count = [int]$repoCount
-      reason_codes = @("no_material_delta")
+      reason_codes = @($skipReasons)
     }) | Out-Null
   }
 }
 
 $selected = @($actionable | Sort-Object -Property @{Expression="count";Descending=$true}, @{Expression="latest_event";Descending=$true} | Select-Object -First $maxPromotions)
-
-$skillsRoot = Resolve-NormalizedPath $policy.skills_root
-$overridesRoot = Join-Path ($skillsRoot -replace '/', '\') (($policy.overrides_relative_path -replace '/', '\'))
 $summaryPath = Join-Path ($skillsRoot -replace '/', '\') (($policy.summary_relative_path -replace '/', '\'))
 if (-not (Test-Path -LiteralPath $overridesRoot -PathType Container)) {
   New-Item -ItemType Directory -Force -Path $overridesRoot | Out-Null
@@ -671,6 +787,13 @@ if (-not $ackSatisfied -and $selectedCreates.Count -gt 0 -and $selectedToApply.C
     planned_promotions = $plannedPromotions
     blocked_create_count = [int]$selectedCreates.Count
     apply_without_ack_count = 0
+    trigger_eval_summary_refresh_attempted = [bool]$triggerEvalRefreshState.attempted
+    trigger_eval_summary_refresh_succeeded = [bool]$triggerEvalRefreshState.succeeded
+    trigger_eval_summary_refresh_status = [string]$triggerEvalRefreshState.status
+    trigger_eval_summary_refresh_exit_code = $triggerEvalRefreshState.exit_code
+    trigger_eval_summary_refresh_generated_at = [string]$triggerEvalRefreshState.generated_at
+    trigger_eval_summary_refresh_error = [string]$triggerEvalRefreshState.error
+    trigger_eval_summary_refresh_script_path = [string]$triggerEvalRefreshState.script_path
   }
   if ([bool]$policy.write_summary_file) {
     Ensure-ParentDirectory $summaryPath
@@ -807,6 +930,13 @@ $result = [ordered]@{
   trigger_eval_validation_pass_rate = $triggerEvalState.trigger_eval_validation_pass_rate
   trigger_eval_validation_false_trigger_rate = $triggerEvalState.trigger_eval_validation_false_trigger_rate
   trigger_eval_blocked_reason = [string]$triggerEvalState.trigger_eval_blocked_reason
+  trigger_eval_summary_refresh_attempted = [bool]$triggerEvalRefreshState.attempted
+  trigger_eval_summary_refresh_succeeded = [bool]$triggerEvalRefreshState.succeeded
+  trigger_eval_summary_refresh_status = [string]$triggerEvalRefreshState.status
+  trigger_eval_summary_refresh_exit_code = $triggerEvalRefreshState.exit_code
+  trigger_eval_summary_refresh_generated_at = [string]$triggerEvalRefreshState.generated_at
+  trigger_eval_summary_refresh_error = [string]$triggerEvalRefreshState.error
+  trigger_eval_summary_refresh_script_path = [string]$triggerEvalRefreshState.script_path
   skills_root = [string]$skillsRoot
   overrides_root = ($overridesRoot -replace '\\', '/')
   decision_audit = @($decisionAudit.ToArray())

@@ -1158,5 +1158,50 @@
         "source":  "source/project/_common/custom/.governance/token-balance-policy.json",
         "target":  "E:/CODE/repo-governance-hub/.governance/token-balance-policy.json",
         "boundary_class":  "shared-template"
+    },
+    {
+        "source":  "source/project/_common/custom/scripts/governance/migrate-skill-registry-v2.ps1",
+        "target":  "E:/CODE/ClassroomToolkit/scripts/governance/migrate-skill-registry-v2.ps1",
+        "boundary_class":  "shared-template"
+    },
+    {
+        "source":  "source/project/_common/custom/.governance/skill-lifecycle-policy.json",
+        "target":  "E:/CODE/ClassroomToolkit/.governance/skill-lifecycle-policy.json",
+        "boundary_class":  "shared-template"
+    },
+    {
+        "source":  "source/project/_common/custom/scripts/governance/migrate-skill-registry-v2.ps1",
+        "target":  "E:/CODE/skills-manager/scripts/governance/migrate-skill-registry-v2.ps1",
+        "boundary_class":  "shared-template"
+    },
+    {
+        "source":  "source/project/_common/custom/.governance/skill-lifecycle-policy.json",
+        "target":  "E:/CODE/skills-manager/.governance/skill-lifecycle-policy.json",
+        "boundary_class":  "shared-template"
+    },
+    {
+        "source":  "source/project/_common/custom/scripts/governance/migrate-skill-registry-v2.ps1",
+        "target":  "E:/CODE/repo-governance-hub/scripts/governance/migrate-skill-registry-v2.ps1",
+        "boundary_class":  "shared-template"
+    },
+    {
+        "source":  "source/project/_common/custom/.governance/skill-lifecycle-policy.json",
+        "target":  "E:/CODE/repo-governance-hub/.governance/skill-lifecycle-policy.json",
+        "boundary_class":  "shared-template"
+    },
+    {
+        "source":  "source/project/_common/custom/scripts/governance/run-skill-lifecycle-review.ps1",
+        "target":  "E:/CODE/ClassroomToolkit/scripts/governance/run-skill-lifecycle-review.ps1",
+        "boundary_class":  "shared-template"
+    },
+    {
+        "source":  "source/project/_common/custom/scripts/governance/run-skill-lifecycle-review.ps1",
+        "target":  "E:/CODE/skills-manager/scripts/governance/run-skill-lifecycle-review.ps1",
+        "boundary_class":  "shared-template"
+    },
+    {
+        "source":  "source/project/_common/custom/scripts/governance/run-skill-lifecycle-review.ps1",
+        "target":  "E:/CODE/repo-governance-hub/scripts/governance/run-skill-lifecycle-review.ps1",
+        "boundary_class":  "shared-template"
     }
 ]
