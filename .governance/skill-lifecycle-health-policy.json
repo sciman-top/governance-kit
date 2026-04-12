@@ -1,0 +1,10 @@
+{
+  "schema_version": "1.0",
+  "enabled": true,
+  "max_retire_candidate_count": 20,
+  "max_retired_avg_latency_days": 365,
+  "min_quality_impact_delta": 0.0,
+  "block_on_retire_backlog": true,
+  "block_on_latency_violation": true,
+  "block_on_quality_regression": true
+}

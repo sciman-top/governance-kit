@@ -8,6 +8,7 @@
       "repo": "E:/CODE/ClassroomToolkit",
       "phase": "observe",
       "blockExpiredWaiver": false,
+      "observe_started_at": "2026-04-01",
       "planned_enforce_date": "2026-04-15",
       "note": "Start in observe phase; switch to enforce after waiver templates and evidence workflow are adopted."
     }

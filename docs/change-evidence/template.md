@@ -6,6 +6,7 @@
 目标归宿=
 迁移批次=
 风险等级=
+risk_tier=
 是否豁免(Waiver)=
 豁免责任人=
 豁免到期=
@@ -16,6 +17,7 @@
 发布后验证(指标/阈值/窗口)=
 数据变更治理(迁移/回填/回滚)=
 回滚动作=
+rollback_trigger=
 subagent_decision_mode=
 spawn_parallel_subagents=
 max_parallel_agents=
@@ -28,7 +30,18 @@ target_repo_count=
 readiness_score=
 quickstart_presence=
 release_template_presence=
+trigger_eval_status=
+trigger_eval_validation_pass_rate=
+trigger_eval_validation_false_trigger_rate=
+
+任务理解快照=
+术语解释点=
+可观测信号=
+排障路径=
+未确认假设与纠偏结论=
 
 learning_points_3=
 reusable_checklist=
 open_questions=
+average_response_token=
+single_task_token=

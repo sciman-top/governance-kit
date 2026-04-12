@@ -1,0 +1,12 @@
+{
+  "schema_version": "1.0",
+  "enabled": true,
+  "min_top_signatures": 5,
+  "max_top_signatures": 5,
+  "allow_catalog_fallback_when_observed_insufficient": true,
+  "required_case_fields": [
+    "issue_signature",
+    "replay.command",
+    "replay.expected_pattern"
+  ]
+}

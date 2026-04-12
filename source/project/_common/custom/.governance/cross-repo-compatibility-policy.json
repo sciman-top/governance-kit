@@ -1,0 +1,15 @@
+{
+  "schema_version": "1.0",
+  "enabled": true,
+  "required_relative_files": [
+    "AGENTS.md",
+    "scripts/governance/run-recurring-review.ps1",
+    ".governance/skill-promotion-policy.json",
+    ".governance/skill-lifecycle-policy.json",
+    ".governance/release-profile.json"
+  ],
+  "run_release_profile_validation": true,
+  "max_repo_failure_count": 0,
+  "max_missing_required_file_count": 0,
+  "emit_signal_file": ".governance/cross-repo-compatibility-signal.json"
+}

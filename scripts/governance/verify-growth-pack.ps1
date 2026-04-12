@@ -86,6 +86,14 @@ function Test-QuickStartInReadme([string]$Path) {
   return ([regex]::IsMatch($text, "(?im)quick\s*start") -or $text.Contains($quickStartCn))
 }
 
+function Test-ReadmeHasDemoSignals([string]$Path) {
+  if (-not (Test-Path -LiteralPath $Path -PathType Leaf)) { return $false }
+  $text = Get-Content -LiteralPath $Path -Raw
+  return ([regex]::IsMatch($text, "(?im)^\s*#{2,4}\s*(demo|examples?|screenshots?|try it now)\b") -or
+          [regex]::IsMatch($text, "(?im)\bdemo\b") -or
+          [regex]::IsMatch($text, "(?im)\bexamples?\b"))
+}
+
 $repos = @()
 if (-not [string]::IsNullOrWhiteSpace($RepoPath)) {
   $repos = @([System.IO.Path]::GetFullPath(($RepoPath -replace '/', '\')))
@@ -141,10 +149,20 @@ foreach ($repo in $repos) {
     $advisory.Add("README.md missing Quick Start section") | Out-Null
   }
 
+  $hasDemoSignals = Test-ReadmeHasDemoSignals -Path (Join-Path $repo "README.md")
+  if (-not $hasDemoSignals) {
+    $advisory.Add("README.md missing demo/examples/screenshots trial signal") | Out-Null
+  }
+
   $hasReleaseTemplate = (Test-Path -LiteralPath (Join-Path $repo "RELEASE_TEMPLATE.md") -PathType Leaf) -or
     (Test-Path -LiteralPath (Join-Path $repo ".governance\growth-pack\RELEASE_TEMPLATE.md") -PathType Leaf)
   if (-not $hasReleaseTemplate) {
     $advisory.Add("release template not found in root or .governance/growth-pack") | Out-Null
+  }
+
+  $hasGitHubPresence = Test-Path -LiteralPath (Join-Path $repo ".governance\growth-pack\GITHUB-PRESENCE.md") -PathType Leaf
+  if (-not $hasGitHubPresence) {
+    $advisory.Add("GitHub presence playbook not found in .governance/growth-pack") | Out-Null
   }
 
   $hasIssueTemplate = (Test-Path -LiteralPath (Join-Path $repo ".github\ISSUE_TEMPLATE\bug_report.yml") -PathType Leaf) -or
@@ -154,7 +172,7 @@ foreach ($repo in $repos) {
   }
 
   $coverage = if ($expectedFiles.Count -eq 0) { 1.0 } else { [double]$present / [double]$expectedFiles.Count }
-  $score = [int][Math]::Round(($coverage * 60.0) + ($(if ($hasQuickStart) { 20 } else { 0 })) + ($(if ($hasReleaseTemplate) { 10 } else { 0 })) + ($(if ($hasIssueTemplate) { 10 } else { 0 })))
+  $score = [int][Math]::Round(($coverage * 50.0) + ($(if ($hasQuickStart) { 15 } else { 0 })) + ($(if ($hasDemoSignals) { 15 } else { 0 })) + ($(if ($hasReleaseTemplate) { 10 } else { 0 })) + ($(if ($hasIssueTemplate) { 10 } else { 0 })))
 
   $quickStartGateFail = ($quickStartMode -eq "enforce" -and $quickStartMissing)
   $status = if ($missing.Count -eq 0 -and -not $quickStartGateFail) { "PASS" } else { "FAIL" }

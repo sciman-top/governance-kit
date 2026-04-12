@@ -398,6 +398,7 @@ function Get-TriggerEvalGateState {
     require_trigger_eval_for_create = [bool]$requireEval
     trigger_eval_summary_path = ($summaryPath -replace '\\', '/')
     trigger_eval_summary_found = $false
+    trigger_eval_summary_status = ""
     trigger_eval_pass = $false
     trigger_eval_min_validation_pass_rate = $minPassRate
     trigger_eval_max_validation_false_trigger_rate = $maxFalseRate
@@ -421,7 +422,11 @@ function Get-TriggerEvalGateState {
   $summary = Load-JsonObject $summaryPath
   $vp = $null
   $vf = $null
+  $summaryStatus = ""
   if ($null -ne $summary) {
+    if ($null -ne $summary.PSObject.Properties['status']) {
+      $summaryStatus = ([string]$summary.status).Trim().ToLowerInvariant()
+    }
     if ($null -ne $summary.PSObject.Properties['validation_pass_rate']) {
       try { $vp = [double]$summary.validation_pass_rate } catch { $vp = $null }
     }
@@ -429,8 +434,20 @@ function Get-TriggerEvalGateState {
       try { $vf = [double]$summary.validation_false_trigger_rate } catch { $vf = $null }
     }
   }
+  $state.trigger_eval_summary_status = $summaryStatus
   $state.trigger_eval_validation_pass_rate = $vp
   $state.trigger_eval_validation_false_trigger_rate = $vf
+
+  if ($summaryStatus -eq "no_data") {
+    $state.trigger_eval_blocked_reason = "eval_summary_no_data"
+    $state.trigger_eval_pass = $false
+    return [pscustomobject]$state
+  }
+  if ($summaryStatus -eq "no_validation_split") {
+    $state.trigger_eval_blocked_reason = "eval_summary_no_validation_split"
+    $state.trigger_eval_pass = $false
+    return [pscustomobject]$state
+  }
 
   if ($null -eq $vp -or $null -eq $vf) {
     $state.trigger_eval_blocked_reason = "eval_summary_missing_metrics"
@@ -924,6 +941,7 @@ $result = [ordered]@{
   require_trigger_eval_for_create = [bool]$triggerEvalState.require_trigger_eval_for_create
   trigger_eval_summary_path = [string]$triggerEvalState.trigger_eval_summary_path
   trigger_eval_summary_found = [bool]$triggerEvalState.trigger_eval_summary_found
+  trigger_eval_summary_status = [string]$triggerEvalState.trigger_eval_summary_status
   trigger_eval_pass = [bool]$triggerEvalState.trigger_eval_pass
   trigger_eval_min_validation_pass_rate = [double]$triggerEvalState.trigger_eval_min_validation_pass_rate
   trigger_eval_max_validation_false_trigger_rate = [double]$triggerEvalState.trigger_eval_max_validation_false_trigger_rate

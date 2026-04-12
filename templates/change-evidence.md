@@ -40,3 +40,5 @@ release_template_presence=
 learning_points_3=
 reusable_checklist=
 open_questions=
+average_response_token=
+single_task_token=

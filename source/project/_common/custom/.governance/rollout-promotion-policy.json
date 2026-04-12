@@ -1,0 +1,13 @@
+{
+  "schema_version": "1.0",
+  "enabled": true,
+  "minimum_observe_days_before_enforce": 14,
+  "require_observe_started_at": true,
+  "require_planned_enforce_date_for_observe": true,
+  "fail_on_observe_window_violation": true,
+  "rollback_conditions": [
+    "observe_window_violation",
+    "post_enforce_regression_detected",
+    "waiver_expired_unrecovered"
+  ]
+}

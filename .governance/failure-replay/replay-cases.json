@@ -1,0 +1,56 @@
+{
+  "schema_version": "1.0",
+  "updated_at": "2026-04-12T13:20:00+08:00",
+  "cases": [
+    {
+      "id": "pwsh-encoding-mojibake-loop-20260411",
+      "issue_signature": "pwsh-encoding-mojibake-loop-20260411",
+      "enabled": true,
+      "priority": 100,
+      "replay": {
+        "command": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/governance/check-skill-trigger-evals.ps1 -RepoRoot . -AsJson",
+        "expected_pattern": "\"status\""
+      }
+    },
+    {
+      "id": "alpha-encoding-loop",
+      "issue_signature": "alpha-encoding-loop",
+      "enabled": true,
+      "priority": 90,
+      "replay": {
+        "command": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/governance/check-risk-tier-approval.ps1 -RepoRoot . -AsJson",
+        "expected_pattern": "\"status\""
+      }
+    },
+    {
+      "id": "network-timeout-legacy",
+      "issue_signature": "network-timeout-legacy",
+      "enabled": true,
+      "priority": 80,
+      "replay": {
+        "command": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/governance/check-rollout-promotion-readiness.ps1 -RepoRoot . -AsJson",
+        "expected_pattern": "\"status\""
+      }
+    },
+    {
+      "id": "dup-family-20260412-a",
+      "issue_signature": "dup-family-20260412-a",
+      "enabled": true,
+      "priority": 70,
+      "replay": {
+        "command": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/governance/promote-skill-candidates.ps1 -GovernanceRoot . -AsJson",
+        "expected_pattern": "\"promoted_count\""
+      }
+    },
+    {
+      "id": "no-val-family-20260412-a",
+      "issue_signature": "no-val-family-20260412-a",
+      "enabled": true,
+      "priority": 60,
+      "replay": {
+        "command": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/governance/check-skill-trigger-evals.ps1 -RepoRoot . -AsJson",
+        "expected_pattern": "\"validation_query_count\""
+      }
+    }
+  ]
+}

@@ -10,6 +10,7 @@
       ".governance/growth-pack/RELEASE_TEMPLATE.md",
       ".governance/growth-pack/CONTRIBUTING.template.md",
       ".governance/growth-pack/SECURITY.template.md",
+      ".governance/growth-pack/GITHUB-PRESENCE.md",
       ".governance/growth-pack/ISSUE_TEMPLATE/bug_report.yml",
       ".governance/growth-pack/ISSUE_TEMPLATE/feature_request.yml",
       ".governance/growth-pack/pull_request_template.md",
@@ -21,6 +22,7 @@
     "advanced": [
       ".governance/growth-pack/README.template.md",
       ".governance/growth-pack/RELEASE_TEMPLATE.md",
+      ".governance/growth-pack/GITHUB-PRESENCE.md",
       ".governance/growth-pack/ISSUE_TEMPLATE/bug_report.yml",
       ".governance/growth-pack/ISSUE_TEMPLATE/feature_request.yml",
       ".governance/growth-pack/pull_request_template.md",
@@ -32,6 +34,7 @@
     "integration": [
       ".governance/growth-pack/README.template.md",
       ".governance/growth-pack/RELEASE_TEMPLATE.md",
+      ".governance/growth-pack/GITHUB-PRESENCE.md",
       ".governance/growth-pack/CHECKLIST.md",
       "scripts/governance/verify-growth-pack.ps1",
       "scripts/governance/report-growth-readiness.ps1",

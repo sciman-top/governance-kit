@@ -50,6 +50,13 @@ powershell -File E:\CODE\repo-governance-hub\scripts\install-full-stack.ps1 -Rep
 powershell -File E:\CODE\repo-governance-hub\scripts\install-full-stack.ps1 -RepoPath E:\CODE\NewRepo -Mode plan
 ```
 
+## Demo / Examples / Screenshots
+
+- 目标仓接入示例：`install-full-stack.ps1 -Mode safe` 会按配置把规则、模板、hooks、CI 入口和证据链同步到目标仓
+- 试运行示例：先用 `-Mode plan` 预演，再用 `-Mode safe` 实际安装，便于观察分发结果和回滚入口
+- 验证示例：安装后执行 `scripts\verify.ps1` 和 `scripts\doctor.ps1` 查看门禁状态
+- Screenshots：建议在目标仓 README 中补一张“Quick Start + 试用结果”的截图，便于用户快速判断是否值得继续试用
+
 ## 标准工作流
 
 ### 1. 接入或重装目标仓

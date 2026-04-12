@@ -1,0 +1,90 @@
+{
+  "schema_version": "1.0",
+  "enabled": true,
+  "tiers": {
+    "low": {
+      "approval_mode": "auto_execute",
+      "required_evidence_fields": ["issue_id", "risk_tier", "command"]
+    },
+    "medium": {
+      "approval_mode": "pre_publish_confirmation",
+      "required_evidence_fields": ["issue_id", "risk_tier", "decision_score", "rollback_trigger"]
+    },
+    "high": {
+      "approval_mode": "explicit_user_approval",
+      "required_evidence_fields": ["issue_id", "risk_tier", "hard_guard_hits", "rollback_trigger", "approval_reference"]
+    }
+  },
+  "operation_groups": {
+    "tool_calls": [
+      {
+        "id": "read_only_diagnostics",
+        "description": "Read-only inspect/list/find/open operations",
+        "tier": "low"
+      },
+      {
+        "id": "network_write_or_publish",
+        "description": "Create/update/comment/merge/publish actions with remote side effects",
+        "tier": "medium"
+      },
+      {
+        "id": "prod_or_external_state_change",
+        "description": "Production deploy, irreversible external mutations, or privileged state change",
+        "tier": "high",
+        "approval": {
+          "mode": "explicit_user_approval",
+          "steps": [
+            "Record risk and rollback in evidence",
+            "Obtain explicit user approval in session",
+            "Execute smallest reversible step first"
+          ]
+        }
+      }
+    ],
+    "file_write_scopes": [
+      {
+        "id": "docs_and_local_templates",
+        "description": "docs/ and local template updates",
+        "tier": "low"
+      },
+      {
+        "id": "policy_or_gate_script",
+        "description": "policy json, gate scripts, test harness edits",
+        "tier": "medium"
+      },
+      {
+        "id": "cross_repo_distribution_bulk_write",
+        "description": "bulk distribution writes touching multi-repo targets",
+        "tier": "high",
+        "approval": {
+          "mode": "explicit_user_approval",
+          "steps": [
+            "Attach diff scope and impacted targets",
+            "Get explicit user approval",
+            "Run full hard-gate chain before and after"
+          ]
+        }
+      }
+    ],
+    "irreversible_actions": [
+      {
+        "id": "recursive_delete_or_force_history_ops",
+        "description": "recursive delete, force push, or irreversible history rewrite",
+        "tier": "high",
+        "approval": {
+          "mode": "explicit_user_approval",
+          "steps": [
+            "Confirm backup path",
+            "Confirm rollback command",
+            "Get explicit user approval before execution"
+          ]
+        }
+      }
+    ]
+  },
+  "gates": {
+    "fail_on_missing_policy": true,
+    "fail_on_invalid_structure": true,
+    "fail_on_high_risk_without_explicit_path": true
+  }
+}

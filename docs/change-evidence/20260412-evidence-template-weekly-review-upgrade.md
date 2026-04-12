@@ -1,0 +1,42 @@
+规则ID=P0-03-P0-04-evidence-template-weekly-review-upgrade
+规则版本=3.85
+兼容窗口(观察期/强制期)=observe:2026-04-12/enforce:2026-04-12
+影响模块=docs/change-evidence/template.md; scripts/governance/run-recurring-review.ps1; tests/repo-governance-hub.optimization.tests.ps1
+当前落点=E:/CODE/repo-governance-hub
+目标归宿=source/project/_common/custom/scripts/governance/run-recurring-review.ps1 + source/project/repo-governance-hub/custom/scripts/governance/run-recurring-review.ps1
+迁移批次=2026-04-12-safe
+风险等级=medium
+risk_tier=medium
+是否豁免(Waiver)=no
+执行命令=verify-kit; tests/repo-governance-hub.optimization.tests.ps1; validate-config; verify; doctor; run-recurring-review -AsJson
+验证证据=新增快照字段(skill_trigger_eval_*); run-recurring-review status=ok/grouped=60; 全链路门禁通过
+供应链安全扫描=doctor中practice-stack/external-baselines通过
+发布后验证(指标/阈值/窗口)=weekly snapshot 必含 skill_trigger_eval_status/grouped_query_count/pass_rate/false_trigger_rate
+数据变更治理(迁移/回填/回滚)=仅文档与脚本字段增强，无结构变更
+回滚动作=回退run-recurring-review/template/tests对应修改并重跑门禁
+rollback_trigger=run-recurring-review持续PARSE_ERROR或快照缺字段
+subagent_decision_mode=hard_guard_plus_score(policy)
+spawn_parallel_subagents=false
+max_parallel_agents=0
+decision_score=not_applicable
+reason_codes=not_applicable
+hard_guard_hits=not_applicable
+policy_path=E:/CODE/repo-governance-hub/config/subagent-trigger-policy.json
+growth_pack_enabled=true
+target_repo_count=3
+readiness_score=100
+quickstart_presence=true
+release_template_presence=true
+trigger_eval_status=ok
+trigger_eval_validation_pass_rate=1
+trigger_eval_validation_false_trigger_rate=0
+
+任务理解快照=目标:补齐证据模板字段并让周审快照输出trigger-eval指标; 非目标:不改晋升阈值策略
+术语解释点=PARSE_ERROR: 周审解析触发评测输出失败的状态标识
+可观测信号=alerts-latest.md中的skill_trigger_eval_*四字段
+排障路径=发现StrictMode未初始化变量->初始化前置->加summary文件兜底解析
+未确认假设与纠偏结论=假设脚本输出总可直接JSON解析(未确认); 纠偏:增加summary兜底读取
+
+learning_points_3=1) 周审快照需承载关键指标，便于非JSON场景人工巡检;2) StrictMode下变量初始化必须前置;3) 解析失败需配置本地文件兜底
+reusable_checklist=改脚本->加测试->同步source归宿->跑四段门禁->运行周审验证快照
+open_questions=是否将run-recurring-review默认改为同时写一份结构化weekly-summary.json便于趋势计算

@@ -1,0 +1,9 @@
+{
+  "schema_version": "1.0",
+  "enabled": true,
+  "target_states": ["active", "approved"],
+  "max_active_family_duplicates": 0,
+  "require_health_score_for_target_states": true,
+  "min_health_score_for_target_states": 0.7,
+  "max_low_health_target_state_count": 0
+}
