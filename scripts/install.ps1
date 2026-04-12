@@ -13,6 +13,10 @@
   [ValidateRange(1, 10)]
   [int]$MaxAutoFixAttempts = 1,
   [switch]$SkipPostVerify,
+  [switch]$SkipGrowthPackApply,
+  [switch]$SkipGrowthPackAutoIntegrate,
+  [ValidateSet("merge", "overwrite", "skip")]
+  [string]$GrowthPackStrategy = "merge",
   [switch]$AsJson,
   [ValidateRange(1, 3600)]
   [int]$LockTimeoutSeconds = 120
@@ -44,6 +48,12 @@ if ($AutoRemediate.IsPresent -and $NoAutoRemediate.IsPresent) {
 
 if ($SkipPostGate.IsPresent) {
   Write-Host "[WARN] SkipPostGate enabled; full local gate chain after install is skipped."
+}
+if ($SkipGrowthPackApply.IsPresent) {
+  Write-Host "[WARN] SkipGrowthPackApply enabled; growth-pack root documents will not be synchronized."
+}
+if ($SkipGrowthPackAutoIntegrate.IsPresent) {
+  Write-Host "[WARN] SkipGrowthPackAutoIntegrate enabled; suggested growth-pack docs will not be auto-integrated."
 }
 if ($PSBoundParameters.ContainsKey("MaxAutoFixAttempts")) {
   Write-Host "[DEPRECATED] -MaxAutoFixAttempts is ignored because in-script auto remediation is disabled."
@@ -89,6 +99,32 @@ function Get-FullCycleRepos {
   }
 
   return @($repos)
+}
+
+function Invoke-GrowthPackStages {
+  param(
+    [Parameter(Mandatory = $true)][string]$ScriptsRoot,
+    [Parameter(Mandatory = $true)][ValidateSet("plan", "safe")][string]$Mode,
+    [Parameter(Mandatory = $true)][string]$GrowthPackStrategy,
+    [bool]$SkipGrowthPackApply = $false,
+    [bool]$SkipGrowthPackAutoIntegrate = $false
+  )
+
+  if ($SkipGrowthPackApply) { return }
+  $growthApplyScript = Join-Path $ScriptsRoot "governance\apply-growth-pack.ps1"
+  if (-not (Test-Path -LiteralPath $growthApplyScript -PathType Leaf)) {
+    Write-Host "[INFO] skip growth-pack apply: apply-growth-pack.ps1 not found in current workspace"
+    return
+  }
+  Invoke-ChildScript -ScriptPath $growthApplyScript -ScriptArgs @("-Mode", $Mode, "-Strategy", $GrowthPackStrategy)
+
+  if ($SkipGrowthPackAutoIntegrate) { return }
+  $growthIntegrateScript = Join-Path $ScriptsRoot "governance\integrate-growth-suggestions.ps1"
+  if (Test-Path -LiteralPath $growthIntegrateScript -PathType Leaf) {
+    Invoke-ChildScript -ScriptPath $growthIntegrateScript -ScriptArgs @("-Mode", $Mode)
+  } else {
+    Write-Host "[INFO] skip growth-pack auto-integrate: integrate-growth-suggestions.ps1 not found in current workspace"
+  }
 }
 
 try {
@@ -271,6 +307,8 @@ if ($modePlan) {
     Write-Host "[INFO] skip target orphan prune: prune-target-orphans.ps1 not found in current workspace"
   }
 
+  Invoke-GrowthPackStages -ScriptsRoot $PSScriptRoot -Mode "plan" -GrowthPackStrategy $GrowthPackStrategy -SkipGrowthPackApply ([bool]$SkipGrowthPackApply) -SkipGrowthPackAutoIntegrate ([bool]$SkipGrowthPackAutoIntegrate)
+
   if ($FullCycle) {
     $fullCycleTargets = @(Get-FullCycleRepos -KitRoot $kitRoot -Targets $targets)
     foreach ($repoPath in $fullCycleTargets) {
@@ -300,6 +338,8 @@ if ($modePlan) {
   } else {
     Write-Host "[INFO] skip target orphan prune: prune-target-orphans.ps1 not found in current workspace"
   }
+
+  Invoke-GrowthPackStages -ScriptsRoot $PSScriptRoot -Mode "safe" -GrowthPackStrategy $GrowthPackStrategy -SkipGrowthPackApply ([bool]$SkipGrowthPackApply) -SkipGrowthPackAutoIntegrate ([bool]$SkipGrowthPackAutoIntegrate)
 
   Write-Host "Done. copied=$copied backup=$backedUp skipped=$skipped mode=$Mode"
   if (-not $NoBackup -and $backedUp -gt 0) {

@@ -1,8 +1,8 @@
 ﻿{
     "version":  1,
     "tool":  "repo-governance-hub",
-    "updated_at":  "2026-04-12T14:42:22",
-    "managed_count":  71,
+    "updated_at":  "2026-04-12T18:03:06",
+    "managed_count":  72,
     "managed_files":  [
                           {
                               "path":  ".agents/plugins/marketplace.json",
@@ -97,7 +97,7 @@
                           {
                               "path":  ".governance/growth-pack/README.template.md",
                               "source":  "source/project/_common/custom/.governance/growth-pack/README.template.md",
-                              "sha256":  "CBD10278E65F6E1BF292983FE9D74510F98C86152BFDC3202245C784812C7C70"
+                              "sha256":  "EF3200C01E563B9F6A8868FF54DBF004FAB0A74DB51BDE8DCDF5D55FCA8872C9"
                           },
                           {
                               "path":  ".governance/growth-pack/RELEASE_TEMPLATE.md",
@@ -247,7 +247,7 @@
                           {
                               "path":  "scripts/governance/apply-growth-pack.ps1",
                               "source":  "source/project/_common/custom/scripts/governance/apply-growth-pack.ps1",
-                              "sha256":  "3531C45D53E7B42DDFB01F9DFAA55EFE77C5EA7FA5E727BB8FF0CF25AD017A38"
+                              "sha256":  "EFF4EC74A4994EAD009A78E840E962D20FE37317AFA481A7989C7489D8D322FD"
                           },
                           {
                               "path":  "scripts/governance/check-anti-bloat-budgets.ps1",
@@ -285,6 +285,11 @@
                               "sha256":  "D3AFC8CBBC63DAFC049755E5D03416B483980BE77F8B6991A44E695E34CB3C68"
                           },
                           {
+                              "path":  "scripts/governance/integrate-growth-suggestions.ps1",
+                              "source":  "source/project/_common/custom/scripts/governance/integrate-growth-suggestions.ps1",
+                              "sha256":  "F42536A22EDC898E1A8280C5732D2546FA2F808F483C1A0CC1B0412FDD7EEC28"
+                          },
+                          {
                               "path":  "scripts/governance/migrate-skill-registry-v2.ps1",
                               "source":  "source/project/_common/custom/scripts/governance/migrate-skill-registry-v2.ps1",
                               "sha256":  "C58FE7A12B5A663932DEDA0ACF51715258C7A8516F733929361CDB11B7977BDF"
@@ -307,7 +312,7 @@
                           {
                               "path":  "scripts/governance/report-growth-readiness.ps1",
                               "source":  "source/project/_common/custom/scripts/governance/report-growth-readiness.ps1",
-                              "sha256":  "7F3731AF89DB949F237D9E58F4B334E0CAF5F58F3DC97563143C43656138B2E9"
+                              "sha256":  "B3FF5F7F44CE7F3EBED38641ADC46082C8CF17E31220F1550C24A3EB8A970620"
                           },
                           {
                               "path":  "scripts/governance/run-monthly-policy-review.ps1",
@@ -337,7 +342,7 @@
                           {
                               "path":  "scripts/governance/verify-growth-pack.ps1",
                               "source":  "source/project/_common/custom/scripts/governance/verify-growth-pack.ps1",
-                              "sha256":  "CCC8A42B01E226C72B94FFB448EB708576608767971661CCFAC2F3CFA32B3435"
+                              "sha256":  "D516B6918E5631E57C02D540CFA225B73D8CA9C6D627F950F7DCA3B168A02735"
                           },
                           {
                               "path":  "scripts/quality/run-supply-chain-checks.ps1",

@@ -1218,5 +1218,20 @@
         "source":  "source/project/_common/custom/.governance/growth-pack/GITHUB-PRESENCE.md",
         "target":  "E:/CODE/repo-governance-hub/.governance/growth-pack/GITHUB-PRESENCE.md",
         "boundary_class":  "shared-template"
+    },
+    {
+        "source":  "source/project/_common/custom/scripts/governance/integrate-growth-suggestions.ps1",
+        "target":  "E:/CODE/ClassroomToolkit/scripts/governance/integrate-growth-suggestions.ps1",
+        "boundary_class":  "shared-template"
+    },
+    {
+        "source":  "source/project/_common/custom/scripts/governance/integrate-growth-suggestions.ps1",
+        "target":  "E:/CODE/skills-manager/scripts/governance/integrate-growth-suggestions.ps1",
+        "boundary_class":  "shared-template"
+    },
+    {
+        "source":  "source/project/_common/custom/scripts/governance/integrate-growth-suggestions.ps1",
+        "target":  "E:/CODE/repo-governance-hub/scripts/governance/integrate-growth-suggestions.ps1",
+        "boundary_class":  "shared-template"
     }
 ]

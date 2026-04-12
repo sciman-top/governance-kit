@@ -5097,6 +5097,197 @@ token_per_effective_conclusion=130
       if (Test-Path $tmp) { Remove-Item -LiteralPath $tmp -Recurse -Force }
     }
   }
+
+  it "apply-growth-pack merge materializes placeholder README instead of raw overwrite" {
+    $tmp = Join-Path $env:TEMP ("govkit-test-" + [guid]::NewGuid().ToString("N"))
+    try {
+      $repo = Join-Path $tmp "RepoA"
+      New-Item -ItemType Directory -Path (Join-Path $tmp "scripts\governance") -Force | Out-Null
+      New-Item -ItemType Directory -Path (Join-Path $tmp "scripts\lib") -Force | Out-Null
+      New-Item -ItemType Directory -Path (Join-Path $tmp "config") -Force | Out-Null
+      New-Item -ItemType Directory -Path (Join-Path $repo ".governance\growth-pack") -Force | Out-Null
+
+      Copy-Item -Path (Join-Path $repoRoot "scripts\governance\apply-growth-pack.ps1") -Destination (Join-Path $tmp "scripts\governance\apply-growth-pack.ps1") -Force
+      Copy-Item -Path (Join-Path $repoRoot "scripts\lib\common.ps1") -Destination (Join-Path $tmp "scripts\lib\common.ps1") -Force
+
+      @(
+        ($repo -replace "\\","/")
+      ) | ConvertTo-Json | Set-Content -Path (Join-Path $tmp "config\repositories.json") -Encoding UTF8
+
+      @'
+{
+  "schema_version": "1.0",
+  "enabled": true,
+  "root_apply_enabled_by_default": true,
+  "default_tier": "starter",
+  "readme_quickstart_mode": "advisory",
+  "tiers": {
+    "starter": [".governance/growth-pack/README.template.md"],
+    "advanced": [".governance/growth-pack/README.template.md"],
+    "integration": [".governance/growth-pack/README.template.md"]
+  },
+  "repo_overrides": []
+}
+'@ | Set-Content -Path (Join-Path $tmp "config\growth-pack-policy.json") -Encoding UTF8
+
+      @'
+# <ProjectName>
+
+> <One-line value proposition for target users>
+'@ | Set-Content -Path (Join-Path $repo ".governance\growth-pack\README.template.md") -Encoding UTF8
+
+      @'
+# <ProjectName>
+
+> <One-line value proposition for target users>
+'@ | Set-Content -Path (Join-Path $repo "README.md") -Encoding UTF8
+
+      $json = & powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $tmp "scripts\governance\apply-growth-pack.ps1") -RepoPath $repo -Mode safe -Strategy merge -AsJson
+      $LASTEXITCODE | should be 0
+      $obj = $json | ConvertFrom-Json
+      [int]$obj.summary.merged | should be 1
+
+      $readme = Get-Content -Path (Join-Path $repo "README.md") -Raw
+      $readme | should match "# RepoA"
+      $readme | should not match "<ProjectName>"
+    } finally {
+      if (Test-Path $tmp) { Remove-Item -LiteralPath $tmp -Recurse -Force }
+    }
+  }
+
+  it "install safe auto-runs apply-growth-pack with merge strategy by default" {
+    $tmp = Join-Path $env:TEMP ("govkit-test-" + [guid]::NewGuid().ToString("N"))
+    try {
+      New-Item -ItemType Directory -Path (Join-Path $tmp "scripts\governance") -Force | Out-Null
+      New-Item -ItemType Directory -Path (Join-Path $tmp "scripts\lib") -Force | Out-Null
+      New-Item -ItemType Directory -Path (Join-Path $tmp "config") -Force | Out-Null
+      New-Item -ItemType Directory -Path (Join-Path $tmp "source") -Force | Out-Null
+      New-Item -ItemType Directory -Path (Join-Path $tmp "target") -Force | Out-Null
+
+      Copy-Item -Path (Join-Path $repoRoot "scripts\install.ps1") -Destination (Join-Path $tmp "scripts\install.ps1") -Force
+      Copy-Item -Path (Join-Path $repoRoot "scripts\lib\common.ps1") -Destination (Join-Path $tmp "scripts\lib\common.ps1") -Force
+
+      @"
+param([string]`$Mode,[string]`$Strategy)
+Set-Content -Path "$tmp\growth.marker" -Value ("mode=" + `$Mode + ";strategy=" + `$Strategy) -Encoding UTF8
+exit 0
+"@ | Set-Content -Path (Join-Path $tmp "scripts\governance\apply-growth-pack.ps1") -Encoding UTF8
+
+      $src = Join-Path $tmp "source\AGENTS.md"
+      $dst = Join-Path $tmp "target\AGENTS.md"
+      Set-Content -Path $src -Value "new-content" -Encoding UTF8
+      Set-Content -Path $dst -Value "old-content" -Encoding UTF8
+      @(@{ source = "source/AGENTS.md"; target = $dst }) | ConvertTo-Json -Depth 3 | Set-Content -Path (Join-Path $tmp "config\targets.json") -Encoding UTF8
+
+      & powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $tmp "scripts\install.ps1") -Mode safe -NoBackup -SkipPostVerify | Out-Null
+      if ($LASTEXITCODE -ne 0) { throw "install.ps1 safe failed with exit code $LASTEXITCODE" }
+      (Test-Path (Join-Path $tmp "growth.marker")) | should be $true
+      $marker = Get-Content -Path (Join-Path $tmp "growth.marker") -Raw
+      $marker | should match "mode=safe"
+      $marker | should match "strategy=merge"
+    } finally {
+      if (Test-Path $tmp) { Remove-Item -LiteralPath $tmp -Recurse -Force }
+    }
+  }
+
+  it "integrate-growth-suggestions merges markdown suggestions and keeps yaml for manual review" {
+    $tmp = Join-Path $env:TEMP ("govkit-test-" + [guid]::NewGuid().ToString("N"))
+    try {
+      $repo = Join-Path $tmp "RepoA"
+      New-Item -ItemType Directory -Path (Join-Path $tmp "scripts\governance") -Force | Out-Null
+      New-Item -ItemType Directory -Path (Join-Path $tmp "scripts\lib") -Force | Out-Null
+      New-Item -ItemType Directory -Path (Join-Path $tmp "config") -Force | Out-Null
+      New-Item -ItemType Directory -Path (Join-Path $repo ".github\ISSUE_TEMPLATE") -Force | Out-Null
+
+      Copy-Item -Path (Join-Path $repoRoot "scripts\governance\integrate-growth-suggestions.ps1") -Destination (Join-Path $tmp "scripts\governance\integrate-growth-suggestions.ps1") -Force
+      Copy-Item -Path (Join-Path $repoRoot "scripts\lib\common.ps1") -Destination (Join-Path $tmp "scripts\lib\common.ps1") -Force
+
+      @(
+        ($repo -replace "\\","/")
+      ) | ConvertTo-Json | Set-Content -Path (Join-Path $tmp "config\repositories.json") -Encoding UTF8
+
+      @'
+# Contributing
+
+## Scope
+- Existing scope
+'@ | Set-Content -Path (Join-Path $repo "CONTRIBUTING.md") -Encoding UTF8
+
+      @'
+# Contributing
+
+## Scope
+- Existing scope
+
+## Basic Workflow
+1. Step one
+'@ | Set-Content -Path (Join-Path $repo "CONTRIBUTING.md.growth-pack.suggested") -Encoding UTF8
+
+      @'
+name: Existing template
+'@ | Set-Content -Path (Join-Path $repo ".github\ISSUE_TEMPLATE\bug_report.yml") -Encoding UTF8
+
+      @'
+name: Suggested template
+'@ | Set-Content -Path (Join-Path $repo ".github\ISSUE_TEMPLATE\bug_report.yml.growth-pack.suggested") -Encoding UTF8
+
+      $json = & powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $tmp "scripts\governance\integrate-growth-suggestions.ps1") -Mode safe -AsJson
+      $LASTEXITCODE | should be 0
+      $obj = $json | ConvertFrom-Json
+      [int]$obj.summary.integrated | should be 1
+      [int]$obj.summary.kept_for_manual | should be 1
+
+      $contrib = Get-Content -Path (Join-Path $repo "CONTRIBUTING.md") -Raw
+      $contrib | should match "## Basic Workflow"
+      (Test-Path (Join-Path $repo "CONTRIBUTING.md.growth-pack.suggested")) | should be $false
+
+      $bug = Get-Content -Path (Join-Path $repo ".github\ISSUE_TEMPLATE\bug_report.yml") -Raw
+      $bug | should match "Existing template"
+      (Test-Path (Join-Path $repo ".github\ISSUE_TEMPLATE\bug_report.yml.growth-pack.suggested")) | should be $true
+    } finally {
+      if (Test-Path $tmp) { Remove-Item -LiteralPath $tmp -Recurse -Force }
+    }
+  }
+
+  it "install safe auto-runs integrate-growth-suggestions by default" {
+    $tmp = Join-Path $env:TEMP ("govkit-test-" + [guid]::NewGuid().ToString("N"))
+    try {
+      New-Item -ItemType Directory -Path (Join-Path $tmp "scripts\governance") -Force | Out-Null
+      New-Item -ItemType Directory -Path (Join-Path $tmp "scripts\lib") -Force | Out-Null
+      New-Item -ItemType Directory -Path (Join-Path $tmp "config") -Force | Out-Null
+      New-Item -ItemType Directory -Path (Join-Path $tmp "source") -Force | Out-Null
+      New-Item -ItemType Directory -Path (Join-Path $tmp "target") -Force | Out-Null
+
+      Copy-Item -Path (Join-Path $repoRoot "scripts\install.ps1") -Destination (Join-Path $tmp "scripts\install.ps1") -Force
+      Copy-Item -Path (Join-Path $repoRoot "scripts\lib\common.ps1") -Destination (Join-Path $tmp "scripts\lib\common.ps1") -Force
+
+      @"
+param([string]`$Mode,[string]`$Strategy)
+Set-Content -Path "$tmp\growth.marker" -Value ("mode=" + `$Mode + ";strategy=" + `$Strategy) -Encoding UTF8
+exit 0
+"@ | Set-Content -Path (Join-Path $tmp "scripts\governance\apply-growth-pack.ps1") -Encoding UTF8
+
+      @"
+param([string]`$Mode)
+Set-Content -Path "$tmp\integrate.marker" -Value ("mode=" + `$Mode) -Encoding UTF8
+exit 0
+"@ | Set-Content -Path (Join-Path $tmp "scripts\governance\integrate-growth-suggestions.ps1") -Encoding UTF8
+
+      $src = Join-Path $tmp "source\AGENTS.md"
+      $dst = Join-Path $tmp "target\AGENTS.md"
+      Set-Content -Path $src -Value "new-content" -Encoding UTF8
+      Set-Content -Path $dst -Value "old-content" -Encoding UTF8
+      @(@{ source = "source/AGENTS.md"; target = $dst }) | ConvertTo-Json -Depth 3 | Set-Content -Path (Join-Path $tmp "config\targets.json") -Encoding UTF8
+
+      & powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $tmp "scripts\install.ps1") -Mode safe -NoBackup -SkipPostVerify | Out-Null
+      if ($LASTEXITCODE -ne 0) { throw "install.ps1 safe failed with exit code $LASTEXITCODE" }
+      (Test-Path (Join-Path $tmp "integrate.marker")) | should be $true
+      $marker = Get-Content -Path (Join-Path $tmp "integrate.marker") -Raw
+      $marker | should match "mode=safe"
+    } finally {
+      if (Test-Path $tmp) { Remove-Item -LiteralPath $tmp -Recurse -Force }
+    }
+  }
 }
 
 

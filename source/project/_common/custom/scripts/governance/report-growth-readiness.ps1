@@ -56,7 +56,6 @@ $lines.Add("") | Out-Null
 foreach ($item in @($result.items)) {
   $lines.Add(("## {0}" -f $item.repo_name)) | Out-Null
   $lines.Add(("status={0}" -f $item.status)) | Out-Null
-  $lines.Add(("readiness_score={0}" -f $item.readiness_score)) | Out-Null
   $lines.Add(("coverage={0}/{1}" -f $item.present_count, $item.expected_count)) | Out-Null
   if (@($item.missing_files).Count -gt 0) {
     $lines.Add(("missing_files={0}" -f ((@($item.missing_files)) -join ", "))) | Out-Null
