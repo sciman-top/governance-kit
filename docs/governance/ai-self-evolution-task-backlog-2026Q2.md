@@ -1,4 +1,4 @@
-# AI Self-Evolution Task Backlog (2026 Q2)
+# AI Self-Evolution Task Backlog (2026 Q2, Execution Edition)
 
 ## Priority Legend
 - `P0`: must complete before scaling automation.
@@ -9,6 +9,71 @@
 - Before each task: record task understanding snapshot (`goal/non-goal/acceptance/assumptions`).
 - After each task: update evidence in `docs/change-evidence/YYYYMMDD-topic.md`.
 - Gate order is immutable: `build -> test -> contract/invariant -> hotspot`.
+- Promotion rule is immutable: `no eval evidence -> no promotion`.
+
+## 30-Day Plan (2026-04-13 ~ 2026-05-12)
+
+### Week 1 (Baseline)
+- `P0-01` trigger-eval seed and summary integrity.
+- `P0-02` create-path hard block for missing/no_data summaries.
+- `P0-03` evidence schema completion and sampling check.
+
+### Week 2 (Reliability)
+- `P0-04` recurring review output enrichment.
+- `P1-03` replay coverage uplift for top recurring failures.
+- Add adversarial eval slice and threshold draft.
+
+### Week 3 (Safety)
+- `P1-01` approval matrix verification sweep.
+- `P1-02` observe-to-enforce threshold calibration.
+- `P1-04` rollback drill rehearsal and RTO measurement.
+
+### Week 4 (Scale Readiness)
+- `P2-01` family de-dup quality review.
+- `P2-02` lifecycle automation threshold tuning.
+- `P2-03` cross-repo compatibility gate tightening.
+
+## External Best-Practice Alignment Tasks
+
+### P0-05 Trace Grading Baseline
+- Status: Phase 1 Completed (2026-04-12, Observe Mode)
+- Owner: Governance Maintainer
+- Output
+  - Trace grading labels integrated into weekly review evidence.
+- DoD
+  - At least 30 recent traces include grading labels and failure tags.
+
+### P0-06 Adversarial Eval Slice
+- Status: Completed (2026-04-12, gate integration completed)
+- Owner: Governance + Security
+- Output
+  - `adversarial` subset added to eval summary and gate report.
+- DoD
+  - Promotion checks fail when adversarial threshold is breached.
+
+### P1-05 Complexity Budget Gate
+- Status: Completed (2026-04-12)
+- Owner: Governance Maintainer
+- Output
+  - Anti-bloat budget linked to script/policy growth.
+- DoD
+  - New checks blocked when complexity budget is exceeded without merge/deprecation plan.
+
+### P1-06 Auto-rollback Trigger Hardening
+- Status: Completed (2026-04-12)
+- Owner: Governance + Ops
+- Output
+  - Regression trigger set for quality/safety KPI drops.
+- DoD
+  - At least one simulated regression automatically enters rollback path.
+
+### P2-05 Candidate Retirement Quality Guard
+- Status: Completed (2026-04-12)
+- Owner: Governance Maintainer
+- Output
+  - Retire candidates only when replacement coverage is proven.
+- DoD
+  - Retire action includes replacement evidence and rollback fallback.
 
 ## P0 Tasks
 
@@ -47,6 +112,7 @@
   - Create promotion fails deterministically on missing or empty eval summary.
 
 ### P0-03 Upgrade Evidence Template for Evolution Decisions
+- Status: Completed (2026-04-12)
 - Owner: Governance Maintainer
 - Inputs
   - `docs/change-evidence/template.md`
@@ -64,6 +130,7 @@
   - Field completeness >= 95% in spot-check sample.
 
 ### P0-04 Weekly Review Automation Additions
+- Status: Completed (2026-04-12)
 - Owner: Governance Maintainer
 - Inputs
   - `scripts/governance/run-recurring-review.ps1`
@@ -156,3 +223,5 @@
 2. Any unresolved `review_required` tracked-file signal blocks commit/push.
 3. Missing rollback path blocks enforce rollout.
 4. Missing evidence chain blocks task closure.
+5. Missing eval evidence blocks candidate promotion.
+6. Safety threshold breach forces `observe` mode and incident review.

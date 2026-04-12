@@ -964,6 +964,130 @@ Fixture body.
     }
   }
 
+  it "anti-bloat blocks when violation exists but merge/deprecation plan is missing" {
+    $tmp = Join-Path $env:TEMP ("govkit-test-" + [guid]::NewGuid().ToString("N"))
+    try {
+      New-Item -ItemType Directory -Path (Join-Path $tmp "scripts\governance") -Force | Out-Null
+      New-Item -ItemType Directory -Path (Join-Path $tmp ".governance") -Force | Out-Null
+      New-Item -ItemType Directory -Path (Join-Path $tmp "sample") -Force | Out-Null
+
+      Copy-Item -Path (Join-Path $repoRoot "scripts\governance\check-anti-bloat-budgets.ps1") -Destination (Join-Path $tmp "scripts\governance\check-anti-bloat-budgets.ps1") -Force
+
+      $lines = @()
+      for ($i = 1; $i -le 120; $i++) {
+        $lines += ('Write-Host "line-{0}"' -f $i)
+      }
+      ($lines -join "`r`n") | Set-Content -Path (Join-Path $tmp "sample\too-large.ps1") -Encoding UTF8
+
+      @'
+{
+  "schema_version": "1.0",
+  "enabled": true,
+  "enforce": {
+    "block_on_violation": true,
+    "require_merge_or_deprecation_plan_on_violation": true,
+    "allow_with_active_plan": true,
+    "plan_path": ".governance/complexity-budget-plan.json"
+  },
+  "scope": {
+    "prefer_git_pending": false,
+    "include_untracked": true,
+    "scan_repo_when_no_pending": true,
+    "max_repo_files": 50
+  },
+  "scan": {
+    "include_extensions": [".ps1"],
+    "exclude_paths": ["scripts/governance/"]
+  },
+  "limits": {
+    "max_file_lines": 100,
+    "max_consecutive_non_empty_lines": 2000,
+    "max_estimated_tokens_per_file": 50000,
+    "max_estimated_tokens_total_pending": 50000,
+    "max_duplicate_line_occurrences": 1000,
+    "chars_per_token": 4
+  }
+}
+'@ | Set-Content -Path (Join-Path $tmp ".governance\anti-bloat-policy.json") -Encoding UTF8
+
+      $output = & powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $tmp "scripts\governance\check-anti-bloat-budgets.ps1") -RepoRoot $tmp 2>&1 | Out-String
+      $LASTEXITCODE | should be 1
+      $output | should match "missing_merge_or_deprecation_plan"
+    } finally {
+      if (Test-Path $tmp) { Remove-Item -LiteralPath $tmp -Recurse -Force }
+    }
+  }
+
+  it "anti-bloat allows violation when active merge/deprecation plan exists" {
+    $tmp = Join-Path $env:TEMP ("govkit-test-" + [guid]::NewGuid().ToString("N"))
+    try {
+      New-Item -ItemType Directory -Path (Join-Path $tmp "scripts\governance") -Force | Out-Null
+      New-Item -ItemType Directory -Path (Join-Path $tmp ".governance") -Force | Out-Null
+      New-Item -ItemType Directory -Path (Join-Path $tmp "sample") -Force | Out-Null
+
+      Copy-Item -Path (Join-Path $repoRoot "scripts\governance\check-anti-bloat-budgets.ps1") -Destination (Join-Path $tmp "scripts\governance\check-anti-bloat-budgets.ps1") -Force
+
+      $lines = @()
+      for ($i = 1; $i -le 120; $i++) {
+        $lines += ('Write-Host "line-{0}"' -f $i)
+      }
+      ($lines -join "`r`n") | Set-Content -Path (Join-Path $tmp "sample\too-large.ps1") -Encoding UTF8
+
+      @'
+{
+  "schema_version": "1.0",
+  "enabled": true,
+  "enforce": {
+    "block_on_violation": true,
+    "require_merge_or_deprecation_plan_on_violation": true,
+    "allow_with_active_plan": true,
+    "plan_path": ".governance/complexity-budget-plan.json"
+  },
+  "scope": {
+    "prefer_git_pending": false,
+    "include_untracked": true,
+    "scan_repo_when_no_pending": true,
+    "max_repo_files": 50
+  },
+  "scan": {
+    "include_extensions": [".ps1"],
+    "exclude_paths": ["scripts/governance/"]
+  },
+  "limits": {
+    "max_file_lines": 100,
+    "max_consecutive_non_empty_lines": 2000,
+    "max_estimated_tokens_per_file": 50000,
+    "max_estimated_tokens_total_pending": 50000,
+    "max_duplicate_line_occurrences": 1000,
+    "chars_per_token": 4
+  }
+}
+'@ | Set-Content -Path (Join-Path $tmp ".governance\anti-bloat-policy.json") -Encoding UTF8
+
+      @'
+{
+  "schema_version": "1.0",
+  "entries": [
+    {
+      "id": "test-plan",
+      "plan_type": "merge",
+      "status": "active",
+      "expires_at": "2099-12-31",
+      "evidence_ref": "docs/change-evidence/test.md"
+    }
+  ]
+}
+'@ | Set-Content -Path (Join-Path $tmp ".governance\complexity-budget-plan.json") -Encoding UTF8
+
+      $output = & powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $tmp "scripts\governance\check-anti-bloat-budgets.ps1") -RepoRoot $tmp 2>&1 | Out-String
+      $LASTEXITCODE | should be 0
+      $output | should match "allowed by active merge plan"
+      $output | should match "anti_bloat\.health=PASS"
+    } finally {
+      if (Test-Path $tmp) { Remove-Item -LiteralPath $tmp -Recurse -Force }
+    }
+  }
+
   it "token-balance applies thresholds_by_mode by token_budget_mode" {
     $tmp = Join-Path $env:TEMP ("govkit-test-" + [guid]::NewGuid().ToString("N"))
     try {
@@ -3346,6 +3470,108 @@ exit 0
       ($snapshot -match "token_efficiency_trend_status=UNAVAILABLE") | should be $true
       ($snapshot -match "token_efficiency_trend_history_count=0") | should be $true
       ($snapshot -match "token_efficiency_trend_latest_value=0") | should be $true
+      ($snapshot -match "auto_rollback_triggered=False") | should be $true
+      ($snapshot -match "auto_rollback_reason_count=0") | should be $true
+      ($snapshot -match "auto_rollback_action=none") | should be $true
+    } finally {
+      if (Test-Path $tmp) { Remove-Item -LiteralPath $tmp -Recurse -Force }
+    }
+  }
+
+  it "run-recurring-review triggers auto rollback path on token balance regression" {
+    $tmp = Join-Path $env:TEMP ("govkit-test-" + [guid]::NewGuid().ToString("N"))
+    try {
+      New-Item -ItemType Directory -Path (Join-Path $tmp "scripts\governance") -Force | Out-Null
+      New-Item -ItemType Directory -Path (Join-Path $tmp "scripts\lib") -Force | Out-Null
+      New-Item -ItemType Directory -Path (Join-Path $tmp "docs\governance") -Force | Out-Null
+      New-Item -ItemType Directory -Path (Join-Path $tmp ".governance") -Force | Out-Null
+
+      Copy-Item -Path (Join-Path $repoRoot "scripts\governance\run-recurring-review.ps1") -Destination (Join-Path $tmp "scripts\governance\run-recurring-review.ps1") -Force
+      Copy-Item -Path (Join-Path $repoRoot "scripts\governance\check-update-triggers.ps1") -Destination (Join-Path $tmp "scripts\governance\check-update-triggers.ps1") -Force
+      Copy-Item -Path (Join-Path $repoRoot "scripts\lib\common.ps1") -Destination (Join-Path $tmp "scripts\lib\common.ps1") -Force
+
+      @'
+{
+  "schema_version": "1.0",
+  "enabled": true,
+  "trigger_when": {
+    "token_balance_alert_or_violation": true
+  },
+  "action": {
+    "rollback_path": "run-rollback-drill",
+    "mode": "safe"
+  }
+}
+'@ | Set-Content -Path (Join-Path $tmp ".governance\auto-rollback-trigger-policy.json") -Encoding UTF8
+
+      @'
+param()
+Write-Host "HEALTH=GREEN"
+exit 0
+'@ | Set-Content -Path (Join-Path $tmp "scripts\doctor.ps1") -Encoding UTF8
+
+      @'
+param()
+Write-Host "phase.observe_overdue=0"
+exit 0
+'@ | Set-Content -Path (Join-Path $tmp "scripts\rollout-status.ps1") -Encoding UTF8
+
+      @'
+param()
+Write-Host "Waiver check done. files=0 expired=0 blocked=0"
+exit 0
+'@ | Set-Content -Path (Join-Path $tmp "scripts\check-waivers.ps1") -Encoding UTF8
+
+      @'
+param()
+Write-Host "collect-governance-metrics done"
+exit 0
+'@ | Set-Content -Path (Join-Path $tmp "scripts\collect-governance-metrics.ps1") -Encoding UTF8
+
+      @'
+param()
+Write-Output (@{
+  schema_version = "1.0"
+  status = "OK"
+  alert_count = 0
+  alerts = @()
+} | ConvertTo-Json -Depth 6)
+exit 0
+'@ | Set-Content -Path (Join-Path $tmp "scripts\governance\check-update-triggers.ps1") -Encoding UTF8
+
+      @'
+param()
+Write-Host "token_balance.status=ALERT"
+Write-Host "token_balance.warning_count=1"
+Write-Host "token_balance.violation_count=1"
+exit 1
+'@ | Set-Content -Path (Join-Path $tmp "scripts\governance\check-token-balance.ps1") -Encoding UTF8
+
+      @'
+param([string]$RepoRoot=".", [string]$Mode="safe", [switch]$AsJson)
+$obj = @{
+  status = "ok"
+  recovery_ms = 12
+}
+if ($AsJson) {
+  $obj | ConvertTo-Json -Depth 4 | Write-Output
+} else {
+  Write-Host "rollback_drill.status=ok"
+  Write-Host "rollback_drill.recovery_ms=12"
+}
+exit 0
+'@ | Set-Content -Path (Join-Path $tmp "scripts\governance\run-rollback-drill.ps1") -Encoding UTF8
+
+      $json = & powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $tmp "scripts\governance\run-recurring-review.ps1") -RepoRoot $tmp -NoNotifyOnAlert -AsJson
+      $LASTEXITCODE | should be 1
+      $obj = $json | ConvertFrom-Json
+      $obj.summary.auto_rollback_triggered | should be $true
+      [int]$obj.summary.auto_rollback_reason_count | should be 1
+      ([string]$obj.summary.auto_rollback_action) | should match "rollback_path_entered"
+      [string]$obj.summary.auto_rollback_policy_path | should match "auto-rollback-trigger-policy.json"
+      $snapshot = Get-Content -Path (Join-Path $tmp "docs\governance\alerts-latest.md") -Raw
+      ($snapshot -match "auto_rollback_triggered=True") | should be $true
+      ($snapshot -match "auto_rollback_reason_count=1") | should be $true
     } finally {
       if (Test-Path $tmp) { Remove-Item -LiteralPath $tmp -Recurse -Force }
     }
@@ -4522,6 +4748,109 @@ description: Auto-promoted from repeated issue signature 'dup-family-20260412' (
     }
   }
 
+  it "check-skill-trigger-evals includes adversarial validation metrics" {
+    $tmp = Join-Path $env:TEMP ("govkit-test-" + [guid]::NewGuid().ToString("N"))
+    try {
+      New-Item -ItemType Directory -Path (Join-Path $tmp "scripts\governance") -Force | Out-Null
+      New-Item -ItemType Directory -Path (Join-Path $tmp ".governance\skill-candidates") -Force | Out-Null
+
+      Copy-Item -Path (Join-Path $repoRoot "scripts\governance\check-skill-trigger-evals.ps1") -Destination (Join-Path $tmp "scripts\governance\check-skill-trigger-evals.ps1") -Force
+
+      @'
+{"query":"std-positive","should_trigger":true,"triggered":true,"split":"validation"}
+{"query":"std-negative","should_trigger":false,"triggered":false,"split":"validation"}
+{"query":"adv-positive","should_trigger":true,"triggered":false,"split":"validation","eval_type":"adversarial"}
+{"query":"adv-negative","should_trigger":false,"triggered":true,"split":"validation","eval_type":"adversarial"}
+'@ | Set-Content -Path (Join-Path $tmp ".governance\skill-candidates\trigger-eval-runs.jsonl") -Encoding UTF8
+
+      $json = & powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $tmp "scripts\governance\check-skill-trigger-evals.ps1") -RepoRoot $tmp -AsJson
+      if ($LASTEXITCODE -ne 0) { throw "check-skill-trigger-evals.ps1 failed with exit code $LASTEXITCODE" }
+      $obj = $json | ConvertFrom-Json
+
+      [int]$obj.validation_query_count | should be 4
+      [int]$obj.adversarial_validation_query_count | should be 2
+      [double]$obj.adversarial_validation_pass_rate | should be 0
+      [double]$obj.adversarial_validation_false_trigger_rate | should be 1
+    } finally {
+      if (Test-Path $tmp) { Remove-Item -LiteralPath $tmp -Recurse -Force }
+    }
+  }
+
+  it "promote-skill-candidates blocks create when adversarial eval threshold is breached" {
+    $tmp = Join-Path $env:TEMP ("govkit-test-" + [guid]::NewGuid().ToString("N"))
+    try {
+      $repo = Join-Path $tmp "RepoA"
+      $skills = Join-Path $tmp "skills-root"
+      New-Item -ItemType Directory -Path (Join-Path $tmp "scripts\governance") -Force | Out-Null
+      New-Item -ItemType Directory -Path (Join-Path $tmp "config") -Force | Out-Null
+      New-Item -ItemType Directory -Path (Join-Path $tmp ".governance") -Force | Out-Null
+      New-Item -ItemType Directory -Path (Join-Path $repo ".governance\skill-candidates") -Force | Out-Null
+      New-Item -ItemType Directory -Path (Join-Path $skills ".governance\skill-candidates") -Force | Out-Null
+      New-Item -ItemType Directory -Path (Join-Path $skills "overrides") -Force | Out-Null
+
+      Copy-Item -Path (Join-Path $repoRoot "scripts\governance\promote-skill-candidates.ps1") -Destination (Join-Path $tmp "scripts\governance\promote-skill-candidates.ps1") -Force
+
+      @(
+        ($repo -replace '\\','/')
+      ) | ConvertTo-Json | Set-Content -Path (Join-Path $tmp "config\repositories.json") -Encoding UTF8
+
+      @'
+{
+  "enabled": true,
+  "threshold_count": 1,
+  "window_days": 14,
+  "cooldown_days": 14,
+  "max_promotions_per_run": 3,
+  "event_relative_path": ".governance/skill-candidates/events.jsonl",
+  "registry_relative_path": ".governance/skill-candidates/promotion-registry.json",
+  "skills_root": "__SKILLS_ROOT__",
+  "overrides_relative_path": "overrides",
+  "auto_run_skills_manager_gates": false,
+  "require_user_ack": false,
+  "optimize_existing_without_ack": true,
+  "create_min_unique_repos": 1,
+  "optimize_min_new_variants": 1,
+  "require_trigger_eval_for_create": true,
+  "require_adversarial_eval_for_create": true,
+  "trigger_eval_summary_relative_path": ".governance/skill-candidates/trigger-eval-summary.json",
+  "trigger_eval_min_validation_pass_rate": 0.8,
+  "trigger_eval_max_validation_false_trigger_rate": 0.2,
+  "trigger_eval_min_adversarial_validation_pass_rate": 0.8,
+  "trigger_eval_max_adversarial_validation_false_trigger_rate": 0.2
+}
+'@.Replace("__SKILLS_ROOT__", ($skills -replace '\\','/')) | Set-Content -Path (Join-Path $tmp ".governance\skill-promotion-policy.json") -Encoding UTF8
+
+      @'
+{"schema_version":"1.0","timestamp":"2026-04-12T01:00:00+08:00","repo":"RepoA","issue_signature":"adv-threshold-family-20260412-a","issue_id":"x","step_name":"test","command_text":"cmd","failure_reason":"x","evidence_link":"x"}
+'@ | Set-Content -Path (Join-Path $repo ".governance\skill-candidates\events.jsonl") -Encoding UTF8
+
+      @'
+{
+  "schema_version": "1.0",
+  "status": "ok",
+  "validation_pass_rate": 1.0,
+  "validation_false_trigger_rate": 0.0,
+  "adversarial_validation_query_count": 2,
+  "adversarial_validation_pass_rate": 0.5,
+  "adversarial_validation_false_trigger_rate": 0.5
+}
+'@ | Set-Content -Path (Join-Path $skills ".governance\skill-candidates\trigger-eval-summary.json") -Encoding UTF8
+
+      $json = & powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $tmp "scripts\governance\promote-skill-candidates.ps1") -GovernanceRoot $tmp -AsJson
+      if ($LASTEXITCODE -ne 0) { throw "promote-skill-candidates.ps1 failed with exit code $LASTEXITCODE" }
+      $obj = $json | ConvertFrom-Json
+
+      [bool]$obj.trigger_eval_pass | should be $false
+      [string]$obj.trigger_eval_blocked_reason | should be "adversarial_validation_pass_rate_below_threshold"
+      [int]$obj.created_count | should be 0
+      $skipDecision = @($obj.decision_audit | Where-Object { [string]$_.action -eq "skip" }) | Select-Object -First 1
+      ($null -ne $skipDecision) | should be $true
+      ((@($skipDecision.reason_codes) -contains "adversarial_validation_pass_rate_below_threshold")) | should be $true
+    } finally {
+      if (Test-Path $tmp) { Remove-Item -LiteralPath $tmp -Recurse -Force }
+    }
+  }
+
   it "run-skill-lifecycle-review plan reports merge and retire candidates" {
     $tmp = Join-Path $env:TEMP ("govkit-test-" + [guid]::NewGuid().ToString("N"))
     try {
@@ -4668,6 +4997,91 @@ description: Auto-promoted from repeated issue signature 'dup-family-20260412' (
       $network = @($registry.promoted | Where-Object { $_.family_signature -eq "network-timeout-legacy" })[0]
       [string]$alphaIssue.lifecycle_state | should be "deprecated"
       [string]$network.lifecycle_state | should be "retired"
+    } finally {
+      if (Test-Path $tmp) { Remove-Item -LiteralPath $tmp -Recurse -Force }
+    }
+  }
+
+  it "run-skill-lifecycle-review enforces replacement coverage and rollback fallback for retire" {
+    $tmp = Join-Path $env:TEMP ("govkit-test-" + [guid]::NewGuid().ToString("N"))
+    try {
+      New-Item -ItemType Directory -Path (Join-Path $tmp "scripts\governance") -Force | Out-Null
+      New-Item -ItemType Directory -Path (Join-Path $tmp ".governance\skill-candidates") -Force | Out-Null
+
+      Copy-Item -Path (Join-Path $repoRoot "scripts\governance\run-skill-lifecycle-review.ps1") -Destination (Join-Path $tmp "scripts\governance\run-skill-lifecycle-review.ps1") -Force
+
+      @'
+{
+  "enabled": true,
+  "actions": {
+    "merge": { "enabled": false, "similarity_threshold": 0.8 },
+    "retire": {
+      "enabled": true,
+      "inactive_days": 60,
+      "min_invocations": 3,
+      "require_replacement_coverage": true,
+      "minimum_active_replacements": 1,
+      "require_rollback_fallback": true
+    }
+  }
+}
+'@ | Set-Content -Path (Join-Path $tmp ".governance\skill-lifecycle-policy.json") -Encoding UTF8
+
+      @'
+{
+  "schema_version": "2.0",
+  "registry_schema_version": 2,
+  "lifecycle_version": "1.0",
+  "promoted": [
+    {
+      "issue_signature": "network-timeout-modern",
+      "family_signature": "network-timeout-modern",
+      "skill_name": "custom-auto-network-timeout-modern",
+      "promoted_at": "2026-01-01T00:00:00+08:00",
+      "invocation_count": 20,
+      "last_invoked_at": "2026-04-10T00:00:00+08:00",
+      "lifecycle_state": "active"
+    },
+    {
+      "issue_signature": "network-timeout-legacy",
+      "family_signature": "network-timeout-legacy",
+      "skill_name": "custom-auto-network-timeout-legacy",
+      "promoted_at": "2025-10-01T00:00:00+08:00",
+      "invocation_count": 1,
+      "last_invoked_at": "2025-12-01T00:00:00+08:00",
+      "replacement_families": ["network-timeout-modern"],
+      "rollback_fallback": "restore:network-timeout-legacy",
+      "lifecycle_state": "active"
+    },
+    {
+      "issue_signature": "cache-legacy",
+      "family_signature": "cache-legacy",
+      "skill_name": "custom-auto-cache-legacy",
+      "promoted_at": "2025-09-01T00:00:00+08:00",
+      "invocation_count": 1,
+      "last_invoked_at": "2025-11-01T00:00:00+08:00",
+      "lifecycle_state": "active"
+    }
+  ]
+}
+'@ | Set-Content -Path (Join-Path $tmp ".governance\skill-candidates\promotion-registry.json") -Encoding UTF8
+
+      $json = & powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $tmp "scripts\governance\run-skill-lifecycle-review.ps1") -RepoRoot $tmp -Mode safe -AsJson
+      if ($LASTEXITCODE -ne 0) { throw "run-skill-lifecycle-review.ps1 failed with exit code $LASTEXITCODE" }
+      $obj = $json | ConvertFrom-Json
+      [int]$obj.applied_retire_count | should be 1
+      [int]$obj.retire_blocked_candidate_count | should be 1
+
+      $blocked = @($obj.retire_blocked_candidates | Where-Object { [string]$_.family_signature -eq "cache-legacy" }) | Select-Object -First 1
+      ($null -ne $blocked) | should be $true
+
+      $registry = Get-Content -Path (Join-Path $tmp ".governance\skill-candidates\promotion-registry.json") -Raw | ConvertFrom-Json
+      $legacy = @($registry.promoted | Where-Object { $_.family_signature -eq "network-timeout-legacy" })[0]
+      $cache = @($registry.promoted | Where-Object { $_.family_signature -eq "cache-legacy" })[0]
+      [string]$legacy.lifecycle_state | should be "retired"
+      ([string]$legacy.retired_replacement_evidence -match "active_count=1") | should be $true
+      [string]$legacy.retired_rollback_fallback | should be "restore:network-timeout-legacy"
+      [string]$cache.lifecycle_state | should be "active"
     } finally {
       if (Test-Path $tmp) { Remove-Item -LiteralPath $tmp -Recurse -Force }
     }
@@ -4932,6 +5346,150 @@ description: Auto-promoted from repeated issue signature 'dup-family-20260412' (
       $obj = $json | ConvertFrom-Json
       [string]$obj.status | should be "missing_replay_cases"
       ([int]$obj.missing_top5_count -ge 1) | should be $true
+    } finally {
+      if (Test-Path $tmp) { Remove-Item -LiteralPath $tmp -Recurse -Force }
+    }
+  }
+
+  it "check-trace-grading-readiness passes when coverage meets threshold" {
+    $tmp = Join-Path $env:TEMP ("govkit-test-" + [guid]::NewGuid().ToString("N"))
+    try {
+      New-Item -ItemType Directory -Path (Join-Path $tmp "scripts\governance") -Force | Out-Null
+      New-Item -ItemType Directory -Path (Join-Path $tmp ".governance") -Force | Out-Null
+      New-Item -ItemType Directory -Path (Join-Path $tmp "docs\change-evidence") -Force | Out-Null
+      Copy-Item -Path (Join-Path $repoRoot "scripts\governance\check-trace-grading-readiness.ps1") -Destination (Join-Path $tmp "scripts\governance\check-trace-grading-readiness.ps1") -Force
+
+      @'
+{
+  "enabled": true,
+  "window_days": 365,
+  "minimum_sample_size": 2,
+  "minimum_coverage_rate": 0.8,
+  "required_fields": ["decision_score", "hard_guard_hits", "reason_codes"],
+  "fail_on_breach": true
+}
+'@ | Set-Content -Path (Join-Path $tmp ".governance\trace-grading-policy.json") -Encoding UTF8
+
+      @'
+decision_score=0.92
+hard_guard_hits=none
+reason_codes=a,b
+'@ | Set-Content -Path (Join-Path $tmp "docs\change-evidence\a.md") -Encoding UTF8
+
+      @'
+decision_score=0.85
+hard_guard_hits=none
+reason_codes=c
+'@ | Set-Content -Path (Join-Path $tmp "docs\change-evidence\b.md") -Encoding UTF8
+
+      $json = & powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $tmp "scripts\governance\check-trace-grading-readiness.ps1") -RepoRoot $tmp -AsJson
+      if ($LASTEXITCODE -ne 0) { throw "check-trace-grading-readiness.ps1 failed with exit code $LASTEXITCODE" }
+      $obj = $json | ConvertFrom-Json
+      [string]$obj.status | should be "ok"
+      [double]$obj.overall_coverage_rate | should be 1
+      [int]$obj.sampled_file_count | should be 2
+    } finally {
+      if (Test-Path $tmp) { Remove-Item -LiteralPath $tmp -Recurse -Force }
+    }
+  }
+
+  it "check-trace-grading-readiness blocks when coverage is below threshold" {
+    $tmp = Join-Path $env:TEMP ("govkit-test-" + [guid]::NewGuid().ToString("N"))
+    try {
+      New-Item -ItemType Directory -Path (Join-Path $tmp "scripts\governance") -Force | Out-Null
+      New-Item -ItemType Directory -Path (Join-Path $tmp ".governance") -Force | Out-Null
+      New-Item -ItemType Directory -Path (Join-Path $tmp "docs\change-evidence") -Force | Out-Null
+      Copy-Item -Path (Join-Path $repoRoot "scripts\governance\check-trace-grading-readiness.ps1") -Destination (Join-Path $tmp "scripts\governance\check-trace-grading-readiness.ps1") -Force
+
+      @'
+{
+  "enabled": true,
+  "window_days": 365,
+  "minimum_sample_size": 2,
+  "minimum_coverage_rate": 0.8,
+  "required_fields": ["decision_score", "hard_guard_hits", "reason_codes"],
+  "fail_on_breach": true
+}
+'@ | Set-Content -Path (Join-Path $tmp ".governance\trace-grading-policy.json") -Encoding UTF8
+
+      @'
+decision_score=0.92
+hard_guard_hits=none
+'@ | Set-Content -Path (Join-Path $tmp "docs\change-evidence\a.md") -Encoding UTF8
+
+      @'
+decision_score=0.85
+reason_codes=c
+'@ | Set-Content -Path (Join-Path $tmp "docs\change-evidence\b.md") -Encoding UTF8
+
+      $json = & powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $tmp "scripts\governance\check-trace-grading-readiness.ps1") -RepoRoot $tmp -AsJson
+      $LASTEXITCODE | should be 1
+      $obj = $json | ConvertFrom-Json
+      [string]$obj.status | should be "coverage_below_threshold"
+      ([double]$obj.overall_coverage_rate -lt 0.8) | should be $true
+    } finally {
+      if (Test-Path $tmp) { Remove-Item -LiteralPath $tmp -Recurse -Force }
+    }
+  }
+
+  it "backfill-trace-grading-fields reports candidate files in plan mode" {
+    $tmp = Join-Path $env:TEMP ("govkit-test-" + [guid]::NewGuid().ToString("N"))
+    try {
+      New-Item -ItemType Directory -Path (Join-Path $tmp "scripts\governance") -Force | Out-Null
+      New-Item -ItemType Directory -Path (Join-Path $tmp ".governance") -Force | Out-Null
+      New-Item -ItemType Directory -Path (Join-Path $tmp "docs\change-evidence") -Force | Out-Null
+      Copy-Item -Path (Join-Path $repoRoot "scripts\governance\backfill-trace-grading-fields.ps1") -Destination (Join-Path $tmp "scripts\governance\backfill-trace-grading-fields.ps1") -Force
+
+      @'
+{
+  "enabled": true,
+  "required_fields": ["decision_score", "hard_guard_hits", "reason_codes"],
+  "fail_on_breach": false
+}
+'@ | Set-Content -Path (Join-Path $tmp ".governance\trace-grading-policy.json") -Encoding UTF8
+
+      @'
+decision_score=0.90
+'@ | Set-Content -Path (Join-Path $tmp "docs\change-evidence\a.md") -Encoding UTF8
+
+      $json = & powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $tmp "scripts\governance\backfill-trace-grading-fields.ps1") -RepoRoot $tmp -Mode plan -AsJson
+      if ($LASTEXITCODE -ne 0) { throw "backfill-trace-grading-fields.ps1 failed with exit code $LASTEXITCODE" }
+      $obj = $json | ConvertFrom-Json
+      [int]$obj.candidate_file_count | should be 1
+      [int]$obj.changed_file_count | should be 1
+    } finally {
+      if (Test-Path $tmp) { Remove-Item -LiteralPath $tmp -Recurse -Force }
+    }
+  }
+
+  it "backfill-trace-grading-fields fills missing required fields in safe mode" {
+    $tmp = Join-Path $env:TEMP ("govkit-test-" + [guid]::NewGuid().ToString("N"))
+    try {
+      New-Item -ItemType Directory -Path (Join-Path $tmp "scripts\governance") -Force | Out-Null
+      New-Item -ItemType Directory -Path (Join-Path $tmp ".governance") -Force | Out-Null
+      New-Item -ItemType Directory -Path (Join-Path $tmp "docs\change-evidence") -Force | Out-Null
+      Copy-Item -Path (Join-Path $repoRoot "scripts\governance\backfill-trace-grading-fields.ps1") -Destination (Join-Path $tmp "scripts\governance\backfill-trace-grading-fields.ps1") -Force
+
+      @'
+{
+  "enabled": true,
+  "required_fields": ["decision_score", "hard_guard_hits", "reason_codes"],
+  "fail_on_breach": false
+}
+'@ | Set-Content -Path (Join-Path $tmp ".governance\trace-grading-policy.json") -Encoding UTF8
+
+      @'
+decision_score=0.90
+'@ | Set-Content -Path (Join-Path $tmp "docs\change-evidence\a.md") -Encoding UTF8
+
+      $json = & powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $tmp "scripts\governance\backfill-trace-grading-fields.ps1") -RepoRoot $tmp -Mode safe -AsJson
+      if ($LASTEXITCODE -ne 0) { throw "backfill-trace-grading-fields.ps1 failed with exit code $LASTEXITCODE" }
+      $obj = $json | ConvertFrom-Json
+      [int]$obj.changed_file_count | should be 1
+
+      $text = Get-Content -Path (Join-Path $tmp "docs\change-evidence\a.md") -Raw
+      ($text -match "(?m)^hard_guard_hits=none\s*$") | should be $true
+      ($text -match "(?m)^reason_codes=trace_grading_backfill\s*$") | should be $true
     } finally {
       if (Test-Path $tmp) { Remove-Item -LiteralPath $tmp -Recurse -Force }
     }

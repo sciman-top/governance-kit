@@ -1,0 +1,47 @@
+规则ID=TRACE-GRADING-BASELINE-PHASE1
+规则版本=1.0
+兼容窗口(观察期/强制期)=observe:2026-04-12~2026-04-26 / enforce:待定
+影响模块=scripts/governance, scripts/verify.ps1, config/project-custom-files.json, .governance/*
+当前落点=repo-governance-hub 根仓与 source/_common 同步分发链
+目标归宿=形成 trace grading 基线门禁（先观察、后强制）
+迁移批次=20260412-batch-trace-grading-1
+风险等级=low
+risk_tier=low
+是否豁免(Waiver)=no
+豁免责任人=
+豁免到期=
+豁免回收计划=
+执行命令=新增 check-trace-grading-readiness + verify接线 + install safe 同步 + 全链验证
+验证证据=tests 通过 + verify-kit/validate-config/verify/doctor 通过 + install safe 后断言通过
+供应链安全扫描=N/A（本批次不涉及依赖引入）
+发布后验证(指标/阈值/窗口)=trace_grading.overall_coverage_rate 周度上升；观察期内不阻断
+数据变更治理(迁移/回填/回滚)=新增策略文件与脚本；无数据结构破坏性变更
+回滚动作=删除 trace-grading 脚本与策略并回退 verify 接线
+rollback_trigger=出现误报阻断或 verify 链稳定性退化
+subagent_decision_mode=single-agent
+spawn_parallel_subagents=false
+max_parallel_agents=0
+decision_score=0.9
+reason_codes=trace_grading_baseline,observe_first,gate_safe_integration
+hard_guard_hits=none
+policy_path=.governance/trace-grading-policy.json
+growth_pack_enabled=true
+target_repo_count=3
+readiness_score=0.82
+quickstart_presence=true
+release_template_presence=true
+trigger_eval_status=ok
+trigger_eval_validation_pass_rate=已由现有脚本输出
+trigger_eval_validation_false_trigger_rate=已由现有脚本输出
+
+任务理解快照=目标:落地trace grading基线并接入verify;非目标:本轮不进入强制阻断;验收:脚本+策略+测试+门禁全通过;关键假设:历史证据覆盖率短期偏低需先观察。
+术语解释点=trace grading(对执行轨迹关键字段完整性打分);observe(仅观测不阻断);coverage_rate(字段覆盖率)。
+可观测信号=verify 输出 trace_grading.status 与 overall_coverage_rate；install safe 后 post-gate 通过。
+排障路径=先看 trace-grading policy fail_on_breach；再查 evidence 字段缺失分布；最后补模板与自动回填。
+未确认假设与纠偏结论=未确认:历史证据是否可在两周内提升到阈值;纠偏:当前保持 observe 并将 fail_on_breach=false。
+
+learning_points_3=1)新门禁先observe可避免误阻断;2)source与target必须同批同步避免verify漂移;3)大脚本预算紧张时优先独立脚本接线。
+reusable_checklist=新增脚本->新增策略->project-custom-files登记->source回灌->install safe->全链门禁。
+open_questions=何时将 trace grading 从 observe 切换 enforce（建议满足连续4周覆盖率阈值）。
+average_response_token=lite
+single_task_token=lite

@@ -195,6 +195,19 @@ if ($null -ne $promotionPolicy.PSObject.Properties['retire_min_invocations']) {
   $retireMinInvocations = [int]$promotionPolicy.retire_min_invocations
 }
 
+$retireRequireReplacementCoverage = $false
+$retireMinimumActiveReplacements = 1
+$retireRequireRollbackFallback = $false
+if ($retireEnabled -and $null -ne $lifecyclePolicy.actions.retire.PSObject.Properties['require_replacement_coverage']) {
+  $retireRequireReplacementCoverage = [bool]$lifecyclePolicy.actions.retire.require_replacement_coverage
+}
+if ($retireEnabled -and $null -ne $lifecyclePolicy.actions.retire.PSObject.Properties['minimum_active_replacements']) {
+  try { $retireMinimumActiveReplacements = [int]$lifecyclePolicy.actions.retire.minimum_active_replacements } catch { $retireMinimumActiveReplacements = 1 }
+}
+if ($retireEnabled -and $null -ne $lifecyclePolicy.actions.retire.PSObject.Properties['require_rollback_fallback']) {
+  $retireRequireRollbackFallback = [bool]$lifecyclePolicy.actions.retire.require_rollback_fallback
+}
+
 $eligibleForMerge = @($registry.promoted | Where-Object {
   $state = ([string]$_.lifecycle_state).Trim().ToLowerInvariant()
   ($state -eq "active" -or $state -eq "approved") -and -not [string]::IsNullOrWhiteSpace([string]$_.family_signature)
@@ -234,11 +247,23 @@ foreach ($pair in @($mergePairs | Sort-Object -Property @{ Expression = "similar
 }
 
 $retireCandidates = New-Object System.Collections.Generic.List[object]
+$retireBlockedCandidates = New-Object System.Collections.Generic.List[object]
 $mergePrimaryFamilies = New-Object System.Collections.Generic.HashSet[string]([System.StringComparer]::OrdinalIgnoreCase)
 $mergeSecondaryFamilies = New-Object System.Collections.Generic.HashSet[string]([System.StringComparer]::OrdinalIgnoreCase)
 foreach ($m in @($selectedMerges.ToArray())) {
   $mergePrimaryFamilies.Add([string]$m.primary_family) | Out-Null
   $mergeSecondaryFamilies.Add([string]$m.secondary_family) | Out-Null
+}
+
+$activeFamilies = New-Object System.Collections.Generic.HashSet[string]([System.StringComparer]::OrdinalIgnoreCase)
+foreach ($entry in @($registry.promoted)) {
+  if ($null -eq $entry) { continue }
+  $family = [string]$entry.family_signature
+  if ([string]::IsNullOrWhiteSpace($family)) { continue }
+  $state = ([string]$entry.lifecycle_state).Trim().ToLowerInvariant()
+  if ($state -eq "active" -or $state -eq "approved") {
+    $activeFamilies.Add($family) | Out-Null
+  }
 }
 
 if ($retireEnabled) {
@@ -262,6 +287,41 @@ if ($retireEnabled) {
     if ($daysInactive -lt $retireInactiveDays) { continue }
     if ($invocations -gt $retireMinInvocations) { continue }
 
+    $replacementFamilySource = @()
+    if ($null -ne $entry.PSObject.Properties['replacement_families']) {
+      $replacementFamilySource = $entry.replacement_families
+    }
+    $replacementFamilies = @(Ensure-StringArray $replacementFamilySource | Where-Object { -not [string]::Equals([string]$_, $family, [System.StringComparison]::OrdinalIgnoreCase) })
+    $replacementActiveCount = 0
+    foreach ($rf in $replacementFamilies) {
+      if ($activeFamilies.Contains([string]$rf)) { $replacementActiveCount++ }
+    }
+    $replacementCoverageProven = ($replacementActiveCount -ge [Math]::Max(1, [int]$retireMinimumActiveReplacements))
+    $rollbackFallback = ""
+    if ($null -ne $entry.PSObject.Properties['rollback_fallback']) {
+      $rollbackFallback = ([string]$entry.rollback_fallback).Trim()
+    }
+    $rollbackFallbackReady = -not [string]::IsNullOrWhiteSpace($rollbackFallback)
+
+    $blockReasons = New-Object System.Collections.Generic.List[string]
+    if ($retireRequireReplacementCoverage -and -not $replacementCoverageProven) {
+      [void]$blockReasons.Add(("replacement_coverage_insufficient:{0}/{1}" -f [int]$replacementActiveCount, [int][Math]::Max(1, [int]$retireMinimumActiveReplacements)))
+    }
+    if ($retireRequireRollbackFallback -and -not $rollbackFallbackReady) {
+      [void]$blockReasons.Add("rollback_fallback_missing")
+    }
+    if ($blockReasons.Count -gt 0) {
+      $retireBlockedCandidates.Add([pscustomobject]@{
+        family_signature = $family
+        skill_name = [string]$entry.skill_name
+        block_reasons = @($blockReasons.ToArray())
+        replacement_active_count = [int]$replacementActiveCount
+        replacement_families = @($replacementFamilies)
+        rollback_fallback = $rollbackFallback
+      }) | Out-Null
+      continue
+    }
+
     $retireCandidates.Add([pscustomobject]@{
       family_signature = $family
       skill_name = [string]$entry.skill_name
@@ -269,6 +329,10 @@ if ($retireEnabled) {
       invocation_count = [int]$invocations
       days_inactive = [int]$daysInactive
       last_activity_at = $last.ToString("o")
+      replacement_coverage_proven = [bool]$replacementCoverageProven
+      replacement_active_count = [int]$replacementActiveCount
+      replacement_families = @($replacementFamilies)
+      rollback_fallback = $rollbackFallback
     }) | Out-Null
   }
 }
@@ -358,6 +422,16 @@ if ($Mode -eq "safe") {
     } else {
       $entry.retired_reason = ("inactive:" + [string]$retireIndex[$key].days_inactive + "d")
     }
+    if ($null -eq $entry.PSObject.Properties['retired_replacement_evidence']) {
+      $entry | Add-Member -NotePropertyName retired_replacement_evidence -NotePropertyValue ("active_count=" + [string]$retireIndex[$key].replacement_active_count + ";families=" + ((@($retireIndex[$key].replacement_families) -join ",")))
+    } else {
+      $entry.retired_replacement_evidence = ("active_count=" + [string]$retireIndex[$key].replacement_active_count + ";families=" + ((@($retireIndex[$key].replacement_families) -join ",")))
+    }
+    if ($null -eq $entry.PSObject.Properties['retired_rollback_fallback']) {
+      $entry | Add-Member -NotePropertyName retired_rollback_fallback -NotePropertyValue ([string]$retireIndex[$key].rollback_fallback)
+    } else {
+      $entry.retired_rollback_fallback = [string]$retireIndex[$key].rollback_fallback
+    }
     $appliedRetireCount++
   }
 
@@ -384,12 +458,17 @@ $result = [ordered]@{
   merge_similarity_threshold = [double]$mergeThreshold
   retire_inactive_days = [int]$retireInactiveDays
   retire_min_invocations = [int]$retireMinInvocations
+  retire_require_replacement_coverage = [bool]$retireRequireReplacementCoverage
+  retire_minimum_active_replacements = [int][Math]::Max(1, [int]$retireMinimumActiveReplacements)
+  retire_require_rollback_fallback = [bool]$retireRequireRollbackFallback
   merge_candidate_count = [int]$selectedMerges.Count
   retire_candidate_count = [int]$retireCandidates.Count
+  retire_blocked_candidate_count = [int]$retireBlockedCandidates.Count
   applied_merge_count = [int]$appliedMergeCount
   applied_retire_count = [int]$appliedRetireCount
   merge_candidates = @($selectedMerges.ToArray())
   retire_candidates = @($retireCandidates.ToArray())
+  retire_blocked_candidates = @($retireBlockedCandidates.ToArray())
 }
 
 if ($AsJson) {

@@ -109,6 +109,10 @@ function New-DefaultPolicy {
     trigger_eval_summary_relative_path = ".governance/skill-candidates/trigger-eval-summary.json"
     trigger_eval_min_validation_pass_rate = 0.70
     trigger_eval_max_validation_false_trigger_rate = 0.20
+    require_adversarial_eval_for_create = $false
+    trigger_eval_min_adversarial_validation_pass_rate = 0.60
+    trigger_eval_max_adversarial_validation_false_trigger_rate = 0.35
+    block_create_when_adversarial_missing = $true
     block_create_when_eval_missing = $true
   }
 }
@@ -389,21 +393,43 @@ function Get-TriggerEvalGateState {
   $summaryPath = Join-Path ($KitRoot -replace '/', '\') ($summaryRel -replace '/', '\')
   $minPassRate = [double]$Policy.trigger_eval_min_validation_pass_rate
   $maxFalseRate = [double]$Policy.trigger_eval_max_validation_false_trigger_rate
+  $requireAdversarialEval = $false
+  if ($null -ne $Policy.PSObject.Properties['require_adversarial_eval_for_create']) {
+    $requireAdversarialEval = [bool]$Policy.require_adversarial_eval_for_create
+  }
+  $minAdversarialPassRate = 0.60
+  if ($null -ne $Policy.PSObject.Properties['trigger_eval_min_adversarial_validation_pass_rate']) {
+    $minAdversarialPassRate = [double]$Policy.trigger_eval_min_adversarial_validation_pass_rate
+  }
+  $maxAdversarialFalseRate = 0.35
+  if ($null -ne $Policy.PSObject.Properties['trigger_eval_max_adversarial_validation_false_trigger_rate']) {
+    $maxAdversarialFalseRate = [double]$Policy.trigger_eval_max_adversarial_validation_false_trigger_rate
+  }
   $blockWhenMissing = $true
   if ($null -ne $Policy.PSObject.Properties['block_create_when_eval_missing']) {
     $blockWhenMissing = [bool]$Policy.block_create_when_eval_missing
   }
+  $blockWhenAdversarialMissing = $true
+  if ($null -ne $Policy.PSObject.Properties['block_create_when_adversarial_missing']) {
+    $blockWhenAdversarialMissing = [bool]$Policy.block_create_when_adversarial_missing
+  }
 
   $state = [ordered]@{
     require_trigger_eval_for_create = [bool]$requireEval
+    require_adversarial_eval_for_create = [bool]$requireAdversarialEval
     trigger_eval_summary_path = ($summaryPath -replace '\\', '/')
     trigger_eval_summary_found = $false
     trigger_eval_summary_status = ""
     trigger_eval_pass = $false
     trigger_eval_min_validation_pass_rate = $minPassRate
     trigger_eval_max_validation_false_trigger_rate = $maxFalseRate
+    trigger_eval_min_adversarial_validation_pass_rate = $minAdversarialPassRate
+    trigger_eval_max_adversarial_validation_false_trigger_rate = $maxAdversarialFalseRate
     trigger_eval_validation_pass_rate = $null
     trigger_eval_validation_false_trigger_rate = $null
+    trigger_eval_adversarial_validation_query_count = 0
+    trigger_eval_adversarial_validation_pass_rate = $null
+    trigger_eval_adversarial_validation_false_trigger_rate = $null
     trigger_eval_blocked_reason = ""
   }
 
@@ -422,6 +448,9 @@ function Get-TriggerEvalGateState {
   $summary = Load-JsonObject $summaryPath
   $vp = $null
   $vf = $null
+  $avc = 0
+  $avp = $null
+  $avf = $null
   $summaryStatus = ""
   if ($null -ne $summary) {
     if ($null -ne $summary.PSObject.Properties['status']) {
@@ -433,10 +462,22 @@ function Get-TriggerEvalGateState {
     if ($null -ne $summary.PSObject.Properties['validation_false_trigger_rate']) {
       try { $vf = [double]$summary.validation_false_trigger_rate } catch { $vf = $null }
     }
+    if ($null -ne $summary.PSObject.Properties['adversarial_validation_query_count']) {
+      try { $avc = [int]$summary.adversarial_validation_query_count } catch { $avc = 0 }
+    }
+    if ($null -ne $summary.PSObject.Properties['adversarial_validation_pass_rate']) {
+      try { $avp = [double]$summary.adversarial_validation_pass_rate } catch { $avp = $null }
+    }
+    if ($null -ne $summary.PSObject.Properties['adversarial_validation_false_trigger_rate']) {
+      try { $avf = [double]$summary.adversarial_validation_false_trigger_rate } catch { $avf = $null }
+    }
   }
   $state.trigger_eval_summary_status = $summaryStatus
   $state.trigger_eval_validation_pass_rate = $vp
   $state.trigger_eval_validation_false_trigger_rate = $vf
+  $state.trigger_eval_adversarial_validation_query_count = [int]$avc
+  $state.trigger_eval_adversarial_validation_pass_rate = $avp
+  $state.trigger_eval_adversarial_validation_false_trigger_rate = $avf
 
   if ($summaryStatus -eq "no_data") {
     $state.trigger_eval_blocked_reason = "eval_summary_no_data"
@@ -464,6 +505,32 @@ function Get-TriggerEvalGateState {
     $state.trigger_eval_blocked_reason = "validation_false_trigger_rate_above_threshold"
     $state.trigger_eval_pass = $false
     return [pscustomobject]$state
+  }
+
+  if ($requireAdversarialEval) {
+    if ([int]$avc -le 0) {
+      if ($blockWhenAdversarialMissing) {
+        $state.trigger_eval_blocked_reason = "eval_summary_no_adversarial_validation_split"
+        $state.trigger_eval_pass = $false
+        return [pscustomobject]$state
+      }
+    } else {
+      if ($null -eq $avp -or $null -eq $avf) {
+        $state.trigger_eval_blocked_reason = "adversarial_eval_missing_metrics"
+        $state.trigger_eval_pass = $false
+        return [pscustomobject]$state
+      }
+      if ($avp -lt $minAdversarialPassRate) {
+        $state.trigger_eval_blocked_reason = "adversarial_validation_pass_rate_below_threshold"
+        $state.trigger_eval_pass = $false
+        return [pscustomobject]$state
+      }
+      if ($avf -gt $maxAdversarialFalseRate) {
+        $state.trigger_eval_blocked_reason = "adversarial_validation_false_trigger_rate_above_threshold"
+        $state.trigger_eval_pass = $false
+        return [pscustomobject]$state
+      }
+    }
   }
 
   $state.trigger_eval_pass = $true
@@ -939,14 +1006,20 @@ $result = [ordered]@{
   create_min_unique_repos = [int]$createMinUniqueRepos
   optimize_min_new_variants = [int]$optimizeMinNewVariants
   require_trigger_eval_for_create = [bool]$triggerEvalState.require_trigger_eval_for_create
+  require_adversarial_eval_for_create = [bool]$triggerEvalState.require_adversarial_eval_for_create
   trigger_eval_summary_path = [string]$triggerEvalState.trigger_eval_summary_path
   trigger_eval_summary_found = [bool]$triggerEvalState.trigger_eval_summary_found
   trigger_eval_summary_status = [string]$triggerEvalState.trigger_eval_summary_status
   trigger_eval_pass = [bool]$triggerEvalState.trigger_eval_pass
   trigger_eval_min_validation_pass_rate = [double]$triggerEvalState.trigger_eval_min_validation_pass_rate
   trigger_eval_max_validation_false_trigger_rate = [double]$triggerEvalState.trigger_eval_max_validation_false_trigger_rate
+  trigger_eval_min_adversarial_validation_pass_rate = [double]$triggerEvalState.trigger_eval_min_adversarial_validation_pass_rate
+  trigger_eval_max_adversarial_validation_false_trigger_rate = [double]$triggerEvalState.trigger_eval_max_adversarial_validation_false_trigger_rate
   trigger_eval_validation_pass_rate = $triggerEvalState.trigger_eval_validation_pass_rate
   trigger_eval_validation_false_trigger_rate = $triggerEvalState.trigger_eval_validation_false_trigger_rate
+  trigger_eval_adversarial_validation_query_count = [int]$triggerEvalState.trigger_eval_adversarial_validation_query_count
+  trigger_eval_adversarial_validation_pass_rate = $triggerEvalState.trigger_eval_adversarial_validation_pass_rate
+  trigger_eval_adversarial_validation_false_trigger_rate = $triggerEvalState.trigger_eval_adversarial_validation_false_trigger_rate
   trigger_eval_blocked_reason = [string]$triggerEvalState.trigger_eval_blocked_reason
   trigger_eval_summary_refresh_attempted = [bool]$triggerEvalRefreshState.attempted
   trigger_eval_summary_refresh_succeeded = [bool]$triggerEvalRefreshState.succeeded

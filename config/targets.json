@@ -1278,5 +1278,65 @@
         "source":  "source/project/_common/custom/scripts/governance/check-proactive-suggestion-balance.ps1",
         "target":  "E:/CODE/repo-governance-hub/scripts/governance/check-proactive-suggestion-balance.ps1",
         "boundary_class":  "shared-template"
+    },
+    {
+        "source":  "source/project/_common/custom/scripts/governance/check-trace-grading-readiness.ps1",
+        "target":  "E:/CODE/ClassroomToolkit/scripts/governance/check-trace-grading-readiness.ps1",
+        "boundary_class":  "shared-template"
+    },
+    {
+        "source":  "source/project/_common/custom/.governance/trace-grading-policy.json",
+        "target":  "E:/CODE/ClassroomToolkit/.governance/trace-grading-policy.json",
+        "boundary_class":  "shared-template"
+    },
+    {
+        "source":  "source/project/_common/custom/scripts/governance/check-trace-grading-readiness.ps1",
+        "target":  "E:/CODE/skills-manager/scripts/governance/check-trace-grading-readiness.ps1",
+        "boundary_class":  "shared-template"
+    },
+    {
+        "source":  "source/project/_common/custom/.governance/trace-grading-policy.json",
+        "target":  "E:/CODE/skills-manager/.governance/trace-grading-policy.json",
+        "boundary_class":  "shared-template"
+    },
+    {
+        "source":  "source/project/_common/custom/scripts/governance/check-trace-grading-readiness.ps1",
+        "target":  "E:/CODE/repo-governance-hub/scripts/governance/check-trace-grading-readiness.ps1",
+        "boundary_class":  "shared-template"
+    },
+    {
+        "source":  "source/project/_common/custom/.governance/trace-grading-policy.json",
+        "target":  "E:/CODE/repo-governance-hub/.governance/trace-grading-policy.json",
+        "boundary_class":  "shared-template"
+    },
+    {
+        "source":  "source/project/_common/custom/scripts/governance/backfill-trace-grading-fields.ps1",
+        "target":  "E:/CODE/ClassroomToolkit/scripts/governance/backfill-trace-grading-fields.ps1",
+        "boundary_class":  "shared-template"
+    },
+    {
+        "source":  "source/project/_common/custom/scripts/governance/backfill-trace-grading-fields.ps1",
+        "target":  "E:/CODE/skills-manager/scripts/governance/backfill-trace-grading-fields.ps1",
+        "boundary_class":  "shared-template"
+    },
+    {
+        "source":  "source/project/_common/custom/scripts/governance/backfill-trace-grading-fields.ps1",
+        "target":  "E:/CODE/repo-governance-hub/scripts/governance/backfill-trace-grading-fields.ps1",
+        "boundary_class":  "shared-template"
+    },
+    {
+        "source":  "source/project/_common/custom/.governance/auto-rollback-trigger-policy.json",
+        "target":  "E:/CODE/ClassroomToolkit/.governance/auto-rollback-trigger-policy.json",
+        "boundary_class":  "shared-template"
+    },
+    {
+        "source":  "source/project/_common/custom/.governance/auto-rollback-trigger-policy.json",
+        "target":  "E:/CODE/skills-manager/.governance/auto-rollback-trigger-policy.json",
+        "boundary_class":  "shared-template"
+    },
+    {
+        "source":  "source/project/_common/custom/.governance/auto-rollback-trigger-policy.json",
+        "target":  "E:/CODE/repo-governance-hub/.governance/auto-rollback-trigger-policy.json",
+        "boundary_class":  "shared-template"
     }
 ]

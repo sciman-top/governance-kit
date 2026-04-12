@@ -35,6 +35,7 @@ $tokenEfficiencyTrendScript = Join-Path $kitRoot "scripts\governance\check-token
 $tokenBalanceScript = Join-Path $kitRoot "scripts\governance\check-token-balance.ps1"
 $proactiveSuggestionScript = Join-Path $kitRoot "scripts\governance\check-proactive-suggestion-balance.ps1"
 $externalBaselineScript = Join-Path $kitRoot "scripts\governance\check-external-baselines.ps1"
+$autoRollbackPolicyPath = Join-Path $kitRoot ".governance\auto-rollback-trigger-policy.json"
 $requiredScripts = @($doctorScript, $rolloutScript, $waiverScript, $metricsScript, $triggerScript)
 foreach ($script in $requiredScripts) {
   if (-not (Test-Path -LiteralPath $script -PathType Leaf)) {
@@ -133,6 +134,12 @@ function Write-AlertSnapshot([object]$ReviewResult, [string]$RootPath) {
   [void]$lines.Add(("proactive_suggestion_balance_status={0}" -f $ReviewResult.summary.proactive_suggestion_balance_status))
   [void]$lines.Add(("proactive_suggestion_balance_warning_count={0}" -f $ReviewResult.summary.proactive_suggestion_balance_warning_count))
   [void]$lines.Add(("proactive_suggestion_balance_violation_count={0}" -f $ReviewResult.summary.proactive_suggestion_balance_violation_count))
+  $autoRollbackReasonsText = (@($ReviewResult.summary.auto_rollback_reasons) -join ";")
+  [void]$lines.Add(("auto_rollback_triggered={0}" -f $ReviewResult.summary.auto_rollback_triggered))
+  [void]$lines.Add(("auto_rollback_reason_count={0}" -f $ReviewResult.summary.auto_rollback_reason_count))
+  [void]$lines.Add(("auto_rollback_reasons={0}" -f $autoRollbackReasonsText))
+  [void]$lines.Add(("auto_rollback_action={0}" -f $ReviewResult.summary.auto_rollback_action))
+  [void]$lines.Add(("auto_rollback_policy_path={0}" -f $ReviewResult.summary.auto_rollback_policy_path))
   if (@($ReviewResult.alerts).Count -gt 0) {
     [void]$lines.Add("alerts=")
     foreach ($a in @($ReviewResult.alerts)) {
@@ -661,6 +668,10 @@ $proactiveSuggestionBalanceViolationCount = 0
 $externalBaselineStatus = "UNKNOWN"
 $externalBaselineAdvisoryCount = 0
 $externalBaselineWarnCount = 0
+$autoRollbackTriggered = $false
+$autoRollbackReasons = [System.Collections.Generic.List[string]]::new()
+$autoRollbackAction = "none"
+$autoRollbackPolicyPathNormalized = ""
 if ($trigger.exit_code -ne 0) {
   $triggerObj = $null
   $rawTriggerText = [string]$trigger.output
@@ -832,6 +843,76 @@ if (-not $hasExternalBaselineScript) {
   }
 }
 
+if (Test-Path -LiteralPath $autoRollbackPolicyPath -PathType Leaf) {
+  $autoRollbackPolicyPathNormalized = ($autoRollbackPolicyPath -replace '\\', '/')
+}
+
+$autoRollbackEnabled = $false
+$triggerOnTokenBalanceAlert = $true
+$skillTriggerEvalPassRateBelow = $null
+$skillTriggerEvalFalseTriggerRateAbove = $null
+$highRiskWithoutExplicitPathCountGt = -1
+$externalBaselineWarnCountGt = -1
+if (Test-Path -LiteralPath $autoRollbackPolicyPath -PathType Leaf) {
+  $autoRollbackPolicyRaw = Get-Content -LiteralPath $autoRollbackPolicyPath -Raw -Encoding UTF8
+  $autoRollbackPolicy = Parse-JsonLoose -RawText ([string]$autoRollbackPolicyRaw)
+  if ($null -ne $autoRollbackPolicy) {
+    if ($autoRollbackPolicy.PSObject.Properties.Name -contains "enabled") {
+      $autoRollbackEnabled = [bool]$autoRollbackPolicy.enabled
+    }
+    if ($null -ne $autoRollbackPolicy.PSObject.Properties['trigger_when']) {
+      $triggerWhen = $autoRollbackPolicy.trigger_when
+      if ($null -ne $triggerWhen.PSObject.Properties['token_balance_alert_or_violation']) {
+        $triggerOnTokenBalanceAlert = [bool]$triggerWhen.token_balance_alert_or_violation
+      }
+      if ($null -ne $triggerWhen.PSObject.Properties['skill_trigger_eval_pass_rate_below']) {
+        try { $skillTriggerEvalPassRateBelow = [double]$triggerWhen.skill_trigger_eval_pass_rate_below } catch { $skillTriggerEvalPassRateBelow = $null }
+      }
+      if ($null -ne $triggerWhen.PSObject.Properties['skill_trigger_eval_false_trigger_rate_above']) {
+        try { $skillTriggerEvalFalseTriggerRateAbove = [double]$triggerWhen.skill_trigger_eval_false_trigger_rate_above } catch { $skillTriggerEvalFalseTriggerRateAbove = $null }
+      }
+      if ($null -ne $triggerWhen.PSObject.Properties['high_risk_without_explicit_path_count_gt']) {
+        try { $highRiskWithoutExplicitPathCountGt = [int]$triggerWhen.high_risk_without_explicit_path_count_gt } catch { $highRiskWithoutExplicitPathCountGt = -1 }
+      }
+      if ($null -ne $triggerWhen.PSObject.Properties['external_baseline_warn_count_gt']) {
+        try { $externalBaselineWarnCountGt = [int]$triggerWhen.external_baseline_warn_count_gt } catch { $externalBaselineWarnCountGt = -1 }
+      }
+    }
+  }
+}
+
+if ($autoRollbackEnabled) {
+  if ($triggerOnTokenBalanceAlert -and ($tokenBalanceStatus -eq "ALERT" -or $tokenBalanceViolationCount -gt 0)) {
+    [void]$autoRollbackReasons.Add(("token_balance:{0}/{1}" -f $tokenBalanceStatus, [int]$tokenBalanceViolationCount))
+  }
+  if ($null -ne $skillTriggerEvalPassRateBelow -and $null -ne $skillTriggerEvalValidationPassRate -and [double]$skillTriggerEvalValidationPassRate -lt [double]$skillTriggerEvalPassRateBelow) {
+    [void]$autoRollbackReasons.Add(("skill_trigger_eval_validation_pass_rate:{0}<${1}" -f [double]$skillTriggerEvalValidationPassRate, [double]$skillTriggerEvalPassRateBelow))
+  }
+  if ($null -ne $skillTriggerEvalFalseTriggerRateAbove -and $null -ne $skillTriggerEvalValidationFalseTriggerRate -and [double]$skillTriggerEvalValidationFalseTriggerRate -gt [double]$skillTriggerEvalFalseTriggerRateAbove) {
+    [void]$autoRollbackReasons.Add(("skill_trigger_eval_validation_false_trigger_rate:{0}>${1}" -f [double]$skillTriggerEvalValidationFalseTriggerRate, [double]$skillTriggerEvalFalseTriggerRateAbove))
+  }
+  if ($highRiskWithoutExplicitPathCountGt -ge 0 -and [int]$highRiskWithoutExplicitPathCount -gt [int]$highRiskWithoutExplicitPathCountGt) {
+    [void]$autoRollbackReasons.Add(("high_risk_without_explicit_path_count:{0}>${1}" -f [int]$highRiskWithoutExplicitPathCount, [int]$highRiskWithoutExplicitPathCountGt))
+  }
+  if ($externalBaselineWarnCountGt -ge 0 -and [int]$externalBaselineWarnCount -gt [int]$externalBaselineWarnCountGt) {
+    [void]$autoRollbackReasons.Add(("external_baseline_warn_count:{0}>${1}" -f [int]$externalBaselineWarnCount, [int]$externalBaselineWarnCountGt))
+  }
+}
+
+if ($autoRollbackEnabled -and $autoRollbackReasons.Count -gt 0) {
+  $autoRollbackTriggered = $true
+  if ($hasRollbackDrillScript) {
+    if ($rollbackDrill.exit_code -eq 0 -and ($rollbackDrillStatus -eq "ok" -or $rollbackDrillStatus -eq "planned")) {
+      $autoRollbackAction = "rollback_path_entered:run-rollback-drill(safe)"
+    } else {
+      $autoRollbackAction = "rollback_path_attempted:run-rollback-drill(safe)-failed"
+    }
+  } else {
+    $autoRollbackAction = "rollback_path_unavailable:run-rollback-drill_missing"
+  }
+  [void]$alerts.Add(("auto rollback triggered reason_count={0} action={1}" -f [int]$autoRollbackReasons.Count, $autoRollbackAction))
+}
+
 $result = [pscustomobject]@{
   schema_version = "1.0"
   generated_at = (Get-Date).ToString("yyyy-MM-dd HH:mm:ss")
@@ -884,6 +965,11 @@ $result = [pscustomobject]@{
     token_efficiency_trend_status = $tokenEfficiencyTrendStatus
     token_efficiency_trend_history_count = [int]$tokenEfficiencyTrendHistoryCount
     token_efficiency_trend_latest_value = [Math]::Round([double]$tokenEfficiencyTrendLatestValue, 6)
+    auto_rollback_triggered = [bool]$autoRollbackTriggered
+    auto_rollback_reason_count = [int]$autoRollbackReasons.Count
+    auto_rollback_reasons = @($autoRollbackReasons.ToArray())
+    auto_rollback_action = $autoRollbackAction
+    auto_rollback_policy_path = $autoRollbackPolicyPathNormalized
     update_trigger_exit_code = [int]$trigger.exit_code
     skill_trigger_eval_exit_code = [int]$skillTriggerEval.exit_code
     risk_tier_approval_exit_code = [int]$riskTierApproval.exit_code
@@ -976,6 +1062,10 @@ Write-Host ("cross_repo_compatibility_repo_failure_count={0}" -f $result.summary
 Write-Host ("token_efficiency_trend_status={0}" -f $result.summary.token_efficiency_trend_status)
 Write-Host ("token_efficiency_trend_history_count={0}" -f $result.summary.token_efficiency_trend_history_count)
 Write-Host ("token_efficiency_trend_latest_value={0}" -f $result.summary.token_efficiency_trend_latest_value)
+Write-Host ("auto_rollback_triggered={0}" -f $result.summary.auto_rollback_triggered)
+Write-Host ("auto_rollback_reason_count={0}" -f $result.summary.auto_rollback_reason_count)
+Write-Host ("auto_rollback_action={0}" -f $result.summary.auto_rollback_action)
+Write-Host ("auto_rollback_policy_path={0}" -f $result.summary.auto_rollback_policy_path)
 if ($result.ok) {
   Write-Host "result=OK"
   if (-not [string]::IsNullOrWhiteSpace($alertSnapshotPath)) {

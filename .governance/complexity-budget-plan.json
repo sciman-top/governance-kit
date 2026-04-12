@@ -1,0 +1,15 @@
+{
+  "schema_version": "1.0",
+  "entries": [
+    {
+      "id": "install-script-split-2026q2",
+      "scope": "scripts/install.ps1",
+      "plan_type": "merge",
+      "status": "active",
+      "owner": "governance-maintainer",
+      "expires_at": "2026-07-31",
+      "evidence_ref": "docs/change-evidence/20260412-complexity-budget-plan-gate.md",
+      "notes": "Split install orchestration into focused helpers and merge duplicated branches."
+    }
+  ]
+}
