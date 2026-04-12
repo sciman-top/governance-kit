@@ -1,0 +1,32 @@
+规则ID=rule-layering-phase0-defer-and-continue
+规则版本=9.38
+兼容窗口(观察期/强制期)=observe
+影响模块=docs/governance/rule-layering-migration-plan.md; docs/change-evidence/*
+当前落点=Phase0 token baseline blocker management
+目标归宿=不阻断后续 Phase2/3/4 的连续执行
+迁移批次=2026-04-13
+风险等级=low
+risk_tier=low
+是否豁免(Waiver)=yes
+豁免责任人=repo-governance-hub-operator
+豁免到期=2026-04-27
+豁免回收计划=观察窗口结束后回补 Phase0 并关闭本豁免
+执行命令=更新计划状态为“暂缓（不阻断）”并继续执行 Phase3/4 任务
+验证证据=计划文件已标注 Phase0 暂缓；后续 Phase3/4 任务继续推进且门禁保持通过
+供应链安全扫描=N/A
+发布后验证(指标/阈值/窗口)=不降低门禁质量前提下，保障迁移任务连续执行
+数据变更治理(迁移/回填/回滚)=文档状态变更，无结构数据变更
+回滚动作=恢复 rule-layering-migration-plan.md 到变更前版本
+rollback_trigger=若 Phase0 指标缺口在观察窗口内扩大并影响决策有效性
+
+任务理解快照=目标:避免单点指标阻塞整条优化计划; 非目标:忽略 Phase0 根因; 验收:计划状态明确且后续阶段持续推进
+术语解释点=暂缓（不阻断）: 把问题纳入追踪并设回收时点，但不停止主线任务推进
+可观测信号=rule-layering-migration-plan 阶段状态; 门禁结果; 观察窗口对照证据
+排障路径=确认 Phase0 连续多次未解 -> 设定暂缓窗口与回收时点 -> 继续执行后续阶段
+未确认假设与纠偏结论=未确认 Phase0 根因收敛时长；先以时间盒方式继续推进并保留回收计划
+
+learning_points_3=1) 指标阻塞不应无限阻断主线计划; 2) 暂缓必须绑定到期日和回收动作; 3) 继续推进时仍要维持硬门禁
+reusable_checklist=识别阻塞 -> 评估是否阻断主线 -> 设置暂缓+到期 -> 继续执行后续阶段 -> 定期回收
+open_questions=是否将“暂缓超期自动告警”纳入 update-trigger policy
+average_response_token=N/A
+single_task_token=6094

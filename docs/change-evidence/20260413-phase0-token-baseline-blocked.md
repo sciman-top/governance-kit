@@ -1,0 +1,39 @@
+规则ID=rule-layering-phase0-token-baseline-blocked
+规则版本=9.38
+兼容窗口(观察期/强制期)=observe
+影响模块=scripts/collect-governance-metrics.ps1; docs/governance/metrics-auto.md
+当前落点=repo-governance-hub token baseline sampling chain
+目标归宿=Phase0 token baseline closure
+迁移批次=2026-04-13
+风险等级=medium
+risk_tier=medium
+是否豁免(Waiver)=no
+豁免责任人=
+豁免到期=
+豁免回收计划=
+执行命令=powershell -File scripts/collect-governance-metrics.ps1; powershell -File scripts/verify-kit.ps1; powershell -File tests/repo-governance-hub.optimization.tests.ps1; powershell -File scripts/validate-config.ps1; powershell -File scripts/verify.ps1; powershell -File scripts/doctor.ps1
+验证证据=collect 脚本新增兜底与诊断字段后，metrics-auto 显示 average_response_token=N/A 且 response_token_sample_count=0；门禁链通过但 token_balance 维持 advisory warning
+供应链安全扫描=N/A
+发布后验证(指标/阈值/窗口)=average_response_token 仍不可观测，Phase0 不能标记完成
+数据变更治理(迁移/回填/回滚)=仅脚本逻辑增强，无数据结构变更
+回滚动作=git restore scripts/collect-governance-metrics.ps1
+rollback_trigger=若脚本增强引入副作用或与历史指标口径冲突
+subagent_decision_mode=none
+spawn_parallel_subagents=false
+max_parallel_agents=0
+decision_score=0
+reason_codes=manual-single-agent
+hard_guard_hits=none
+policy_path=.governance/token-balance-policy.json
+
+任务理解快照=目标:把 Phase0 token baseline 从 N/A 拉到可观测; 非目标:调整 token gate 阈值; 验收:average_response_token 变为数值且门禁保持通过
+术语解释点=token baseline: 用于跟踪成本变化的起始统计样本，不是一次性门禁通过信号
+可观测信号=docs/governance/metrics-auto.md.average_response_token; docs/governance/metrics-auto.md.response_token_sample_count; verify 输出 token_balance warning
+排障路径=检查 evidence 样本提取 -> 增加 KV 兜底 -> 重跑 collect -> 复验门禁 -> 记录仍阻塞
+未确认假设与纠偏结论=未确认根因是否在 evidence 选择逻辑、编码解析差异或样本口径；当前先保留阻塞并持续自动排查
+
+learning_points_3=1) 门禁通过不等于指标链路完备; 2) 指标口径问题应单列阻塞并持续追踪; 3) response_token_sample_count 能把“采样失败”和“写出失败”区分开
+reusable_checklist=改采样脚本 -> 重跑 collect -> 检查 metrics-auto -> 跑全门禁 -> 更新计划状态
+open_questions=是否需要把 average_response_token 的采样来源从 evidence 文本改为结构化日志
+average_response_token=N/A
+single_task_token=6094

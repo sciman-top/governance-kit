@@ -1,0 +1,24 @@
+# 20260412-rule-layering-phase0-phase1
+- 规则ID=RULE-LAYERING-PHASE0-PHASE1-20260412
+- 风险等级=low
+- issue_id=20260412-rule-layering-phase0-phase1
+- 目标归宿=`source/project/repo-governance-hub/AGENTS.md|CLAUDE.md|GEMINI.md` + `docs/governance/*`
+- 任务理解快照=目标:将规则长段落逐步外移为文档索引/技能入口并降低常驻上下文; 非目标:改变硬门禁语义与平台差异分层; 验收:门禁链通过且C.8/C.9完成外移索引化
+- 术语解释点=渐进披露:主规则仅保留最小必需协议，长流程按需加载；承接映射:全局语义到项目动作的映射关系
+- 可观测信号=AGENTS/CLAUDE/GEMINI 的 C.8/C.9 内容缩短并指向 docs；verify 输出 `source/project/repo-governance-hub/*.md == repo root`；doctor HEALTH=GREEN
+- 执行命令=`scripts/verify-kit.ps1` -> `tests/repo-governance-hub.optimization.tests.ps1` -> `scripts/validate-config.ps1` -> `scripts/verify.ps1` -> `scripts/doctor.ps1`
+- 关键输出=首次 verify 出现 3 个 DIFF（source 回灌未同步）；同步后 verify `ok=268 fail=0`；doctor `HEALTH=GREEN`
+- 失败分流与修复=根因为 source of truth 未回灌；修复动作为同步根目录规则到 `source/project/repo-governance-hub/*` 后重跑
+- 变更清单=
+  - 新增 `docs/governance/rule-layering-migration-plan.md`
+  - 新增 `docs/governance/rule-layering-inventory.md`
+  - 新增 `docs/governance/rule-index.md`
+  - 新增 `docs/governance/verification-entrypoints.md`
+  - 新增 `docs/governance/global-repo-mapping.md`
+  - 说明：尝试的本地 `.agents` skill 草案已撤销（该路径被 `.gitignore` 忽略，不作为正式落点）
+  - 更新 `AGENTS.md`、`CLAUDE.md`、`GEMINI.md`（新增 rule-index 入口，C.8/C.9 改索引）
+  - 回灌更新 `source/project/repo-governance-hub/AGENTS.md|CLAUDE.md|GEMINI.md`
+- 回滚动作=`git restore AGENTS.md CLAUDE.md GEMINI.md source/project/repo-governance-hub/AGENTS.md source/project/repo-governance-hub/CLAUDE.md source/project/repo-governance-hub/GEMINI.md` + 删除新增文档
+- learning_points_3=1) 规则拆分类改动必须同步 source 与目标仓根，避免 verify DIFF；2) 先产出 inventory 再改正文可显著降低返工；3) 文档索引化适合先从 C.8/C.9 这类长清单段落下手
+- reusable_checklist=1) 先建迁移计划与 inventory；2) 新建承接文档后再缩正文；3) 改后立即跑 verify 检查 source 回灌一致性
+- open_questions=是否将 C.12 教学条款下一步完整迁移到 `governance-teaching-lite-output` skill 并在三文件只留触发入口

@@ -4214,6 +4214,203 @@ if ($AsJson) {
     }
   }
 
+  it "verify-release-profile blocks release_enabled repo when standalone policy finds external absolute dependency" {
+    $tmp = Join-Path $env:TEMP ("govkit-test-" + [guid]::NewGuid().ToString("N"))
+    try {
+      New-Item -ItemType Directory -Path (Join-Path $tmp "scripts\lib") -Force | Out-Null
+      New-Item -ItemType Directory -Path (Join-Path $tmp "scripts") -Force | Out-Null
+      New-Item -ItemType Directory -Path (Join-Path $tmp "config") -Force | Out-Null
+      New-Item -ItemType Directory -Path (Join-Path $tmp "RepoA\.governance") -Force | Out-Null
+      New-Item -ItemType Directory -Path (Join-Path $tmp "RepoA\scripts\release") -Force | Out-Null
+
+      Copy-Item -Path (Join-Path $repoRoot "scripts\verify-release-profile.ps1") -Destination (Join-Path $tmp "scripts\verify-release-profile.ps1") -Force
+      Copy-Item -Path (Join-Path $repoRoot "scripts\lib\common.ps1") -Destination (Join-Path $tmp "scripts\lib\common.ps1") -Force
+
+      @'
+{
+  "schema_version": "1.0",
+  "default": {
+    "enforce_when_release_enabled": true,
+    "advisory_when_release_disabled": true,
+    "forbidden_path_patterns_regex": ["(?i)\\b[A-Z]:/CODE/skills-manager\\b"],
+    "scan_paths": ["AGENTS.md"]
+  },
+  "repos": []
+}
+'@ | Set-Content -Path (Join-Path $tmp "config\standalone-release-policy.json") -Encoding UTF8
+
+      @'
+# AGENTS
+collaboration path: E:/CODE/skills-manager
+'@ | Set-Content -Path (Join-Path $tmp "RepoA\AGENTS.md") -Encoding UTF8
+
+      Set-Content -Path (Join-Path $tmp "RepoA\scripts\release\prepare-distribution.ps1") -Value "param(); Write-Host ok" -Encoding UTF8
+
+      @'
+{
+  "schema_version": "1.0",
+  "project_type": "generic",
+  "release_enabled": true,
+  "owner": "RepoA",
+  "classification": {
+    "release_decision": "enabled-by-signals",
+    "detected_release_signals": ["scripts/release/prepare-distribution.ps1"]
+  },
+  "policies": {
+    "signing": {
+      "required": false,
+      "mode": "none-personal",
+      "allow_paid_signing": false
+    },
+    "compatibility": {
+      "matrix_required": false,
+      "minimum_os": ["Windows 10 22H2"],
+      "architectures": ["x64"]
+    },
+    "packaging": {
+      "default_channel": "standard",
+      "channels": ["standard", "offline"],
+      "distribution_forms": ["installer", "portable"],
+      "network_modes": ["online", "offline"],
+      "require_framework_dependent": false,
+      "require_self_contained": false
+    },
+    "anti_false_positive": {
+      "prefer_zip": false,
+      "disallow_self_extracting_archive": false,
+      "disallow_obfuscation": false,
+      "disallow_runtime_downloader": false
+    },
+    "traceability": {
+      "require_sha256": false,
+      "require_release_manifest": false,
+      "require_changelog": false
+    }
+  },
+  "gates": {
+    "build": "echo ok",
+    "test": "echo ok",
+    "contract_invariant": "echo ok",
+    "hotspot": "echo ok"
+  },
+  "release": {
+    "preflight": "N/A",
+    "prepare": "powershell -File scripts/release/prepare-distribution.ps1",
+    "workflow_files": [".github/workflows/release.yml"],
+    "output_root": "artifacts/release",
+    "manifest": "artifacts/release/<version>/release-manifest.json"
+  }
+}
+'@ | Set-Content -Path (Join-Path $tmp "RepoA\.governance\release-profile.json") -Encoding UTF8
+
+      $json = & powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $tmp "scripts\verify-release-profile.ps1") -RepoPath (Join-Path $tmp "RepoA") -AsJson
+      $LASTEXITCODE | should be 1
+      $obj = $json | ConvertFrom-Json
+      [string]$obj.status | should be "FAIL"
+      (@($obj.errors | Where-Object { $_ -match "standalone release dependency violation" }).Count -ge 1) | should be $true
+      (@($obj.standalone_dependency_hits).Count -ge 1) | should be $true
+    } finally {
+      if (Test-Path $tmp) { Remove-Item -LiteralPath $tmp -Recurse -Force }
+    }
+  }
+
+  it "verify-release-profile emits advisory warning when release is disabled but external absolute dependency exists" {
+    $tmp = Join-Path $env:TEMP ("govkit-test-" + [guid]::NewGuid().ToString("N"))
+    try {
+      New-Item -ItemType Directory -Path (Join-Path $tmp "scripts\lib") -Force | Out-Null
+      New-Item -ItemType Directory -Path (Join-Path $tmp "scripts") -Force | Out-Null
+      New-Item -ItemType Directory -Path (Join-Path $tmp "config") -Force | Out-Null
+      New-Item -ItemType Directory -Path (Join-Path $tmp "RepoA\.governance") -Force | Out-Null
+
+      Copy-Item -Path (Join-Path $repoRoot "scripts\verify-release-profile.ps1") -Destination (Join-Path $tmp "scripts\verify-release-profile.ps1") -Force
+      Copy-Item -Path (Join-Path $repoRoot "scripts\lib\common.ps1") -Destination (Join-Path $tmp "scripts\lib\common.ps1") -Force
+
+      @'
+{
+  "schema_version": "1.0",
+  "default": {
+    "enforce_when_release_enabled": true,
+    "advisory_when_release_disabled": true,
+    "forbidden_path_patterns_regex": ["(?i)\\b[A-Z]:/CODE/skills-manager\\b"],
+    "scan_paths": ["AGENTS.md"]
+  },
+  "repos": []
+}
+'@ | Set-Content -Path (Join-Path $tmp "config\standalone-release-policy.json") -Encoding UTF8
+
+      @'
+# AGENTS
+collaboration path: E:/CODE/skills-manager
+'@ | Set-Content -Path (Join-Path $tmp "RepoA\AGENTS.md") -Encoding UTF8
+
+      @'
+{
+  "schema_version": "1.0",
+  "project_type": "generic",
+  "release_enabled": false,
+  "owner": "RepoA",
+  "classification": {
+    "release_decision": "disabled-no-release-signals",
+    "detected_release_signals": []
+  },
+  "policies": {
+    "signing": {
+      "required": false,
+      "mode": "none-personal",
+      "allow_paid_signing": false
+    },
+    "compatibility": {
+      "matrix_required": false,
+      "minimum_os": ["Windows 10 22H2"],
+      "architectures": ["x64"]
+    },
+    "packaging": {
+      "default_channel": "none",
+      "channels": ["none"],
+      "distribution_forms": ["portable"],
+      "network_modes": ["online"],
+      "require_framework_dependent": false,
+      "require_self_contained": false
+    },
+    "anti_false_positive": {
+      "prefer_zip": false,
+      "disallow_self_extracting_archive": false,
+      "disallow_obfuscation": false,
+      "disallow_runtime_downloader": false
+    },
+    "traceability": {
+      "require_sha256": false,
+      "require_release_manifest": false,
+      "require_changelog": false
+    }
+  },
+  "gates": {
+    "build": "echo ok",
+    "test": "echo ok",
+    "contract_invariant": "echo ok",
+    "hotspot": "echo ok"
+  },
+  "release": {
+    "preflight": "N/A",
+    "prepare": "N/A",
+    "workflow_files": [],
+    "output_root": "artifacts/release",
+    "manifest": "artifacts/release/<version>/release-manifest.json"
+  }
+}
+'@ | Set-Content -Path (Join-Path $tmp "RepoA\.governance\release-profile.json") -Encoding UTF8
+
+      $json = & powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $tmp "scripts\verify-release-profile.ps1") -RepoPath (Join-Path $tmp "RepoA") -AsJson
+      if ($LASTEXITCODE -ne 0) { throw "verify-release-profile.ps1 failed with exit code $LASTEXITCODE" }
+      $obj = $json | ConvertFrom-Json
+      [string]$obj.status | should be "PASS"
+      (@($obj.warnings | Where-Object { $_ -match "standalone release dependency advisory" }).Count -ge 1) | should be $true
+      (@($obj.standalone_dependency_hits).Count -ge 1) | should be $true
+    } finally {
+      if (Test-Path $tmp) { Remove-Item -LiteralPath $tmp -Recurse -Force }
+    }
+  }
+
   it "check-practice-stack script exists and emits json summary" {
     $tmp = Join-Path $env:TEMP ("govkit-test-" + [guid]::NewGuid().ToString("N"))
     try {

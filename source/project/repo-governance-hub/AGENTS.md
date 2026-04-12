@@ -1,4 +1,4 @@
-﻿# AGENTS.md — repo-governance-hub（Codex 项目级）
+# AGENTS.md — repo-governance-hub（Codex 项目级）
 **项目**: repo-governance-hub  
 **适用范围**: 项目级（仓库根）  
 **版本**: 3.85  
@@ -8,6 +8,7 @@
 - 本文件承接 `GlobalUser/AGENTS.md`，仅定义 repo-governance-hub 的仓库落地动作（WHERE/HOW）。
 - 固定结构：`1 / A / B / C / D`。
 - 裁决链：`运行事实/代码 > 项目级文件 > 全局文件 > 临时上下文`。
+- 场景索引入口：`docs/governance/rule-index.md`（长流程按需阅读）。
 
 ## A. 共性基线（仅本仓）
 ### A.1 事实边界
@@ -119,23 +120,13 @@
 - 未完成“回灌 + 复验”前，禁止再次 `sync/install` 覆盖未沉淀改动。
 
 ### C.8 CI 与仓内校验入口
-- GitHub Actions：`.github/workflows/quality-gates.yml`
-- Azure Pipelines：`azure-pipelines.yml`
-- GitLab CI：`.gitlab-ci.yml`
-- Hooks：`Test-Path .git/hooks/pre-commit`、`Test-Path .git/hooks/pre-push`
-- Git 配置：`git config --get commit.template`、`git config --get governance.root`
-- 里程碑自动提交：治理闭环在策略允许时可于 `after_backflow`、`after_redistribute_verify`、`cycle_complete` 执行 `git add -A + 中文提交说明`，并在提交后强校验工作区干净；执行前必须先识别并隔离非本次治理改动，避免误纳入提交。
-- 一键安装语义：`install/sync` 默认先执行 `scripts/refresh-targets.ps1`（基于 `repositories.json + project-custom-files.json` 刷新 `targets.json`），再执行分发安装。
-- 模板：`Test-Path docs/change-evidence/template.md`、`Test-Path docs/governance/waiver-template.md`、`Test-Path docs/governance/metrics-template.md`
+- 详细入口、安装语义与模板检查已迁移至：`docs/governance/verification-entrypoints.md`。
+- 主规则仅保留最小约束：校验入口属于仓级落地动作，执行时以该文档与脚本现实为准。
+- 平台差异仅在 `B` 段表达；本段不承载平台实现细节。
 
 ### C.9 承接映射（Global -> Repo）
-- R1：A.2 + C.1 + C.7（归宿先行与回灌闭环）。
-- R2/R3：A.2 + C.2 + C.3（小步闭环与根因优先）。
-- R4/R6：C.2 + C.3 + C.4（硬门禁、N/A 回退与阻断）。
-- R7：A.1 + C.6（边界与兼容保护）。
-- R8/E3：A.2 + C.5（证据与回滚可追溯）。
-- E4/E5/E6：C.4 + C.6 + C.8（指标、供应链与结构变更配套校验）。
-- Global 输出字段 -> Repo 证据字段：`N/A 分类/判定标准 -> A.3`，`门禁语义 -> C.2/C.4`，`证据要求 -> C.5`。
+- 详细映射与字段口径已迁移至：`docs/governance/global-repo-mapping.md`。
+- 主规则保留约束：项目级仅承接落地，不改写全局 R/E 语义；映射变更须与全局版本联动校验。
 
 ### C.10 协同接口（1+1>2）
 - Global 负责：规则语义、判定标准、N/A 口径。
@@ -185,6 +176,17 @@
 - 判定模型：`hard_guard + score`；先执行硬约束，再依据评分阈值输出并行建议与 `max_parallel_agents`。
 - 证据字段：`spawn_parallel_subagents`、`max_parallel_agents`、`decision_score`、`reason_codes`、`hard_guard_hits`、`signals`、`policy_path`。
 - 执行边界：`scripts/governance/run-target-autopilot.ps1` 仅输出建议与 JSON 证据；并行子代理创建由外层 AI 会话执行。
+### C.17 与 skills-manager 联合协作契约（强制）
+- 本仓与 `E:/CODE/skills-manager` 为联合协作关系：本仓负责治理语义与分发编排，skills-manager 负责 overrides 技能生命周期落地。
+- 新增可复用技能的 canonical 落点必须是：`source/project/skills-manager/custom/overrides/<skill-name>/SKILL.md`。
+- 本仓根 `.agents/skills/*` 不作为新技能正式创建路径（本仓默认 `.gitignore` 忽略 `/.agents/`）。
+- 技能创建/晋升必须通过策略门槛：`ack + trigger-eval + family uniqueness + lifecycle policy`，不得绕过 `promote-skill-candidates` 约束。
+- 协作细则文档：`docs/governance/collaboration-contract-repo-skills-manager.md`。
+### C.18 standalone 发布依赖边界（强制）
+- `skills-manager overrides` 属于跨仓协作能力，不得被视为本仓 standalone 发布运行时硬依赖。
+- standalone 发布判定由 `scripts/verify-release-profile.ps1` + `config/standalone-release-policy.json` 执行：`release_enabled=true` 命中外部绝对路径依赖即阻断，`release_enabled=false` 记 advisory。
+- 规则/文档中允许描述协作路径，但发布脚本与发布产物不得隐式要求 `E:/CODE/skills-manager` 存在。
+- 详情：`docs/governance/standalone-release-dependency-contract.md`。
 ## D. 维护校验清单（项目级）
 - 仅落地本仓事实，不复述全局规则正文。
 - 与全局职责互补，不重叠、不缺失。
@@ -192,11 +194,4 @@
 - 三文件同构约束：`A/C/D` 语义一致，仅 `B` 允许平台差异。
 - 规则升级后同步校验版本、日期、承接映射与门禁命令一致性。
 - 平台差异仅在 B 段表达；A/C/D 不承载平台实现细节。
-
-
-
-
-
-
-
 

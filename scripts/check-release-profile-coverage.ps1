@@ -48,6 +48,7 @@ foreach ($repo in $repos) {
     expected_release_enabled = [bool]$obj.expected_release_enabled
     release_signals = @($obj.release_signals).Count
     profile_exists = [bool]$obj.profile_exists
+    warning_count = @($obj.warnings).Count
     status = [string]$obj.status
   })
   if ([string]$obj.status -ne "PASS") {
@@ -70,7 +71,7 @@ if ($AsJson) {
 if ($failed.Count -eq 0) {
   Write-Host "[PASS] release-profile coverage"
   foreach ($row in @($decisionSummary)) {
-    Write-Host (" - repo={0} expected_release_enabled={1} release_signals={2} profile_exists={3}" -f $row.repo, $row.expected_release_enabled, $row.release_signals, $row.profile_exists)
+    Write-Host (" - repo={0} expected_release_enabled={1} release_signals={2} profile_exists={3} warning_count={4}" -f $row.repo, $row.expected_release_enabled, $row.release_signals, $row.profile_exists, $row.warning_count)
   }
   exit 0
 }

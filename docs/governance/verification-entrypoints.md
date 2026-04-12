@@ -1,0 +1,41 @@
+# Verification Entrypoints (Repo Level)
+
+## Scope
+- This file hosts verbose verification entry lists that were previously in `C.8`.
+- Main rule files should keep only a short index pointer to this file.
+
+## CI Entrypoints
+- GitHub Actions: `.github/workflows/quality-gates.yml`
+- Azure Pipelines: `azure-pipelines.yml`
+- GitLab CI: `.gitlab-ci.yml`
+
+## Local Repo Entrypoints
+- Hooks:
+  - `Test-Path .git/hooks/pre-commit`
+  - `Test-Path .git/hooks/pre-push`
+- Git config:
+  - `git config --get commit.template`
+  - `git config --get governance.root`
+
+## Release Profile Coverage Entrypoints
+- `powershell -File scripts/verify-release-profile.ps1 -RepoPath <repo> [-AsJson]`
+- `powershell -File scripts/check-release-profile-coverage.ps1 [-AsJson]`
+- standalone dependency policy:
+  - `config/standalone-release-policy.json`
+  - enforce rule: `release_enabled=true` + external absolute repo path hit => `FAIL`
+  - advisory rule: `release_enabled=false` + external absolute repo path hit => warning only
+
+## Install/Sync Semantics
+- `install/sync` default sequence:
+  1. `scripts/refresh-targets.ps1` (based on `repositories.json + project-custom-files.json`)
+  2. distribution install
+
+## Milestone Auto-Commit Guardrails
+- Allowed checkpoints (policy-controlled): `after_backflow`, `after_redistribute_verify`, `cycle_complete`
+- Auto-commit shape: `git add -A + Chinese message`
+- Mandatory guard: isolate unrelated changes before `git add -A`.
+
+## Template Presence Checks
+- `Test-Path docs/change-evidence/template.md`
+- `Test-Path docs/governance/waiver-template.md`
+- `Test-Path docs/governance/metrics-template.md`

@@ -1,0 +1,21 @@
+# 20260412-collaboration-contract-hardening
+- 规则ID=COLLAB-CONTRACT-HARDENING-20260412
+- 风险等级=low
+- issue_id=20260412-collaboration-contract-hardening
+- 目标归宿=AGENTS/CLAUDE/GEMINI + source/project/repo-governance-hub/* + docs/governance/collaboration-contract-repo-skills-manager.md
+- 任务理解快照=目标:强化本仓与 skills-manager 的联合协作边界，避免隐式约定导致执行偏差；非目标:变更技能门禁阈值本身；验收:主规则新增常驻条款并通过门禁
+- 变更原因=协作关系此前主要散落于策略/脚本与隐式路径，主规则未显式强化，导致执行时容易误判技能正式落点
+- 关键动作=
+  - 新增协作文档：`docs/governance/collaboration-contract-repo-skills-manager.md`
+  - 在三份主规则新增 `C.17 与 skills-manager 联合协作契约（强制）`
+  - 回灌同步至 `source/project/repo-governance-hub/AGENTS|CLAUDE|GEMINI`
+  - 更新索引与迁移资产：`rule-index`、`rule-layering-inventory`、`rule-layering-migration-plan`
+- 可观测信号=
+  - `AGENTS/CLAUDE/GEMINI` 均存在 `C.17`
+  - `source/project/repo-governance-hub/*` 与仓根规则一致
+  - `verify` 无 source/target DIFF
+- 执行命令=verify-kit -> tests -> validate-config -> verify -> doctor
+- 回滚动作=git restore AGENTS.md CLAUDE.md GEMINI.md source/project/repo-governance-hub/AGENTS.md source/project/repo-governance-hub/CLAUDE.md source/project/repo-governance-hub/GEMINI.md docs/governance/collaboration-contract-repo-skills-manager.md docs/governance/rule-index.md docs/governance/rule-layering-inventory.md docs/governance/rule-layering-migration-plan.md
+- learning_points_3=1) 跨仓协作边界必须在主规则常驻明确；2) `.gitignore` 规则会直接影响“看似成功”的技能落库判断；3) source 回灌与规则正文更新必须同批完成
+- reusable_checklist=1) 先确认 canonical path 与 ignore 策略；2) 主规则写清联合协作边界；3) 回灌后立即跑 verify 检查 DIFF
+- open_questions=是否将 C.17 纳入模板 `source/template/project/*`，确保新仓默认继承该协作契约

@@ -1338,5 +1338,15 @@
         "source":  "source/project/_common/custom/.governance/auto-rollback-trigger-policy.json",
         "target":  "E:/CODE/repo-governance-hub/.governance/auto-rollback-trigger-policy.json",
         "boundary_class":  "shared-template"
+    },
+    {
+        "source":  "source/project/skills-manager/custom/overrides/governance-teaching-lite-output/SKILL.md",
+        "target":  "E:/CODE/skills-manager/overrides/governance-teaching-lite-output/SKILL.md",
+        "boundary_class":  "project"
+    },
+    {
+        "source":  "source/project/skills-manager/custom/overrides/governance-clarification-protocol/SKILL.md",
+        "target":  "E:/CODE/skills-manager/overrides/governance-clarification-protocol/SKILL.md",
+        "boundary_class":  "project"
     }
 ]

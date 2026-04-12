@@ -1,0 +1,31 @@
+{
+  "schema_version": "1.0",
+  "default": {
+    "enforce_when_release_enabled": true,
+    "advisory_when_release_disabled": true,
+    "forbidden_path_patterns_regex": [
+      "(?i)\\b[A-Z]:/CODE/skills-manager\\b"
+    ],
+    "scan_paths": []
+  },
+  "repos": [
+    {
+      "repoName": "repo-governance-hub",
+      "enforce_when_release_enabled": true,
+      "advisory_when_release_disabled": true,
+      "forbidden_path_patterns_regex": [
+        "(?i)\\b[A-Z]:/CODE/skills-manager\\b"
+      ],
+      "scan_paths": [
+        "AGENTS.md",
+        "CLAUDE.md",
+        "GEMINI.md",
+        "docs/governance/collaboration-contract-repo-skills-manager.md",
+        "config/repositories.json",
+        "config/project-rule-policy.json",
+        ".governance/skill-promotion-policy.json",
+        ".governance/skill-candidates/promotion-registry.json"
+      ]
+    }
+  ]
+}

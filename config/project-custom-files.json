@@ -175,8 +175,10 @@
                                     "docs/PLANS.md",
                                     "plugins/repo-governance-hub-internal/skills/governance-refactor-safe/SKILL.md",
                                     "plugins/repo-governance-hub-internal/skills/governance-reuse-analyst/SKILL.md",
+                                    "overrides/governance-clarification-protocol/SKILL.md",
                                     "overrides/custom-windows-encoding-guard/SKILL.md",
                                     "overrides/custom-windows-encoding-guard/scripts/bootstrap.ps1",
+                                    "overrides/governance-teaching-lite-output/SKILL.md",
                                     "scripts/install-githooks.ps1",
                                     "scripts/prebuild-check.ps1"
                                 ]

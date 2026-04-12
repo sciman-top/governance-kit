@@ -112,10 +112,21 @@ function Get-PrimaryEntry([psobject]$Left, [psobject]$Right) {
   if ($leftInv -gt $rightInv) { return @($Left, $Right) }
   if ($rightInv -gt $leftInv) { return @($Right, $Left) }
 
-  $leftDate = Get-DateOrNull $Left.last_invoked_at
-  if ($null -eq $leftDate) { $leftDate = Get-DateOrNull $Left.promoted_at }
-  $rightDate = Get-DateOrNull $Right.last_invoked_at
-  if ($null -eq $rightDate) { $rightDate = Get-DateOrNull $Right.promoted_at }
+  $leftDate = $null
+  if ($null -ne $Left.PSObject.Properties['last_invoked_at']) {
+    $leftDate = Get-DateOrNull $Left.last_invoked_at
+  }
+  if ($null -eq $leftDate -and $null -ne $Left.PSObject.Properties['promoted_at']) {
+    $leftDate = Get-DateOrNull $Left.promoted_at
+  }
+
+  $rightDate = $null
+  if ($null -ne $Right.PSObject.Properties['last_invoked_at']) {
+    $rightDate = Get-DateOrNull $Right.last_invoked_at
+  }
+  if ($null -eq $rightDate -and $null -ne $Right.PSObject.Properties['promoted_at']) {
+    $rightDate = Get-DateOrNull $Right.promoted_at
+  }
 
   if ($null -eq $leftDate -and $null -eq $rightDate) { return @($Left, $Right) }
   if ($null -eq $leftDate) { return @($Right, $Left) }
@@ -278,9 +289,10 @@ if ($retireEnabled) {
 
     $invocations = 0
     try { $invocations = [int]$entry.invocation_count } catch { $invocations = 0 }
-    $last = Get-DateOrNull $entry.last_invoked_at
-    if ($null -eq $last) { $last = Get-DateOrNull $entry.last_optimized_at }
-    if ($null -eq $last) { $last = Get-DateOrNull $entry.promoted_at }
+    $last = $null
+    if ($null -ne $entry.PSObject.Properties['last_invoked_at']) { $last = Get-DateOrNull $entry.last_invoked_at }
+    if ($null -eq $last -and $null -ne $entry.PSObject.Properties['last_optimized_at']) { $last = Get-DateOrNull $entry.last_optimized_at }
+    if ($null -eq $last -and $null -ne $entry.PSObject.Properties['promoted_at']) { $last = Get-DateOrNull $entry.promoted_at }
     if ($null -eq $last) { continue }
 
     $daysInactive = [int][Math]::Floor((New-TimeSpan -Start $last -End $now).TotalDays)

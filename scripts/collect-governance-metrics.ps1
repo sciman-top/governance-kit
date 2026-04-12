@@ -100,11 +100,37 @@ function Get-TokenQualitySnapshot {
     $respMatch = [regex]::Match($raw, "(?im)^\s*average_response_token\s*[:=]\s*([0-9]+)\s*$")
     if ($respMatch.Success) {
       [void]$responseTokens.Add([int]$respMatch.Groups[1].Value)
+    } else {
+      try {
+        $kv = Parse-KeyValueFile $f.FullName
+        if ($kv.ContainsKey("average_response_token")) {
+          $rawResp = [string]$kv["average_response_token"]
+          $respValue = 0
+          if ([int]::TryParse($rawResp, [ref]$respValue)) {
+            [void]$responseTokens.Add([int]$respValue)
+          }
+        }
+      } catch {
+        # best-effort fallback only
+      }
     }
 
     $taskMatch = [regex]::Match($raw, "(?im)^\s*single_task_token\s*[:=]\s*([0-9]+)\s*$")
     if ($taskMatch.Success) {
       [void]$taskTokens.Add([int]$taskMatch.Groups[1].Value)
+    } else {
+      try {
+        $kv = Parse-KeyValueFile $f.FullName
+        if ($kv.ContainsKey("single_task_token")) {
+          $rawTask = [string]$kv["single_task_token"]
+          $taskValue = 0
+          if ([int]::TryParse($rawTask, [ref]$taskValue)) {
+            [void]$taskTokens.Add([int]$taskValue)
+          }
+        }
+      } catch {
+        # best-effort fallback only
+      }
     }
   }
 
@@ -113,12 +139,53 @@ function Get-TokenQualitySnapshot {
 
   $avgResponseToken = "N/A"
   $responseTokenValues = @($responseTokens.ToArray())
+  if ($responseTokenValues.Count -eq 0) {
+    # Secondary fallback: direct full-scan match to avoid silent parser drift.
+    $responseFallback = [System.Collections.Generic.List[int]]::new()
+    foreach ($f in @($EvidenceFiles)) {
+      $raw = ""
+      try {
+        $raw = Get-Content -LiteralPath $f.FullName -Raw
+      } catch {
+        continue
+      }
+      $matches = [regex]::Matches($raw, "(?im)^\s*average_response_token\s*[:=]\s*([0-9]+)\s*$")
+      foreach ($m in @($matches)) {
+        if ($null -eq $m -or -not $m.Success) { continue }
+        $v = 0
+        if ([int]::TryParse([string]$m.Groups[1].Value, [ref]$v)) {
+          [void]$responseFallback.Add($v)
+        }
+      }
+    }
+    $responseTokenValues = @($responseFallback.ToArray())
+  }
   if ($responseTokenValues.Count -gt 0) {
     $avgResponseToken = [string]([int][math]::Round((($responseTokenValues | Measure-Object -Sum).Sum / [double]$responseTokenValues.Count), 0))
   }
 
   $avgSingleTaskToken = "N/A"
   $singleTaskTokenValues = @($taskTokens.ToArray())
+  if ($singleTaskTokenValues.Count -eq 0) {
+    $singleTaskFallback = [System.Collections.Generic.List[int]]::new()
+    foreach ($f in @($EvidenceFiles)) {
+      $raw = ""
+      try {
+        $raw = Get-Content -LiteralPath $f.FullName -Raw
+      } catch {
+        continue
+      }
+      $matches = [regex]::Matches($raw, "(?im)^\s*single_task_token\s*[:=]\s*([0-9]+)\s*$")
+      foreach ($m in @($matches)) {
+        if ($null -eq $m -or -not $m.Success) { continue }
+        $v = 0
+        if ([int]::TryParse([string]$m.Groups[1].Value, [ref]$v)) {
+          [void]$singleTaskFallback.Add($v)
+        }
+      }
+    }
+    $singleTaskTokenValues = @($singleTaskFallback.ToArray())
+  }
   if ($singleTaskTokenValues.Count -gt 0) {
     $avgSingleTaskToken = [string]([int][math]::Round((($singleTaskTokenValues | Measure-Object -Sum).Sum / [double]$singleTaskTokenValues.Count), 0))
   }
@@ -137,6 +204,8 @@ function Get-TokenQualitySnapshot {
     average_response_token = $avgResponseToken
     single_task_token = $avgSingleTaskToken
     token_per_effective_conclusion = $tokenPerEffectiveConclusion
+    response_token_sample_count = $responseTokenValues.Count
+    single_task_token_sample_count = $singleTaskTokenValues.Count
   }
 }
 
@@ -362,6 +431,8 @@ foreach ($repoRaw in $repos) {
     "average_response_token=$($tokenQuality.average_response_token)"
     "single_task_token=$($tokenQuality.single_task_token)"
     "token_per_effective_conclusion=$($tokenQuality.token_per_effective_conclusion)"
+    "response_token_sample_count=$($tokenQuality.response_token_sample_count)"
+    "single_task_token_sample_count=$($tokenQuality.single_task_token_sample_count)"
     "evidence_completeness_rate=$evidenceRate"
     "learning_loop_evidence_rate=$learningLoopRate"
     "waiver_active_count=$waiverActive"

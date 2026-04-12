@@ -299,6 +299,163 @@ function Validate-AntiFalsePositiveStatic {
   return @($errors)
 }
 
+function Get-StandaloneReleasePolicy {
+  param(
+    [Parameter(Mandatory = $true)]
+    [string]$KitRoot
+  )
+
+  $path = Join-Path $KitRoot "config\standalone-release-policy.json"
+  return Read-JsonFile -Path $path -DefaultValue $null -UseCache -DisplayName "standalone-release-policy.json"
+}
+
+function Get-StandaloneReleasePolicyForRepo {
+  param(
+    [object]$Policy,
+    [string]$RepoName
+  )
+
+  if ($null -eq $Policy) {
+    return $null
+  }
+
+  $defaultPolicy = if ($Policy.PSObject.Properties['default']) { $Policy.default } else { $null }
+  $repoOverride = $null
+  if ($Policy.PSObject.Properties['repos'] -and $Policy.repos -is [System.Array]) {
+    foreach ($entry in @($Policy.repos)) {
+      if ($null -eq $entry) { continue }
+      if ([string]$entry.repoName -eq [string]$RepoName) {
+        $repoOverride = $entry
+        break
+      }
+    }
+  }
+
+  if ($null -eq $defaultPolicy -and $null -eq $repoOverride) {
+    return $null
+  }
+  if ($null -eq $defaultPolicy) {
+    return $repoOverride
+  }
+  if ($null -eq $repoOverride) {
+    return $defaultPolicy
+  }
+
+  $merged = [ordered]@{}
+  foreach ($p in $defaultPolicy.PSObject.Properties) {
+    $merged[$p.Name] = $p.Value
+  }
+  foreach ($p in $repoOverride.PSObject.Properties) {
+    if ($p.Name -eq "repoName") { continue }
+    $merged[$p.Name] = $p.Value
+  }
+  return [pscustomobject]$merged
+}
+
+function Validate-StandaloneReleaseDependencies {
+  param(
+    [Parameter(Mandatory = $true)]
+    [object]$Profile,
+    [Parameter(Mandatory = $true)]
+    [string]$Repo,
+    [string]$RepoName,
+    [object]$StandalonePolicy
+  )
+
+  $errors = [System.Collections.Generic.List[string]]::new()
+  $warnings = [System.Collections.Generic.List[string]]::new()
+  $hits = [System.Collections.Generic.List[object]]::new()
+
+  if ($null -eq $StandalonePolicy) {
+    return [pscustomobject]@{
+      errors = @($errors)
+      warnings = @($warnings)
+      hits = @($hits)
+    }
+  }
+
+  $scanPaths = @()
+  if ($StandalonePolicy.PSObject.Properties['scan_paths'] -and $StandalonePolicy.scan_paths -is [System.Array]) {
+    $scanPaths = @($StandalonePolicy.scan_paths | ForEach-Object { [string]$_ } | Where-Object { -not [string]::IsNullOrWhiteSpace($_) })
+  }
+  if ($scanPaths.Count -eq 0) {
+    return [pscustomobject]@{
+      errors = @($errors)
+      warnings = @($warnings)
+      hits = @($hits)
+    }
+  }
+
+  $patterns = @()
+  if ($StandalonePolicy.PSObject.Properties['forbidden_path_patterns_regex'] -and $StandalonePolicy.forbidden_path_patterns_regex -is [System.Array]) {
+    $patterns = @($StandalonePolicy.forbidden_path_patterns_regex | ForEach-Object { [string]$_ } | Where-Object { -not [string]::IsNullOrWhiteSpace($_) })
+  }
+  if ($patterns.Count -eq 0) {
+    return [pscustomobject]@{
+      errors = @($errors)
+      warnings = @($warnings)
+      hits = @($hits)
+    }
+  }
+
+  foreach ($rel in $scanPaths) {
+    $path = Join-Path $Repo ($rel -replace '/', '\')
+    if (-not (Test-Path -LiteralPath $path -PathType Leaf)) { continue }
+
+    $text = ""
+    try {
+      $text = Get-Content -LiteralPath $path -Raw -Encoding UTF8
+    } catch {
+      continue
+    }
+
+    foreach ($pattern in $patterns) {
+      $m = [regex]::Match($text, $pattern)
+      if ($m.Success) {
+        $preview = [string]$m.Value
+        if ($preview.Length -gt 120) {
+          $preview = $preview.Substring(0, 120)
+        }
+        [void]$hits.Add([pscustomobject]@{
+          file = ($rel -replace '\\', '/')
+          pattern = $pattern
+          sample = $preview
+        })
+      }
+    }
+  }
+
+  if ($hits.Count -eq 0) {
+    return [pscustomobject]@{
+      errors = @($errors)
+      warnings = @($warnings)
+      hits = @($hits)
+    }
+  }
+
+  $repoLabel = if ([string]::IsNullOrWhiteSpace($RepoName)) { "unknown" } else { [string]$RepoName }
+  $enforceOnRelease = $true
+  if ($StandalonePolicy.PSObject.Properties['enforce_when_release_enabled']) {
+    $enforceOnRelease = [bool]$StandalonePolicy.enforce_when_release_enabled
+  }
+  $advisoryWhenDisabled = $true
+  if ($StandalonePolicy.PSObject.Properties['advisory_when_release_disabled']) {
+    $advisoryWhenDisabled = [bool]$StandalonePolicy.advisory_when_release_disabled
+  }
+
+  if ([bool]$Profile.release_enabled -and $enforceOnRelease) {
+    [void]$errors.Add("standalone release dependency violation: external absolute repo paths found (repo=$repoLabel, hits=$($hits.Count)); move dependency to optional collaboration contract or disable release_enabled")
+  } elseif (-not [bool]$Profile.release_enabled -and $advisoryWhenDisabled) {
+    [void]$warnings.Add("standalone release dependency advisory: external absolute repo paths found while release_enabled=false (repo=$repoLabel, hits=$($hits.Count))")
+  }
+
+  return [pscustomobject]@{
+    errors = @($errors)
+    warnings = @($warnings)
+    hits = @($hits)
+  }
+}
+
 function Validate-ReleaseProfileAgainstRepo {
   param(
     [Parameter(Mandatory = $true)]
@@ -401,12 +558,15 @@ $repoName = Split-Path -Leaf $repo
 $kitRoot = Split-Path -Parent $PSScriptRoot
 $distributionPolicy = Get-ReleaseDistributionPolicy -KitRoot $kitRoot
 $repoDistributionPolicy = Get-ReleaseDistributionPolicyForRepo -Policy $distributionPolicy -RepoName $repoName -FallbackToDefault
+$standalonePolicy = Get-StandaloneReleasePolicy -KitRoot $kitRoot
+$repoStandalonePolicy = Get-StandaloneReleasePolicyForRepo -Policy $standalonePolicy -RepoName $repoName
 $profilePath = Join-Path $repo ".governance\release-profile.json"
 
 $signals = @(Get-ReleaseSignals -Repo $repo)
 $hasSignals = $signals.Count -gt 0
 $profileExists = Test-Path -LiteralPath $profilePath
 $errors = [System.Collections.Generic.List[string]]::new()
+$warnings = [System.Collections.Generic.List[string]]::new()
 $status = "PASS"
 
 if ($hasSignals -and -not $profileExists) {
@@ -452,7 +612,23 @@ if ($profileExists) {
         [void]$errors.Add($err)
       }
     }
+    if ($errors.Count -eq 0) {
+      $standaloneCheck = Validate-StandaloneReleaseDependencies -Profile $profile -Repo $repo -RepoName $repoName -StandalonePolicy $repoStandalonePolicy
+      foreach ($err in @($standaloneCheck.errors)) {
+        $status = "FAIL"
+        [void]$errors.Add([string]$err)
+      }
+      foreach ($warn in @($standaloneCheck.warnings)) {
+        [void]$warnings.Add([string]$warn)
+      }
+      $standaloneHits = @($standaloneCheck.hits)
+    } else {
+      $standaloneHits = @()
+    }
   }
+}
+if ($null -eq $standaloneHits) {
+  $standaloneHits = @()
 }
 
 $result = [pscustomobject]@{
@@ -464,6 +640,8 @@ $result = [pscustomobject]@{
   release_signals = @($signals)
   status = $status
   errors = @($errors)
+  warnings = @($warnings)
+  standalone_dependency_hits = @($standaloneHits)
 }
 
 if ($AsJson) {
@@ -473,6 +651,9 @@ if ($AsJson) {
 
 if ($status -eq "PASS") {
   Write-Host "[PASS] release-profile repo=$repoName"
+  foreach ($warn in @($warnings)) {
+    Write-Host " - WARN: $warn"
+  }
   exit 0
 }
 
