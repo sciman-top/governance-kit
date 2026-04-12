@@ -4792,6 +4792,92 @@ description: Auto-promoted from repeated issue signature 'dup-family-20260412' (
     }
   }
 
+  it "promote-skill-candidates renames legacy truncated custom-auto directory to canonical name" {
+    $tmp = Join-Path $env:TEMP ("govkit-test-" + [guid]::NewGuid().ToString("N"))
+    try {
+      $repo = Join-Path $tmp "RepoA"
+      $skills = Join-Path $tmp "skills-root"
+      $legacyName = "custom-auto-pwsh-encoding-mojibake-l-a9b049cd"
+      $canonicalName = "custom-auto-pwsh-encoding-mojibake-loop-a9b049cd"
+      New-Item -ItemType Directory -Path (Join-Path $tmp "scripts\governance") -Force | Out-Null
+      New-Item -ItemType Directory -Path (Join-Path $tmp "config") -Force | Out-Null
+      New-Item -ItemType Directory -Path (Join-Path $tmp ".governance") -Force | Out-Null
+      New-Item -ItemType Directory -Path (Join-Path $tmp ".governance\skill-candidates") -Force | Out-Null
+      New-Item -ItemType Directory -Path (Join-Path $repo ".governance\skill-candidates") -Force | Out-Null
+      New-Item -ItemType Directory -Path (Join-Path $skills "overrides\$legacyName") -Force | Out-Null
+
+      Copy-Item -Path (Join-Path $repoRoot "scripts\governance\promote-skill-candidates.ps1") -Destination (Join-Path $tmp "scripts\governance\promote-skill-candidates.ps1") -Force
+
+      @(
+        ($repo -replace '\\','/')
+      ) | ConvertTo-Json | Set-Content -Path (Join-Path $tmp "config\repositories.json") -Encoding UTF8
+
+      @'
+{
+  "enabled": true,
+  "threshold_count": 99,
+  "window_days": 14,
+  "cooldown_days": 14,
+  "max_promotions_per_run": 3,
+  "event_relative_path": ".governance/skill-candidates/events.jsonl",
+  "registry_relative_path": ".governance/skill-candidates/promotion-registry.json",
+  "skills_root": "__SKILLS_ROOT__",
+  "overrides_relative_path": "overrides",
+  "auto_run_skills_manager_gates": false,
+  "require_user_ack": false,
+  "optimize_existing_without_ack": true,
+  "create_min_unique_repos": 1,
+  "optimize_min_new_variants": 1,
+  "require_trigger_eval_for_create": false
+}
+'@.Replace("__SKILLS_ROOT__", ($skills -replace '\\','/')) | Set-Content -Path (Join-Path $tmp ".governance\skill-promotion-policy.json") -Encoding UTF8
+
+      @'
+{
+  "schema_version": "2.0",
+  "registry_schema_version": 2,
+  "lifecycle_version": "1.0",
+  "promoted": [
+    {
+      "issue_signature": "pwsh-encoding-mojibake-loop-20260411",
+      "family_signature": "pwsh-encoding-mojibake-loop-20260411",
+      "skill_name": "custom-auto-pwsh-encoding-mojibake-l-a9b049cd",
+      "promoted_at": "2026-04-12T00:00:00+08:00",
+      "hit_count": 4,
+      "repos": ["RepoA"],
+      "signature_variants": ["pwsh-encoding-mojibake-loop-20260411-a"]
+    }
+  ]
+}
+'@ | Set-Content -Path (Join-Path $tmp ".governance\skill-candidates\promotion-registry.json") -Encoding UTF8
+
+      @'
+---
+name: custom-auto-pwsh-encoding-mojibake-l-a9b049cd
+description: Auto-promoted from repeated issue signature 'pwsh-encoding-mojibake-loop-20260411' (hits=4).
+---
+# Legacy naming skill
+'@ | Set-Content -Path (Join-Path $skills "overrides\$legacyName\SKILL.md") -Encoding UTF8
+
+      " " | Set-Content -Path (Join-Path $repo ".governance\skill-candidates\events.jsonl") -Encoding UTF8
+
+      $json = & powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $tmp "scripts\governance\promote-skill-candidates.ps1") -GovernanceRoot $tmp -AsJson
+      if ($LASTEXITCODE -ne 0) { throw "promote-skill-candidates.ps1 failed with exit code $LASTEXITCODE" }
+      $obj = $json | ConvertFrom-Json
+      [int]$obj.cleanup_renamed_count | should be 1
+      [int]$obj.cleanup_removed_count | should be 0
+      (Test-Path -LiteralPath (Join-Path $skills "overrides\$legacyName")) | should be $false
+      (Test-Path -LiteralPath (Join-Path $skills "overrides\$canonicalName")) | should be $true
+
+      $registry = Get-Content -Path (Join-Path $tmp ".governance\skill-candidates\promotion-registry.json") -Raw | ConvertFrom-Json
+      $entry = @($registry.promoted | Where-Object { [string]$_.issue_signature -eq "pwsh-encoding-mojibake-loop-20260411" }) | Select-Object -First 1
+      ($null -ne $entry) | should be $true
+      [string]$entry.skill_name | should be $canonicalName
+    } finally {
+      if (Test-Path $tmp) { Remove-Item -LiteralPath $tmp -Recurse -Force }
+    }
+  }
+
   it "promote-skill-candidates refreshes trigger eval summary before create when required" {
     $tmp = Join-Path $env:TEMP ("govkit-test-" + [guid]::NewGuid().ToString("N"))
     try {

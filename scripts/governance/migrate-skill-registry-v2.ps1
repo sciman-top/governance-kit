@@ -20,13 +20,37 @@ function Ensure-ParentDirectory([string]$PathText) {
   }
 }
 
-function ConvertTo-Slug([string]$Text) {
+function ConvertTo-Slug([string]$Text, [int]$MaxLength = 32) {
   if ([string]::IsNullOrWhiteSpace($Text)) { return "candidate" }
   $slug = ($Text.ToLowerInvariant() -replace '[^a-z0-9]+', '-').Trim('-')
   if ([string]::IsNullOrWhiteSpace($slug)) { return "candidate" }
-  if ($slug.Length -gt 24) { $slug = $slug.Substring(0, 24).Trim('-') }
+  if ($slug.Length -gt $MaxLength) {
+    $parts = @($slug -split '-' | Where-Object { -not [string]::IsNullOrWhiteSpace($_) })
+    $builder = ""
+    foreach ($part in $parts) {
+      $candidate = if ([string]::IsNullOrWhiteSpace($builder)) { $part } else { "$builder-$part" }
+      if ($candidate.Length -le $MaxLength) {
+        $builder = $candidate
+      } else {
+        break
+      }
+    }
+    if (-not [string]::IsNullOrWhiteSpace($builder)) {
+      $slug = $builder
+    } else {
+      $slug = $slug.Substring(0, $MaxLength).Trim('-')
+    }
+  }
   if ([string]::IsNullOrWhiteSpace($slug)) { return "candidate" }
   return $slug
+}
+
+function Get-SignatureSlugSeed([string]$Family) {
+  $seed = if ($null -eq $Family) { "" } else { $Family.Trim().ToLowerInvariant() }
+  if ([string]::IsNullOrWhiteSpace($seed)) { return "" }
+  $withoutDate = ($seed -replace '-\d{8}$', '').Trim('-')
+  if ([string]::IsNullOrWhiteSpace($withoutDate)) { return $seed }
+  return $withoutDate
 }
 
 function Get-SignatureHash8([string]$Text) {
@@ -55,7 +79,8 @@ function Get-SignatureFamily([string]$Signature, [string]$CollapsePattern = "^(.
 
 function Get-CanonicalSkillName([string]$Signature) {
   $family = Get-SignatureFamily -Signature $Signature
-  $slug = ConvertTo-Slug $family
+  $slugSeed = Get-SignatureSlugSeed $family
+  $slug = ConvertTo-Slug $slugSeed
   $hash8 = Get-SignatureHash8 $family
   return ("custom-auto-{0}-{1}" -f $slug, $hash8)
 }

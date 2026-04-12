@@ -20,13 +20,37 @@ function Ensure-ParentDirectory([string]$PathText) {
   }
 }
 
-function ConvertTo-Slug([string]$Text) {
+function ConvertTo-Slug([string]$Text, [int]$MaxLength = 32) {
   if ([string]::IsNullOrWhiteSpace($Text)) { return "candidate" }
   $slug = ($Text.ToLowerInvariant() -replace '[^a-z0-9]+', '-').Trim('-')
   if ([string]::IsNullOrWhiteSpace($slug)) { return "candidate" }
-  if ($slug.Length -gt 24) { $slug = $slug.Substring(0, 24).Trim('-') }
+  if ($slug.Length -gt $MaxLength) {
+    $parts = @($slug -split '-' | Where-Object { -not [string]::IsNullOrWhiteSpace($_) })
+    $builder = ""
+    foreach ($part in $parts) {
+      $candidate = if ([string]::IsNullOrWhiteSpace($builder)) { $part } else { "$builder-$part" }
+      if ($candidate.Length -le $MaxLength) {
+        $builder = $candidate
+      } else {
+        break
+      }
+    }
+    if (-not [string]::IsNullOrWhiteSpace($builder)) {
+      $slug = $builder
+    } else {
+      $slug = $slug.Substring(0, $MaxLength).Trim('-')
+    }
+  }
   if ([string]::IsNullOrWhiteSpace($slug)) { return "candidate" }
   return $slug
+}
+
+function Get-SignatureSlugSeed([string]$Family) {
+  $seed = if ($null -eq $Family) { "" } else { $Family.Trim().ToLowerInvariant() }
+  if ([string]::IsNullOrWhiteSpace($seed)) { return "" }
+  $withoutDate = ($seed -replace '-\d{8}$', '').Trim('-')
+  if ([string]::IsNullOrWhiteSpace($withoutDate)) { return $seed }
+  return $withoutDate
 }
 
 function New-UnicodeString([int[]]$CodePoints) {
@@ -50,7 +74,8 @@ function Get-SignatureHash8([string]$Text) {
 
 function Get-CanonicalSkillName([string]$Signature) {
   $family = Get-SignatureFamily -Signature $Signature
-  $slug = ConvertTo-Slug $family
+  $slugSeed = Get-SignatureSlugSeed $family
+  $slug = ConvertTo-Slug $slugSeed
   $hash8 = Get-SignatureHash8 $family
   return ("custom-auto-{0}-{1}" -f $slug, $hash8)
 }
@@ -937,6 +962,7 @@ foreach ($entry in @($registry.promoted)) {
 $registry = Merge-RegistryByFamily -Registry $registry -CollapsePattern $collapsePattern -ExcludePatterns $excludePatterns
 
 $cleanupRemoved = New-Object System.Collections.Generic.List[string]
+$cleanupRenamed = New-Object System.Collections.Generic.List[string]
 $registryFamilies = @{}
 foreach ($entry in @($registry.promoted)) {
   $registryFamilies[[string]$entry.issue_signature] = [string]$entry.skill_name
@@ -950,7 +976,18 @@ foreach ($dir in @(Get-ChildItem -LiteralPath $overridesRoot -Directory -ErrorAc
     if ($name -match "(?i)^custom-auto-autopilot-utf8-smoke") { $remove = $true }
   } else {
     $canonical = Get-CanonicalSkillName $skillFamily
-    if ($name -ne $canonical) { $remove = $true }
+    if ($name -ne $canonical) {
+      $canonicalPath = Join-Path $overridesRoot $canonical
+      if (-not (Test-Path -LiteralPath $canonicalPath -PathType Container)) {
+        Rename-Item -LiteralPath $dir.FullName -NewName $canonical -Force
+        $cleanupRenamed.Add((("{0} -> {1}") -f ($dir.FullName -replace '\\', '/'), ($canonicalPath -replace '\\', '/'))) | Out-Null
+        if ($registryFamilies.ContainsKey($skillFamily)) {
+          $registryFamilies[$skillFamily] = $canonical
+        }
+        continue
+      }
+      $remove = $true
+    }
     elseif ($registryFamilies.ContainsKey($skillFamily) -and $registryFamilies[$skillFamily] -ne $name) { $remove = $true }
   }
   if ($remove) {
@@ -999,6 +1036,7 @@ $result = [ordered]@{
   blocked_create_count = [int]$blockedCreateCount
   apply_without_ack_count = [int]$applyWithoutAckCount
   cleanup_removed_count = [int]$cleanupRemoved.Count
+  cleanup_renamed_count = [int]$cleanupRenamed.Count
   gates_ran = [bool]$gatesRan
   require_user_ack = [bool]$requireAck
   user_ack_satisfied = [bool]$ackSatisfied
@@ -1033,6 +1071,7 @@ $result = [ordered]@{
   decision_audit = @($decisionAudit.ToArray())
   planned_promotions = $plannedPromotions
   promoted = $promotedArray
+  cleanup_renamed = @($cleanupRenamed.ToArray())
   cleanup_removed = @($cleanupRemoved.ToArray())
 }
 
@@ -1048,6 +1087,7 @@ if ($AsJson) {
   Write-Host ("skill_promotion.created_count={0}" -f $createAppliedCount)
   Write-Host ("skill_promotion.optimized_count={0}" -f $optimizeAppliedCount)
   Write-Host ("skill_promotion.blocked_create_count={0}" -f $blockedCreateCount)
+  Write-Host ("skill_promotion.cleanup_renamed_count={0}" -f $cleanupRenamed.Count)
   Write-Host ("skill_promotion.cleanup_removed_count={0}" -f $cleanupRemoved.Count)
   Write-Host ("skill_promotion.gates_ran={0}" -f $gatesRan)
   foreach ($p in @($promotedItems)) {
@@ -1055,5 +1095,8 @@ if ($AsJson) {
   }
   foreach ($c in @($cleanupRemoved)) {
     Write-Host ("[CLEANUP] removed={0}" -f $c)
+  }
+  foreach ($r in @($cleanupRenamed)) {
+    Write-Host ("[CLEANUP] renamed={0}" -f $r)
   }
 }

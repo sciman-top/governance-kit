@@ -1,7 +1,7 @@
 ﻿{
     "version":  1,
     "tool":  "repo-governance-hub",
-    "updated_at":  "2026-04-12T22:56:24",
+    "updated_at":  "2026-04-13T02:10:04",
     "managed_count":  79,
     "managed_files":  [
                           {
@@ -197,12 +197,12 @@
                           {
                               "path":  "AGENTS.md",
                               "source":  "source/project/repo-governance-hub/AGENTS.md",
-                              "sha256":  "15C68CA414B9A732087E09BF68A7CE06A7D229EA7F4530221DF22A85913901B8"
+                              "sha256":  "50C0924BFC92D9756A97AACB7D7C1107D4EABB64CB36283655D3DC5BD3983F5F"
                           },
                           {
                               "path":  "CLAUDE.md",
                               "source":  "source/project/repo-governance-hub/CLAUDE.md",
-                              "sha256":  "DB8F48AB3415064977ED91F6C76E4D74AFDD1698494A36C368B4E0F3F564D928"
+                              "sha256":  "07476F36C31BED9EFE0D17E1B2ABD9958E73A97CF8335B2D27E41D395B9DBB9C"
                           },
                           {
                               "path":  "config/clarification-policy.json",
@@ -242,7 +242,7 @@
                           {
                               "path":  "GEMINI.md",
                               "source":  "source/project/repo-governance-hub/GEMINI.md",
-                              "sha256":  "BA58560CC7B1DF007D20D308891EF46B9EA02A3777C764753E25A89A81872753"
+                              "sha256":  "10C368CE4096213D284D3C631141C039A2886CBCF1AE8D1FC27671EFC03DF805"
                           },
                           {
                               "path":  "plugins/repo-governance-hub-internal/.codex-plugin/plugin.json",
@@ -327,12 +327,12 @@
                           {
                               "path":  "scripts/governance/migrate-skill-registry-v2.ps1",
                               "source":  "source/project/_common/custom/scripts/governance/migrate-skill-registry-v2.ps1",
-                              "sha256":  "C58FE7A12B5A663932DEDA0ACF51715258C7A8516F733929361CDB11B7977BDF"
+                              "sha256":  "89714EFBE23C0C8BC7A090D19EF14B33508B97E9DBD19BD6858A2777B77FC01B"
                           },
                           {
                               "path":  "scripts/governance/promote-skill-candidates.ps1",
                               "source":  "source/project/_common/custom/scripts/governance/promote-skill-candidates.ps1",
-                              "sha256":  "3C87A7C6CC401DDF9F73D9A8860F485C8A8AB8B04A54B27C6784EC63C0D765E7"
+                              "sha256":  "964F3503CB9DA5D3E15CFC3D299248F79AFB5B7724DD1A224FA1EAF4CCF9F432"
                           },
                           {
                               "path":  "scripts/governance/register-skill-candidate.ps1",
@@ -347,7 +347,7 @@
                           {
                               "path":  "scripts/governance/report-growth-readiness.ps1",
                               "source":  "source/project/_common/custom/scripts/governance/report-growth-readiness.ps1",
-                              "sha256":  "B3FF5F7F44CE7F3EBED38641ADC46082C8CF17E31220F1550C24A3EB8A970620"
+                              "sha256":  "E41DB373A15A8197C23F0087AE2285D9A083BD78511FA1BF885386904749733F"
                           },
                           {
                               "path":  "scripts/governance/run-monthly-policy-review.ps1",
@@ -367,7 +367,7 @@
                           {
                               "path":  "scripts/governance/run-skill-lifecycle-review.ps1",
                               "source":  "source/project/_common/custom/scripts/governance/run-skill-lifecycle-review.ps1",
-                              "sha256":  "887BED9F8FC7B6B80B69DE65384B76AA6D38DB2F74A30A4968D6A6ACF98DC303"
+                              "sha256":  "57CB256AE2D2CC296BD6479C185FBA4ED61CD00FEDFD109CA316080A2C55C5DF"
                           },
                           {
                               "path":  "scripts/governance/run-target-autopilot.ps1",
