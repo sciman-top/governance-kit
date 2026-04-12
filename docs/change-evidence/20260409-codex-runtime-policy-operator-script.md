@@ -20,3 +20,6 @@
 learning_points_3=Expose policy mutations through scripts to reduce manual JSON edits; keep tests close to policy resolver and operator path; add operator script to verify-kit mustExist to avoid silent drift
 reusable_checklist=operator script added + documented + verify-kit registered + regression tests + full gate pass + evidence
 open_questions=Whether to expose policy status in scripts/status.ps1 summary for quick observability
+decision_score=0.80
+hard_guard_hits=none
+reason_codes=trace_grading_backfill

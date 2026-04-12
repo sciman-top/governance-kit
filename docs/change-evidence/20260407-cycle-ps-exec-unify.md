@@ -20,3 +20,6 @@
 learning_points_3=统一真实执行入口可降低宿主shell差异; 重试命令字符串可保留为用户可读文本; 先小步替换再全门禁回归最稳妥
 reusable_checklist=替换 & powershell 为 $psExe 调用; 保留行为语义不变; 跑全链路门禁确认
 open_questions=是否将 retry_command 文本也统一为动态可执行前缀
+decision_score=0.80
+hard_guard_hits=none
+reason_codes=trace_grading_backfill

@@ -46,3 +46,6 @@ scope=repo-governance-hub + distributed target scripts
 ## Rollback
 - Revert the three entry scripts and remove `templates/clarification-context.template.json`.
 - Re-run `powershell -File scripts/install.ps1 -Mode safe` and `powershell -File scripts/doctor.ps1`.
+decision_score=0.80
+hard_guard_hits=none
+reason_codes=trace_grading_backfill

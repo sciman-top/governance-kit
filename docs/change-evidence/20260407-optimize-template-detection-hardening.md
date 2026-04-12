@@ -43,3 +43,6 @@
 - 模板识别规则应优先“容忍格式差异”，避免误跳过核心治理更新。
 - 子进程退出码在测试里可能掩盖真实执行态，关键路径更适合同进程调用。
 - 发现潜在失败被掩盖时，应先让失败可见，再做根因修复。
+decision_score=0.80
+hard_guard_hits=none
+reason_codes=trace_grading_backfill

@@ -47,3 +47,6 @@
 - install safe 分发
 - 四段硬门禁复验
 - 记录证据与回滚点
+decision_score=0.80
+hard_guard_hits=none
+reason_codes=trace_grading_backfill

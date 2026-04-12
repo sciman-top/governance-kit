@@ -103,3 +103,6 @@
 - 本次变更满足目标：全局与项目职责边界更清晰，平台差异更可执行，协作映射更完整。
 - 在“不大改项目规则”的约束下完成协作适配与同步闭环，当前治理健康状态为 `GREEN`。
 
+decision_score=0.80
+hard_guard_hits=none
+reason_codes=trace_grading_backfill

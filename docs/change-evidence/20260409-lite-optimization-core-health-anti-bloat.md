@@ -25,3 +25,6 @@
 learning_points_3=可观测增强应优先聚合而非堆叠字段; 反臃肿检查应默认非阻断并可策略启用; source 与目标脚本变更要同步回灌避免 verify 差异
 reusable_checklist=补可观测字段->更新 JSON 合约->补回归测试->同步 source/custom 回灌->全链路门禁
 open_questions=是否在 status 增加 trend(近N次 core_health)用于演进判断
+decision_score=0.80
+hard_guard_hits=none
+reason_codes=trace_grading_backfill

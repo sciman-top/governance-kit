@@ -32,3 +32,6 @@ clarification_answers=
 learning_points_3=repo-scoped PLANS 需要随仓内 phase 变化及时回灌; 缺少目标定义会使“是否达成”不可判定; refresh-targets 与 install 组合可以把映射修复与分发验证一次闭环
 reusable_checklist=定位 DIFF -> 对齐 repo-scoped source -> 注册 project-custom-files -> refresh-targets -> install safe -> verify + doctor -> 留证据
 open_questions=是否为 skills-manager 增加周期自动提醒，强制每周刷新 PLANS current phase
+decision_score=0.80
+hard_guard_hits=none
+reason_codes=trace_grading_backfill

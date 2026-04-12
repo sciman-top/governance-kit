@@ -89,3 +89,6 @@
 
 ## open_questions
 - 是否需要为各 AI 运行时增加统一 trigger 映射文档，明确新字段的消费优先级。
+decision_score=0.80
+hard_guard_hits=none
+reason_codes=trace_grading_backfill

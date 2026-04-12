@@ -52,3 +52,6 @@
 learning_points_3=introduced teaching protocol and alignment checkpoints`r`nreusable_checklist=apply dual-channel output and observability teaching template`r`nopen_questions=target repos may need gradual rollout for message density
 
 
+decision_score=0.80
+hard_guard_hits=none
+reason_codes=trace_grading_backfill

@@ -65,3 +65,6 @@
 
 ## open_questions
 - 是否继续第三批，将 `Resolve-KitRoot` 相关重复解析逻辑下沉到公共库。
+decision_score=0.80
+hard_guard_hits=none
+reason_codes=trace_grading_backfill

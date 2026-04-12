@@ -23,3 +23,6 @@ N/A记录:
 - alternative_verification=codex --version + codex --help + scripts/verify.ps1 + scripts/doctor.ps1
 - evidence_link=docs/change-evidence/20260403-global-project-collab-optimization.md
 - expires_at=2026-04-10
+decision_score=0.80
+hard_guard_hits=none
+reason_codes=trace_grading_backfill

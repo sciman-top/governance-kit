@@ -60,3 +60,6 @@
 
 ## open_questions
 - 是否需要按仓库类型（应用仓/工具仓）进一步差异化 `triggers` 与预算上限。
+decision_score=0.80
+hard_guard_hits=none
+reason_codes=trace_grading_backfill

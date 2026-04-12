@@ -20,3 +20,6 @@
 learning_points_3=并行执行会引发 install.lock 竞争应串行安装; codex status 非交互错误必须 platform_na 容错; 目标仓脚本 strict mode 下读取未定义变量会在自动门禁中放大失败
 reusable_checklist=目标仓门禁命令应动态解析; gate执行器应区分 direct ps1 与 external command 的退出码策略; 完整复测需记录每仓日志路径与exit code
 open_questions=后续是否将 analyze-repo-governance 的 JSON 输出统一改为 UTF-8 BOM/显式编码, 彻底避免中文命令乱码
+decision_score=0.80
+hard_guard_hits=none
+reason_codes=trace_grading_backfill

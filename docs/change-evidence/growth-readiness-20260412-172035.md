@@ -16,3 +16,6 @@ coverage=10/10
 ## repo-governance-hub
 status=PASS
 coverage=12/12
+decision_score=0.80
+hard_guard_hits=none
+reason_codes=trace_grading_backfill

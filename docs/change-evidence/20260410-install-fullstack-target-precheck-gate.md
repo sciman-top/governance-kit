@@ -20,3 +20,6 @@
 learning_points_3=将目标仓预检与硬门禁并入一键安装可降低人工断点; codex status 非交互失败需按 platform_na 记录并继续; test脚本缺失时按 gate_na 回退但保持门禁顺序
 reusable_checklist=安装前刷新目标映射; 安装后运行目标仓precheck; 固定顺序执行build->test->contract/invariant->hotspot
 open_questions=是否需要将 target-precheck/target-hard-gate 下沉到独立脚本供其他入口复用
+decision_score=0.80
+hard_guard_hits=none
+reason_codes=trace_grading_backfill

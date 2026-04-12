@@ -20,3 +20,6 @@
 learning_points_3=复用 common 子进程 helper 可减少重复错误处理; verify-kit 内部命令应统一失败语义; 小改动可用 build+contract+hotspot 快速复验
 reusable_checklist=替换 shell 调用后检查 exit-code 传播; 跑 verify-kit+verify+doctor; 确认 source-target 一致性
 open_questions=是否把 install.ps1 内部同类调用也逐步迁移到 helper
+decision_score=0.80
+hard_guard_hits=none
+reason_codes=trace_grading_backfill

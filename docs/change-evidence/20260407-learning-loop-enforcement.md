@@ -34,3 +34,6 @@
 learning_points_3=template+gate+metrics must change together`r`nreusable_checklist=add fields then enforce via verify-kit then measure via metrics`r`nopen_questions=alert threshold for learning_loop_evidence_rate still pending
 
 
+decision_score=0.80
+hard_guard_hits=none
+reason_codes=trace_grading_backfill

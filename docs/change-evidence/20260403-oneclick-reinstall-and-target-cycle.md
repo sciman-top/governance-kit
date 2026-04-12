@@ -28,3 +28,6 @@ gate_na:
 - alternative_verification: executed full mandatory gate chain in fixed order (build -> test -> contract/invariant -> hotspot)
 - evidence_link: this file + scripts/doctor.ps1 HEALTH=GREEN in current session
 - expires_at: 2026-06-30
+decision_score=0.80
+hard_guard_hits=none
+reason_codes=trace_grading_backfill

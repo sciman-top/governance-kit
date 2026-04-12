@@ -73,3 +73,6 @@
 
 ## open_questions
 - 是否要把“建议条数（2-3）”抽成可配置项（例如 `.governance/release-profile.json`）以便仓库级覆盖。
+decision_score=0.80
+hard_guard_hits=none
+reason_codes=trace_grading_backfill

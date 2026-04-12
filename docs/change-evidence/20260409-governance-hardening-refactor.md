@@ -204,3 +204,6 @@ expires_at=2026-05-09
 追加验证证据17=smoke 命令均 exit 0；optimization tests all pass(~104s)；verify-kit pass；Config validation passed repositories=3 targets=106 rolloutRepos=1；verify ok=106 fail=0；doctor HEALTH=GREEN
 追加风险等级17=低(行为不变，读取路径统一)
 追加回滚动作17=git checkout -- scripts/check-orphan-custom-sources.ps1 scripts/audit-governance-readiness.ps1 docs/change-evidence/20260409-governance-hardening-refactor.md
+decision_score=0.80
+hard_guard_hits=none
+reason_codes=trace_grading_backfill

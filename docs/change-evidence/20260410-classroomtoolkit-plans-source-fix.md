@@ -32,3 +32,6 @@ clarification_answers=
 learning_points_3=live 计划文档若允许仓级差异，必须在 source 中有对应 repo-scoped custom 源; verify 红灯先看 targets 映射再怀疑目标仓漂移; refresh-targets 与 verify 并行执行会读到旧 targets，复验必须顺序化
 reusable_checklist=定位 verify 唯一 DIFF -> 检查 targets/project-custom-files -> 新增 repo-scoped custom source -> refresh-targets -> verify/test/doctor 顺序复验 -> 记录回滚
 open_questions=是否需要把“repo-scoped custom files 优先于 _common”补充到 README 的 custom-file 说明里
+decision_score=0.80
+hard_guard_hits=none
+reason_codes=trace_grading_backfill

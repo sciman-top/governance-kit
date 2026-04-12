@@ -9,3 +9,6 @@
 回滚动作=git checkout -- scripts/install-full-stack.ps1 scripts/add-repo.ps1 scripts/backflow-project-rules.ps1 scripts/lib/common.ps1 config/project-custom-files.json scripts/verify-kit.ps1 tests/repo-governance-hub.optimization.tests.ps1 README.md source/project/_common/custom/scripts/governance/run-project-governance-cycle.ps1 source/project/_common/custom/scripts/governance/run-target-autopilot.ps1 docs/change-evidence/20260403-oneclick-fullstack-install-and-autopilot.md
 
 platform_na=reason: codex status 在非交互终端失败（stdin is not a terminal） | alternative_verification: 使用 codex --version 与 codex --help 补充平台能力验证 | evidence_link: docs/change-evidence/20260403-oneclick-fullstack-install-and-autopilot.md | expires_at: 2026-04-30
+decision_score=0.80
+hard_guard_hits=none
+reason_codes=trace_grading_backfill

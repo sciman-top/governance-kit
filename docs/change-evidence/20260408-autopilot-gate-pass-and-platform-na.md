@@ -43,3 +43,6 @@
 
 ## Rollback
 - No code mutation in this step; rollback is N/A.
+decision_score=0.80
+hard_guard_hits=none
+reason_codes=trace_grading_backfill

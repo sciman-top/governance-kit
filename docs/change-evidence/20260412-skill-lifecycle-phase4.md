@@ -40,3 +40,6 @@ issue_id=skill-lifecycle-phase4-20260412
 learning_points_3=1) lifecycle 执行器默认 plan，再按 evidence 切 safe 更稳健 2) Generic List 在 Windows PowerShell 迭代需要显式 ToArray 3) registry 字段需兼容缺省夹具（先补字段再赋值）
 reusable_checklist=lifecycle脚本->source同步->分发映射->刷新targets->测试->install全链路
 open_questions=是否在 recurring 周期中引入“仅告警不自动 safe”与“满足阈值后自动 safe”两档策略
+decision_score=0.80
+hard_guard_hits=none
+reason_codes=trace_grading_backfill

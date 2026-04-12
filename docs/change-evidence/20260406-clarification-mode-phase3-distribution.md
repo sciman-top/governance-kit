@@ -30,3 +30,6 @@ final_acceptance_examples=target repos run-target-autopilot accepts -IssueId in 
 数据变更治理(迁移/回填/回滚)=N/A
 回滚动作=
 - restore previous versions of run-project-governance-cycle.ps1 / run-target-autopilot.ps1 in source/project/_common/custom and target repos
+decision_score=0.80
+hard_guard_hits=none
+reason_codes=trace_grading_backfill

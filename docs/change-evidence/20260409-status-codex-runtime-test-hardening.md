@@ -20,3 +20,6 @@
 learning_points_3=Counter bug fixes should be followed by explicit assertions; fixture-based tests can validate new status fields without full environment; keep contract + behavior tests aligned
 reusable_checklist=test assertion added + regression run + contract run + gates + evidence
 open_questions=Should status tests include non-global codex mapping scenarios for multiple target repos
+decision_score=0.80
+hard_guard_hits=none
+reason_codes=trace_grading_backfill

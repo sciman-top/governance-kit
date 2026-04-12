@@ -50,3 +50,6 @@
 回滚动作=
 - git checkout -- scripts/status.ps1 scripts/rollout-status.ps1 scripts/doctor.ps1 scripts/lib/common.ps1 scripts/install.ps1 scripts/backflow-project-rules.ps1 scripts/restore.ps1 scripts/verify-kit.ps1 tests/repo-governance-hub.optimization.tests.ps1 README.md
 - git clean -f scripts/prune-backups.ps1 docs/change-evidence/20260402-observability-lock-retention.md
+decision_score=0.80
+hard_guard_hits=none
+reason_codes=trace_grading_backfill

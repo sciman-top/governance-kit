@@ -68,3 +68,6 @@
 
 ## open_questions
 - 是否需要为不同仓库设置不同 `cooldown_turns` 与 `max_total_suggestion_words_per_turn`（repo override）。
+decision_score=0.80
+hard_guard_hits=none
+reason_codes=trace_grading_backfill

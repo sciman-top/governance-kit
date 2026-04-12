@@ -28,3 +28,6 @@ clarification_mode=none
 learning_points_3=1) 跨仓门禁失败需先区分规则口径与实现阈值两层 2) `--threshold-ms` 不会覆盖指标专属阈值 3) 先改 source 再分发可避免目标仓漂移
 reusable_checklist=1) 先跑两仓门禁定位失败层 2) 判断 source of truth 并先修规则 3) 若仍失败再修目标仓根因代码 4) 重跑完整门禁链并留证据
 open_questions=是否将 build_agent 专属阈值改为配置项而非硬编码
+decision_score=0.80
+hard_guard_hits=none
+reason_codes=trace_grading_backfill

@@ -20,3 +20,6 @@
 learning_points_3=用 capture helper 可统一非零退出处理; refresh 流程可减少手工 LASTEXITCODE 分支; 小步改造后全链路复验能快速确认安全
 reusable_checklist=替换 direct powershell 调用; 观察输出解析是否受影响; 跑 build/test/contract/hotspot
 open_questions=是否将 backflow-project-rules 中建议命令字符串也统一到 helper 生成
+decision_score=0.80
+hard_guard_hits=none
+reason_codes=trace_grading_backfill

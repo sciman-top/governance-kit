@@ -24,3 +24,6 @@ issue_id=skill-promotion-family-merge-fix-20260411
 
 learning_points_3=1) 自动晋升应基于问题族而非原始签名 2) smoke 事件必须显式过滤 3) registry 不存在会导致重复再生成
 open_questions=是否将旧目录自动回收逻辑内建到 promote 脚本（当前仍为外层清理）
+decision_score=0.80
+hard_guard_hits=none
+reason_codes=trace_grading_backfill

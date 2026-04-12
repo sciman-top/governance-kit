@@ -23,3 +23,6 @@ issue_id=skill-promotion-dedup-hardening-20260411
 回滚动作=git -C E:/CODE/skills-manager checkout -- scripts/governance/promote-skill-candidates.ps1 .governance/skill-promotion-policy.json .governance/skill-candidates
 
 learning_points_3=1) 同类问题必须以 family 为主键 2) 自动创建必须伴随可见 summary 3) registry 缺失/分裂会放大重复创建风险
+decision_score=0.80
+hard_guard_hits=none
+reason_codes=trace_grading_backfill

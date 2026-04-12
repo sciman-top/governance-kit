@@ -21,3 +21,6 @@
 learning_points_3=最小闭环优先于一次性大而全系统; 触发器应优先复用现有周检/月检管道; 严格模式下数组返回必须防止单元素展开
 reusable_checklist=新增触发器配置->触发器脚本输出计数->周检/月检汇总透传->增加单测->同步 source/custom 分发源->install safe->全门禁
 open_questions=是否将 release_distribution_policy_drift 的推荐动作升级为自动生成修复补丁清单
+decision_score=0.80
+hard_guard_hits=none
+reason_codes=trace_grading_backfill

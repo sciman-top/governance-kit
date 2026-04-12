@@ -38,3 +38,6 @@
 回滚动作=
 - git checkout -- scripts/status.ps1 scripts/rollout-status.ps1 scripts/doctor.ps1 scripts/prune-backups.ps1 tests/repo-governance-hub.optimization.tests.ps1 README.md
 - git clean -f docs/change-evidence/20260402-schema-contract-prefix-retention.md
+decision_score=0.80
+hard_guard_hits=none
+reason_codes=trace_grading_backfill

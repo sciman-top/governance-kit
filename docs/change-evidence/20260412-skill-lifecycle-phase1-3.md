@@ -57,3 +57,6 @@ issue_id=skill-lifecycle-phase1-3-20260412
 learning_points_3=1) 去重主键必须使用 family 级别而不是 issue 级别 2) create 决策前必须联合 registry+overrides 双源判定 3) 周期告警策略要支持“默认保守、按策略升级”
 reusable_checklist=迁移脚本->策略字段->分发映射->测试->build/test/contract/hotspot
 open_questions=是否将 skill_trigger_eval_summary_stale 在 observe 窗口结束后默认切换 enabled=true（建议结合近30天样本量阈值）
+decision_score=0.80
+hard_guard_hits=none
+reason_codes=trace_grading_backfill

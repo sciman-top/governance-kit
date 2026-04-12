@@ -20,3 +20,6 @@
 learning_points_3=verify 内部子调用统一后异常语义更一致; try/catch 保留原 fail-counter 行为; 不改输出口径可降低测试波动
 reusable_checklist=替换调用后保留计数逻辑; 跑全链路; 重点看 verify/doctor 输出
 open_questions=是否将 verify-kit 内 remaining external command probes 全部迁移到 common helper
+decision_score=0.80
+hard_guard_hits=none
+reason_codes=trace_grading_backfill

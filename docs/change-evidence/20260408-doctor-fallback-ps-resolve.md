@@ -20,3 +20,6 @@
 learning_points_3=即使 fallback 分支也应避免硬编码 powershell; helper 缺失场景仍需保持执行兼容; 小步改动后跑全链路能最快发现行为漂移
 reusable_checklist=修改 fallback 分支时验证 common 存在/缺失两路径语义; 跑 build/test/contract/hotspot; 补变更证据
 open_questions=是否为 fallback 场景新增专门测试用例覆盖 Get-Process 解析失败分支
+decision_score=0.80
+hard_guard_hits=none
+reason_codes=trace_grading_backfill

@@ -31,3 +31,6 @@ final_acceptance_examples=second failure triggers clarification_required=true
 - remove config/clarification-policy.json
 - revert scripts/governance/track-issue-state.ps1 and run-target-autopilot integration
 - revert validate-config/doctor/template field additions
+decision_score=0.80
+hard_guard_hits=none
+reason_codes=trace_grading_backfill

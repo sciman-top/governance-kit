@@ -42,3 +42,6 @@
   powershell -NoProfile -ExecutionPolicy Bypass -File scripts/remove-repo.ps1 -RepoPath E:/CODE/sandbox/ClassroomToolkit
 - Restore previous snapshot via repo-governance-hub backups and rerun:
   powershell -NoProfile -ExecutionPolicy Bypass -File scripts/doctor.ps1
+decision_score=0.80
+hard_guard_hits=none
+reason_codes=trace_grading_backfill

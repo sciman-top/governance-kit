@@ -20,3 +20,6 @@
 learning_points_3=统一子进程入口减少 pwsh/powershell 差异; 分发脚本改动必须同步 source+target; verify DIFF 是最早阻断信号
 reusable_checklist=改脚本后先同步 _common/custom 与外部目标仓; 按 build->test->contract->hotspot 复验; 失败先修 source-of-truth 再重跑
 open_questions=是否将 Resolve-KitRoot 进一步抽成可分发共享模块(需先定义 bootstrap 顺序)
+decision_score=0.80
+hard_guard_hits=none
+reason_codes=trace_grading_backfill

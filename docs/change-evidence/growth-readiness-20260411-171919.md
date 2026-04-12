@@ -19,3 +19,6 @@ coverage=9/9
 status=PASS
 readiness_score=100
 coverage=11/11
+decision_score=0.80
+hard_guard_hits=none
+reason_codes=trace_grading_backfill

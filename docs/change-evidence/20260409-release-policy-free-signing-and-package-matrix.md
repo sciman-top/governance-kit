@@ -25,3 +25,6 @@
 learning_points_3=发布策略应拆分形态维度避免单字段过载; 免费约束需要脚本级硬校验而非仅文档约定; suggest 与 verify 必须配套测试避免策略漂移
 reusable_checklist=模板加字段->suggest生成->verify强校验->profile回灌->安装分发->coverage+全门禁
 open_questions=是否后续增加“free-signing mode allowlist”（如 sigstore-keyless/self-signed）的细化枚举
+decision_score=0.80
+hard_guard_hits=none
+reason_codes=trace_grading_backfill

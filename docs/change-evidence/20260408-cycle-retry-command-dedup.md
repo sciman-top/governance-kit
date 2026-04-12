@@ -37,3 +37,6 @@
 
 ## Rollback
 - Revert `scripts/run-project-governance-cycle.ps1` to previous revision if needed.
+decision_score=0.80
+hard_guard_hits=none
+reason_codes=trace_grading_backfill

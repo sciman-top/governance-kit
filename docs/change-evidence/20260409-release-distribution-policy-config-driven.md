@@ -30,3 +30,6 @@ platform_na.expires_at=2026-05-09
 learning_points_3=发布约束必须配置化避免脚本分叉; 建议器与校验器必须同源读取同一策略; 新增必需配置要同步升级测试夹具
 reusable_checklist=新增策略文件->verify-kit存在性->validate-config结构校验->suggest读取策略->verify强一致性->测试夹具最小策略->全门禁
 open_questions=是否后续增加 per-repo 的 artifact matrix（例如 win-x64/linux-x64）作为同一策略文件扩展字段
+decision_score=0.80
+hard_guard_hits=none
+reason_codes=trace_grading_backfill

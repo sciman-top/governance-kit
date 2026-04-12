@@ -20,3 +20,6 @@
 learning_points_3=复用子脚本 helper 可减少重复 exit-code 分支; post-gate 链路应保持统一失败语义; full-cycle 子调用应与普通调用一致
 reusable_checklist=替换 powershell -File 为 Invoke-ChildScript; 保留步骤顺序; 执行完整门禁链复验
 open_questions=是否将 install-full-stack.ps1 采用同一风格统一
+decision_score=0.80
+hard_guard_hits=none
+reason_codes=trace_grading_backfill

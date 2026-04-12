@@ -31,3 +31,6 @@ clarification_answers=
 learning_points_3=分发策略脚本必须覆盖“新增条目”路径测试; policy 开关与 install 流程联动可以实现低风险渐进 rollout; 目标仓分发成功要用文件存在性+门禁双证据确认
 reusable_checklist=修脚本缺陷 -> 补测试 -> 开关策略 -> 执行 install safe -> 验证三仓文件存在 -> 全链路门禁 -> 记录证据
 open_questions=是否把 codex-runtime-policy 的 repoName 列表同步暴露到 README 的运维片段
+decision_score=0.80
+hard_guard_hits=none
+reason_codes=trace_grading_backfill

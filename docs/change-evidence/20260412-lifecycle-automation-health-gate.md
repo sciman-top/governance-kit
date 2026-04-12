@@ -26,3 +26,4 @@ policy_path=.governance/skill-lifecycle-health-policy.json
 learning_points_3=1) 生命周期闭环必须有健康分层而非只做动作脚本; 2) 退休延迟是质量与成本共同约束; 3) verify+recurring 双接入可避免漏检
 reusable_checklist=定义阈值->实现检查->接入门禁->接入周检->回归测试->证据留痕
 open_questions=是否将 lifecycle health 指标纳入 monthly review 的固定图表
+reason_codes=trace_grading_backfill

@@ -32,3 +32,6 @@
 回滚动作=
 - git checkout -- scripts/install.ps1 tests/repo-governance-hub.optimization.tests.ps1
 - 或使用 backups/backflow-20260402-004916/ClassroomToolkit/ 对规则源回滚
+decision_score=0.80
+hard_guard_hits=none
+reason_codes=trace_grading_backfill

@@ -15,3 +15,6 @@ gate_na.reason=N/A
 gate_na.alternative_verification=N/A
 gate_na.evidence_link=docs/change-evidence/20260404-release-profile-v1-and-doctor-coverage.md
 gate_na.expires_at=N/A
+decision_score=0.80
+hard_guard_hits=none
+reason_codes=trace_grading_backfill

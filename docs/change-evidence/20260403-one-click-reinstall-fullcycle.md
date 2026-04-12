@@ -20,3 +20,6 @@
 附加N/A记录:
 - platform_na: codex status 在非交互终端失败（stdin is not a terminal）；替代证据为 codex --version/codex --help 与脚本执行日志；expires_at=2026-04-10
 - gate_na: quick gate 脚本在本仓定义为缺失（N/A）且未改变硬门禁顺序；证据见 analyze/doctor 输出；expires_at=2026-04-10
+decision_score=0.80
+hard_guard_hits=none
+reason_codes=trace_grading_backfill

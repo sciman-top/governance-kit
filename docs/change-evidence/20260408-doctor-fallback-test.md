@@ -20,3 +20,6 @@
 learning_points_3=fallback 路径需有专门测试覆盖; 仅主路径测试不足以防回归; 增加测试后仍需全门禁验证
 reusable_checklist=新增 fallback 测试夹具; 保持最小依赖脚本集合; 跑 build/test/contract/hotspot
 open_questions=是否为 other fallback paths (e.g. no git env) 增加同类测试
+decision_score=0.80
+hard_guard_hits=none
+reason_codes=trace_grading_backfill

@@ -20,3 +20,6 @@
 learning_points_3=失败计数应配套最小可操作日志; helper 调用统一风格可降低维护歧义; 诊断增强同样需要全门禁验证
 reusable_checklist=改异常处理时保留退出语义; 增加失败日志不改门禁判定; 跑完整 build/test/contract/hotspot
 open_questions=是否把 tracked-files 失败信息同时写入结构化 failure context JSON
+decision_score=0.80
+hard_guard_hits=none
+reason_codes=trace_grading_backfill

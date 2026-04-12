@@ -46,3 +46,6 @@ N/A=
 回滚动作=
 - 使用 `powershell -File scripts/restore.ps1` 恢复对应时间戳备份目录。
 - 或基于 git 仅回退本次变更文件：scripts/run-project-governance-cycle.ps1、tests/repo-governance-hub.optimization.tests.ps1、docs/change-evidence/20260403-autocommit-preflight-guard-and-redistribute.md。
+decision_score=0.80
+hard_guard_hits=none
+reason_codes=trace_grading_backfill

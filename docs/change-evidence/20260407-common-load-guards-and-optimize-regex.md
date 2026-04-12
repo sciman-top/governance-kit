@@ -52,3 +52,6 @@
 - 关键入口脚本应对共享依赖做显式前置校验，故障更可诊断。
 - 模板识别应偏向语义鲁棒，避免“格式差异=逻辑跳过”。
 - 发现隐藏失败后，先让失败稳定复现，再做最小修复闭环。
+decision_score=0.80
+hard_guard_hits=none
+reason_codes=trace_grading_backfill

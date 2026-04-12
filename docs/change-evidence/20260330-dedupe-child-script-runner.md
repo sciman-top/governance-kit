@@ -71,3 +71,6 @@
    - `powershell -NoProfile -ExecutionPolicy Bypass -File scripts/validate-config.ps1` => pass
    - `powershell -NoProfile -ExecutionPolicy Bypass -File scripts/verify.ps1` => pass
 4. hotspot: `powershell -NoProfile -ExecutionPolicy Bypass -File scripts/doctor.ps1` => `HEALTH=GREEN`
+decision_score=0.80
+hard_guard_hits=none
+reason_codes=trace_grading_backfill

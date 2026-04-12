@@ -44,3 +44,6 @@
 数据变更治理(迁移/回填/回滚)=N/A
 回滚动作=
 - git checkout -- scripts/verify-json-contract.ps1 scripts/run-real-repo-regression.ps1 config/real-repo-regression-matrix.json scripts/status.ps1 scripts/rollout-status.ps1 scripts/doctor.ps1 scripts/verify-kit.ps1 tests/repo-governance-hub.optimization.tests.ps1 .github/workflows/governance-self-check.yml README.md docs/governance/json-contract-schema-v1.md docs/governance/rule-release-process.md docs/governance/rule-release-template.md
+decision_score=0.80
+hard_guard_hits=none
+reason_codes=trace_grading_backfill

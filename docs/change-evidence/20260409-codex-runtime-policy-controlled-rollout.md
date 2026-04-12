@@ -20,3 +20,6 @@
 learning_points_3=Add policy-controlled optional files through common resolver to reuse existing target refresh pipeline; keep default disabled to avoid accidental cross-repo runtime pollution; maintain verify-kit mustExist for newly introduced policy and template assets
 reusable_checklist=policy file + source templates + parser integration + config validation + mapping refresh + install + full gates + evidence
 open_questions=Whether to expose codex-runtime-policy toggles via a dedicated CLI helper script (set-codex-runtime-policy.ps1)
+decision_score=0.80
+hard_guard_hits=none
+reason_codes=trace_grading_backfill

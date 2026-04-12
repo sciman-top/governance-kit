@@ -1,7 +1,7 @@
 ﻿{
     "schema_version":  "1.0",
     "status":  "ok",
-    "generated_at":  "2026-04-12T21:05:14.0784345+08:00",
+    "generated_at":  "2026-04-12T22:24:06.9420948+08:00",
     "repo_root":  "E:/CODE/repo-governance-hub",
     "input_path":  "E:/CODE/repo-governance-hub/.governance/skill-candidates/trigger-eval-runs.jsonl",
     "output_path":  "E:/CODE/repo-governance-hub/.governance/skill-candidates/trigger-eval-summary.json",
@@ -10,13 +10,20 @@
     "grouped_query_count":  60,
     "train_query_count":  20,
     "validation_query_count":  40,
+    "standard_validation_query_count":  40,
+    "adversarial_validation_query_count":  0,
     "train_pass_rate":  1,
     "validation_pass_rate":  1,
+    "standard_validation_pass_rate":  1,
+    "adversarial_validation_pass_rate":  null,
     "train_false_trigger_rate":  0,
     "validation_false_trigger_rate":  0,
+    "standard_validation_false_trigger_rate":  0,
+    "adversarial_validation_false_trigger_rate":  null,
     "query_results":  [
                           {
                               "split":  "train",
+                              "eval_type":  "standard",
                               "query":  "update documentation punctuation cleanup 1",
                               "should_trigger":  false,
                               "run_count":  1,
@@ -27,6 +34,7 @@
                           },
                           {
                               "split":  "train",
+                              "eval_type":  "standard",
                               "query":  "update documentation punctuation cleanup 10",
                               "should_trigger":  false,
                               "run_count":  1,
@@ -37,6 +45,7 @@
                           },
                           {
                               "split":  "train",
+                              "eval_type":  "standard",
                               "query":  "update documentation punctuation cleanup 2",
                               "should_trigger":  false,
                               "run_count":  1,
@@ -47,6 +56,7 @@
                           },
                           {
                               "split":  "train",
+                              "eval_type":  "standard",
                               "query":  "update documentation punctuation cleanup 3",
                               "should_trigger":  false,
                               "run_count":  1,
@@ -57,6 +67,7 @@
                           },
                           {
                               "split":  "train",
+                              "eval_type":  "standard",
                               "query":  "update documentation punctuation cleanup 4",
                               "should_trigger":  false,
                               "run_count":  1,
@@ -67,6 +78,7 @@
                           },
                           {
                               "split":  "train",
+                              "eval_type":  "standard",
                               "query":  "update documentation punctuation cleanup 5",
                               "should_trigger":  false,
                               "run_count":  1,
@@ -77,6 +89,7 @@
                           },
                           {
                               "split":  "train",
+                              "eval_type":  "standard",
                               "query":  "update documentation punctuation cleanup 6",
                               "should_trigger":  false,
                               "run_count":  1,
@@ -87,6 +100,7 @@
                           },
                           {
                               "split":  "train",
+                              "eval_type":  "standard",
                               "query":  "update documentation punctuation cleanup 7",
                               "should_trigger":  false,
                               "run_count":  1,
@@ -97,6 +111,7 @@
                           },
                           {
                               "split":  "train",
+                              "eval_type":  "standard",
                               "query":  "update documentation punctuation cleanup 8",
                               "should_trigger":  false,
                               "run_count":  1,
@@ -107,6 +122,7 @@
                           },
                           {
                               "split":  "train",
+                              "eval_type":  "standard",
                               "query":  "update documentation punctuation cleanup 9",
                               "should_trigger":  false,
                               "run_count":  1,
@@ -117,6 +133,7 @@
                           },
                           {
                               "split":  "train",
+                              "eval_type":  "standard",
                               "query":  "powershell chinese output garbled reproduction 1",
                               "should_trigger":  true,
                               "run_count":  1,
@@ -127,6 +144,7 @@
                           },
                           {
                               "split":  "train",
+                              "eval_type":  "standard",
                               "query":  "powershell chinese output garbled reproduction 10",
                               "should_trigger":  true,
                               "run_count":  1,
@@ -137,6 +155,7 @@
                           },
                           {
                               "split":  "train",
+                              "eval_type":  "standard",
                               "query":  "powershell chinese output garbled reproduction 2",
                               "should_trigger":  true,
                               "run_count":  1,
@@ -147,6 +166,7 @@
                           },
                           {
                               "split":  "train",
+                              "eval_type":  "standard",
                               "query":  "powershell chinese output garbled reproduction 3",
                               "should_trigger":  true,
                               "run_count":  1,
@@ -157,6 +177,7 @@
                           },
                           {
                               "split":  "train",
+                              "eval_type":  "standard",
                               "query":  "powershell chinese output garbled reproduction 4",
                               "should_trigger":  true,
                               "run_count":  1,
@@ -167,6 +188,7 @@
                           },
                           {
                               "split":  "train",
+                              "eval_type":  "standard",
                               "query":  "powershell chinese output garbled reproduction 5",
                               "should_trigger":  true,
                               "run_count":  1,
@@ -177,6 +199,7 @@
                           },
                           {
                               "split":  "train",
+                              "eval_type":  "standard",
                               "query":  "powershell chinese output garbled reproduction 6",
                               "should_trigger":  true,
                               "run_count":  1,
@@ -187,6 +210,7 @@
                           },
                           {
                               "split":  "train",
+                              "eval_type":  "standard",
                               "query":  "powershell chinese output garbled reproduction 7",
                               "should_trigger":  true,
                               "run_count":  1,
@@ -197,6 +221,7 @@
                           },
                           {
                               "split":  "train",
+                              "eval_type":  "standard",
                               "query":  "powershell chinese output garbled reproduction 8",
                               "should_trigger":  true,
                               "run_count":  1,
@@ -207,6 +232,7 @@
                           },
                           {
                               "split":  "train",
+                              "eval_type":  "standard",
                               "query":  "powershell chinese output garbled reproduction 9",
                               "should_trigger":  true,
                               "run_count":  1,
@@ -217,6 +243,7 @@
                           },
                           {
                               "split":  "validation",
+                              "eval_type":  "standard",
                               "query":  "refactor markdown heading wording only case 1",
                               "should_trigger":  false,
                               "run_count":  1,
@@ -227,6 +254,7 @@
                           },
                           {
                               "split":  "validation",
+                              "eval_type":  "standard",
                               "query":  "refactor markdown heading wording only case 10",
                               "should_trigger":  false,
                               "run_count":  1,
@@ -237,6 +265,7 @@
                           },
                           {
                               "split":  "validation",
+                              "eval_type":  "standard",
                               "query":  "refactor markdown heading wording only case 11",
                               "should_trigger":  false,
                               "run_count":  1,
@@ -247,6 +276,7 @@
                           },
                           {
                               "split":  "validation",
+                              "eval_type":  "standard",
                               "query":  "refactor markdown heading wording only case 12",
                               "should_trigger":  false,
                               "run_count":  1,
@@ -257,6 +287,7 @@
                           },
                           {
                               "split":  "validation",
+                              "eval_type":  "standard",
                               "query":  "refactor markdown heading wording only case 13",
                               "should_trigger":  false,
                               "run_count":  1,
@@ -267,6 +298,7 @@
                           },
                           {
                               "split":  "validation",
+                              "eval_type":  "standard",
                               "query":  "refactor markdown heading wording only case 14",
                               "should_trigger":  false,
                               "run_count":  1,
@@ -277,6 +309,7 @@
                           },
                           {
                               "split":  "validation",
+                              "eval_type":  "standard",
                               "query":  "refactor markdown heading wording only case 15",
                               "should_trigger":  false,
                               "run_count":  1,
@@ -287,6 +320,7 @@
                           },
                           {
                               "split":  "validation",
+                              "eval_type":  "standard",
                               "query":  "refactor markdown heading wording only case 16",
                               "should_trigger":  false,
                               "run_count":  1,
@@ -297,6 +331,7 @@
                           },
                           {
                               "split":  "validation",
+                              "eval_type":  "standard",
                               "query":  "refactor markdown heading wording only case 17",
                               "should_trigger":  false,
                               "run_count":  1,
@@ -307,6 +342,7 @@
                           },
                           {
                               "split":  "validation",
+                              "eval_type":  "standard",
                               "query":  "refactor markdown heading wording only case 18",
                               "should_trigger":  false,
                               "run_count":  1,
@@ -317,6 +353,7 @@
                           },
                           {
                               "split":  "validation",
+                              "eval_type":  "standard",
                               "query":  "refactor markdown heading wording only case 19",
                               "should_trigger":  false,
                               "run_count":  1,
@@ -327,6 +364,7 @@
                           },
                           {
                               "split":  "validation",
+                              "eval_type":  "standard",
                               "query":  "refactor markdown heading wording only case 2",
                               "should_trigger":  false,
                               "run_count":  1,
@@ -337,6 +375,7 @@
                           },
                           {
                               "split":  "validation",
+                              "eval_type":  "standard",
                               "query":  "refactor markdown heading wording only case 20",
                               "should_trigger":  false,
                               "run_count":  1,
@@ -347,6 +386,7 @@
                           },
                           {
                               "split":  "validation",
+                              "eval_type":  "standard",
                               "query":  "refactor markdown heading wording only case 3",
                               "should_trigger":  false,
                               "run_count":  1,
@@ -357,6 +397,7 @@
                           },
                           {
                               "split":  "validation",
+                              "eval_type":  "standard",
                               "query":  "refactor markdown heading wording only case 4",
                               "should_trigger":  false,
                               "run_count":  1,
@@ -367,6 +408,7 @@
                           },
                           {
                               "split":  "validation",
+                              "eval_type":  "standard",
                               "query":  "refactor markdown heading wording only case 5",
                               "should_trigger":  false,
                               "run_count":  1,
@@ -377,6 +419,7 @@
                           },
                           {
                               "split":  "validation",
+                              "eval_type":  "standard",
                               "query":  "refactor markdown heading wording only case 6",
                               "should_trigger":  false,
                               "run_count":  1,
@@ -387,6 +430,7 @@
                           },
                           {
                               "split":  "validation",
+                              "eval_type":  "standard",
                               "query":  "refactor markdown heading wording only case 7",
                               "should_trigger":  false,
                               "run_count":  1,
@@ -397,6 +441,7 @@
                           },
                           {
                               "split":  "validation",
+                              "eval_type":  "standard",
                               "query":  "refactor markdown heading wording only case 8",
                               "should_trigger":  false,
                               "run_count":  1,
@@ -407,6 +452,7 @@
                           },
                           {
                               "split":  "validation",
+                              "eval_type":  "standard",
                               "query":  "refactor markdown heading wording only case 9",
                               "should_trigger":  false,
                               "run_count":  1,
@@ -417,6 +463,7 @@
                           },
                           {
                               "split":  "validation",
+                              "eval_type":  "standard",
                               "query":  "windows powershell utf8 mojibake loop case 1",
                               "should_trigger":  true,
                               "run_count":  1,
@@ -427,6 +474,7 @@
                           },
                           {
                               "split":  "validation",
+                              "eval_type":  "standard",
                               "query":  "windows powershell utf8 mojibake loop case 10",
                               "should_trigger":  true,
                               "run_count":  1,
@@ -437,6 +485,7 @@
                           },
                           {
                               "split":  "validation",
+                              "eval_type":  "standard",
                               "query":  "windows powershell utf8 mojibake loop case 11",
                               "should_trigger":  true,
                               "run_count":  1,
@@ -447,6 +496,7 @@
                           },
                           {
                               "split":  "validation",
+                              "eval_type":  "standard",
                               "query":  "windows powershell utf8 mojibake loop case 12",
                               "should_trigger":  true,
                               "run_count":  1,
@@ -457,6 +507,7 @@
                           },
                           {
                               "split":  "validation",
+                              "eval_type":  "standard",
                               "query":  "windows powershell utf8 mojibake loop case 13",
                               "should_trigger":  true,
                               "run_count":  1,
@@ -467,6 +518,7 @@
                           },
                           {
                               "split":  "validation",
+                              "eval_type":  "standard",
                               "query":  "windows powershell utf8 mojibake loop case 14",
                               "should_trigger":  true,
                               "run_count":  1,
@@ -477,6 +529,7 @@
                           },
                           {
                               "split":  "validation",
+                              "eval_type":  "standard",
                               "query":  "windows powershell utf8 mojibake loop case 15",
                               "should_trigger":  true,
                               "run_count":  1,
@@ -487,6 +540,7 @@
                           },
                           {
                               "split":  "validation",
+                              "eval_type":  "standard",
                               "query":  "windows powershell utf8 mojibake loop case 16",
                               "should_trigger":  true,
                               "run_count":  1,
@@ -497,6 +551,7 @@
                           },
                           {
                               "split":  "validation",
+                              "eval_type":  "standard",
                               "query":  "windows powershell utf8 mojibake loop case 17",
                               "should_trigger":  true,
                               "run_count":  1,
@@ -507,6 +562,7 @@
                           },
                           {
                               "split":  "validation",
+                              "eval_type":  "standard",
                               "query":  "windows powershell utf8 mojibake loop case 18",
                               "should_trigger":  true,
                               "run_count":  1,
@@ -517,6 +573,7 @@
                           },
                           {
                               "split":  "validation",
+                              "eval_type":  "standard",
                               "query":  "windows powershell utf8 mojibake loop case 19",
                               "should_trigger":  true,
                               "run_count":  1,
@@ -527,6 +584,7 @@
                           },
                           {
                               "split":  "validation",
+                              "eval_type":  "standard",
                               "query":  "windows powershell utf8 mojibake loop case 2",
                               "should_trigger":  true,
                               "run_count":  1,
@@ -537,6 +595,7 @@
                           },
                           {
                               "split":  "validation",
+                              "eval_type":  "standard",
                               "query":  "windows powershell utf8 mojibake loop case 20",
                               "should_trigger":  true,
                               "run_count":  1,
@@ -547,6 +606,7 @@
                           },
                           {
                               "split":  "validation",
+                              "eval_type":  "standard",
                               "query":  "windows powershell utf8 mojibake loop case 3",
                               "should_trigger":  true,
                               "run_count":  1,
@@ -557,6 +617,7 @@
                           },
                           {
                               "split":  "validation",
+                              "eval_type":  "standard",
                               "query":  "windows powershell utf8 mojibake loop case 4",
                               "should_trigger":  true,
                               "run_count":  1,
@@ -567,6 +628,7 @@
                           },
                           {
                               "split":  "validation",
+                              "eval_type":  "standard",
                               "query":  "windows powershell utf8 mojibake loop case 5",
                               "should_trigger":  true,
                               "run_count":  1,
@@ -577,6 +639,7 @@
                           },
                           {
                               "split":  "validation",
+                              "eval_type":  "standard",
                               "query":  "windows powershell utf8 mojibake loop case 6",
                               "should_trigger":  true,
                               "run_count":  1,
@@ -587,6 +650,7 @@
                           },
                           {
                               "split":  "validation",
+                              "eval_type":  "standard",
                               "query":  "windows powershell utf8 mojibake loop case 7",
                               "should_trigger":  true,
                               "run_count":  1,
@@ -597,6 +661,7 @@
                           },
                           {
                               "split":  "validation",
+                              "eval_type":  "standard",
                               "query":  "windows powershell utf8 mojibake loop case 8",
                               "should_trigger":  true,
                               "run_count":  1,
@@ -607,6 +672,7 @@
                           },
                           {
                               "split":  "validation",
+                              "eval_type":  "standard",
                               "query":  "windows powershell utf8 mojibake loop case 9",
                               "should_trigger":  true,
                               "run_count":  1,

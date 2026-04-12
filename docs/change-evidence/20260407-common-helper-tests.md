@@ -33,3 +33,6 @@
 - 公共函数抽取后，应同步补最小行为测试以防回归。
 - 日志执行器类函数可通过“文件存在 + 内容匹配”进行稳定验证。
 - 先补测试再继续下一批重构，能降低后续改造风险。
+decision_score=0.80
+hard_guard_hits=none
+reason_codes=trace_grading_backfill

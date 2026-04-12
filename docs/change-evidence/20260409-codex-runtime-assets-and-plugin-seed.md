@@ -20,3 +20,6 @@
 learning_points_3=Distribute repo-scope .agents and plugin skeleton first; keep .codex optional to avoid tracked-files-policy conflict; preserve repo-specific override path for live PLANS.md
 reusable_checklist=Added assets in _common/custom + registered in project-custom-files + refreshed targets + install safe + full gates + evidence
 open_questions=When to enable .codex artifact distribution by policy profile rather than manual opt-in
+decision_score=0.80
+hard_guard_hits=none
+reason_codes=trace_grading_backfill

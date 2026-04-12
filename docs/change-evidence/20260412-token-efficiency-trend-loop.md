@@ -26,3 +26,4 @@ policy_path=.governance/token-efficiency-trend-policy.json
 learning_points_3=1) 效率优化必须趋势化而非单次快照; 2) 缺指标时先保留观测而非误阻断; 3) 策略阈值应与质量指标联动调整
 reusable_checklist=定义趋势策略->实现采样与判定->接入verify/recurring->落历史文件->周检复核
 open_questions=何时将 block_on_insufficient_history 从 false 切换到 true
+reason_codes=trace_grading_backfill

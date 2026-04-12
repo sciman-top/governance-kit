@@ -20,3 +20,6 @@
 learning_points_3=命名参数统一降低误读和误传参风险; bootstrap 与主链路应保持一致调用风格; 小步语义等价改动可快速累计收益
 reusable_checklist=统一 helper 调用风格; 不改步骤顺序; 运行 build/test/contract/hotspot
 open_questions=是否增加脚本风格检查防止新增位置参数调用
+decision_score=0.80
+hard_guard_hits=none
+reason_codes=trace_grading_backfill

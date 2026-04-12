@@ -30,3 +30,6 @@ final_acceptance_examples=run-project-governance-cycle emits CLARIFICATION_REQUI
 回滚动作=
 - revert source/global and source/template clarification protocol sections
 - revert issue-tracker integration in scripts/governance/run-project-governance-cycle.ps1 and scripts/run-project-governance-cycle.ps1
+decision_score=0.80
+hard_guard_hits=none
+reason_codes=trace_grading_backfill

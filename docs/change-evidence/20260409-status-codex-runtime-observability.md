@@ -20,3 +20,6 @@
 learning_points_3=Expose policy state in status to reduce hidden config drift; update contract verifier whenever status schema expands; keep fixture stubs synchronized with schema expectations
 reusable_checklist=status enhancement + contract update + tests + full gates + evidence
 open_questions=Whether to add codex_runtime counters into monthly review summary automatically
+decision_score=0.80
+hard_guard_hits=none
+reason_codes=trace_grading_backfill

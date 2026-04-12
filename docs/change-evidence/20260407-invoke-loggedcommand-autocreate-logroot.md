@@ -29,3 +29,6 @@
 - 公共执行器应默认容错目录准备，减少调用方负担。
 - 增强公共函数后应立即补“负路径/边界”测试。
 - 每批改动后全门禁复验可以及时发现分发链或契约回归。
+decision_score=0.80
+hard_guard_hits=none
+reason_codes=trace_grading_backfill

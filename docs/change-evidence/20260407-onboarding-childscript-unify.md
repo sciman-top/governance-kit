@@ -20,3 +20,6 @@
 learning_points_3=onboarding 链路统一子脚本调用可减少重复异常分支; evidence/backfill/endstate-loop 可保持同一执行语义; full-stack 脚本无需重复手写 exit code 检查
 reusable_checklist=替换 & powershell 为 Invoke-ChildScript; 保持参数顺序; 全门禁复验
 open_questions=是否将 register-review-task 的 powershell 启动参数也抽成通用生成函数
+decision_score=0.80
+hard_guard_hits=none
+reason_codes=trace_grading_backfill

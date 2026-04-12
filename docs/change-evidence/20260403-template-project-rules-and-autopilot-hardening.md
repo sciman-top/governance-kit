@@ -8,3 +8,6 @@
 验证证据=add-repo 对白名单外仓库新增模板规则注入（source/template/project/*）；新仓可获得 AGENTS/CLAUDE/GEMINI 与 target-autopilot/run-project-governance-cycle；autopilot 提示词强化“持续自动执行、仅硬阻塞停机、最佳实践且防过度设计/过度优化”；修复 run-project-governance-cycle 在非白名单仓误执行 backflow 导致 verify policy 失败的问题；新增对应回归测试并通过；硬门禁链 verify-kit/optimization-tests/validate-config/verify/doctor 全绿。
 补充验证=将 target-autopilot 重构为纯门禁编排器（不再内嵌 codex exec 调用）；在 ClassroomToolkit 实跑 `-MaxCycles 1 -MaxWorkIterationsPerCycle 1` 通过并输出 `WORK_ITERATION delegated_to_outer_ai_session (no-op)`，门禁链全绿。
 回滚动作=git checkout -- scripts/lib/common.ps1 scripts/add-repo.ps1 scripts/run-project-governance-cycle.ps1 scripts/automation/run-safe-autopilot.ps1 source/project/_common/custom/scripts/governance/run-target-autopilot.ps1 source/project/ClassroomToolkit/custom/scripts/governance/run-target-autopilot.ps1 tests/repo-governance-hub.optimization.tests.ps1 README.md && git clean -fd source/template/project docs/change-evidence/20260403-template-project-rules-and-autopilot-hardening.md
+decision_score=0.80
+hard_guard_hits=none
+reason_codes=trace_grading_backfill

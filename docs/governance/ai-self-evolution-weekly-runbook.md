@@ -3,6 +3,7 @@
 ## Purpose
 - Execute weekly governance cycles for safe and efficient AI self-evolution.
 - Keep all actions auditable and rollbackable.
+- Keep execution deterministic under `direct_fix` mode unless clarification trigger conditions are hit.
 
 ## Cadence
 - Weekly cycle day: Every Friday (local timezone `Asia/Shanghai`).
@@ -32,6 +33,15 @@ powershell -NoProfile -ExecutionPolicy Bypass -File scripts/governance/check-ski
 - Failure handling
   - If no data: block create-path promotion and regenerate runs.
 
+### Step 1.5: Trace Grading Snapshot
+- Run
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts/governance/report-growth-readiness.ps1 -RepoRoot . -AsJson
+```
+- Check
+  - decision evidence includes `decision_score`, `hard_guard_hits`, `reason_codes`
+  - recent failures are linked to taxonomy signatures
+
 ### Step 2: Recurring Review
 - Run
 ```powershell
@@ -41,6 +51,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File scripts/governance/run-recur
   - update trigger alerts
   - waiver expiry warnings
   - rollout overdue warnings
+  - trigger eval freshness and pass/fail drift
 
 ### Step 3: Hard Gate Chain (Fixed Order)
 - Build
@@ -73,11 +84,22 @@ powershell -NoProfile -ExecutionPolicy Bypass -File scripts/governance/run-skill
   - create-path gate status
   - promoted count
   - stale/retire candidates
+  - adversarial threshold and regression guard status
 
 ### Step 5: Evidence and Metrics Update
 - Update change evidence with required fields:
   - `issue_id`, `attempt_count`, `clarification_mode`, `decision_score`, `hard_guard_hits`, `rollback_trigger`.
 - Update monthly metrics placeholders if week crosses month boundary.
+
+### Step 6: Auto-Rollback Trigger Scan
+- Trigger rollback path when any condition holds
+  - `validation_pass_rate` drops below policy threshold
+  - `unsafe_action_count > 0`
+  - hard gate chain fails after a promotion action
+- Run rollback drill when rollback path is entered
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts/governance/run-rollback-drill.ps1 -RepoRoot . -AsJson
+```
 
 ## Incident Paths
 
@@ -102,6 +124,8 @@ powershell -NoProfile -ExecutionPolicy Bypass -File scripts/governance/run-skill
 - [ ] No unresolved blocker alerts.
 - [ ] Evidence file complete and linked.
 - [ ] Next-week top 3 priorities selected.
+- [ ] Trace grading sample updated.
+- [ ] Auto-rollback trigger scan completed.
 
 ## Monthly Add-on
 - Run

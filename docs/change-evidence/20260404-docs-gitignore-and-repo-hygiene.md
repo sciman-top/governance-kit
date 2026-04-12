@@ -96,3 +96,6 @@
 
 - `git restore README.md README.en.md CONTRIBUTING.md SECURITY.md .gitignore docs/change-evidence/20260404-docs-gitignore-and-repo-hygiene.md`
 - `git rm -r --cached -- backups` 的回滚方式：`git restore --staged backups`
+decision_score=0.80
+hard_guard_hits=none
+reason_codes=trace_grading_backfill

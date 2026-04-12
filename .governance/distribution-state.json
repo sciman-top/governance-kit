@@ -1,8 +1,8 @@
 ﻿{
     "version":  1,
     "tool":  "repo-governance-hub",
-    "updated_at":  "2026-04-12T21:00:55",
-    "managed_count":  75,
+    "updated_at":  "2026-04-12T22:56:24",
+    "managed_count":  79,
     "managed_files":  [
                           {
                               "path":  ".agents/plugins/marketplace.json",
@@ -57,7 +57,12 @@
                           {
                               "path":  ".governance/anti-bloat-policy.json",
                               "source":  "source/project/_common/custom/.governance/anti-bloat-policy.json",
-                              "sha256":  "98C241A78553CA23B4950A1F77696454403F48EADB80A794CE786AD1BDE6F383"
+                              "sha256":  "E05B48151C052BE8E3D9D5F5276448B9949A447FC4A868E97B96B9EDBD3BAD11"
+                          },
+                          {
+                              "path":  ".governance/auto-rollback-trigger-policy.json",
+                              "source":  "source/project/_common/custom/.governance/auto-rollback-trigger-policy.json",
+                              "sha256":  "66DD2E7125C8D8A393F9275F790CFD201C799750EAD9F437C80789F7E95CC529"
                           },
                           {
                               "path":  ".governance/external-baseline-policy.json",
@@ -132,12 +137,12 @@
                           {
                               "path":  ".governance/skill-lifecycle-policy.json",
                               "source":  "source/project/_common/custom/.governance/skill-lifecycle-policy.json",
-                              "sha256":  "97A19D45D3DCE2C5A51FD71BC1DC71659793BD6EF33FBAD3526A7E229B4D7CF2"
+                              "sha256":  "732A39FACBFF702FE6188E88041CB7DC0FBCB9822752DD7F9DD934592D3C65C4"
                           },
                           {
                               "path":  ".governance/skill-promotion-policy.json",
                               "source":  "source/project/_common/custom/.governance/skill-promotion-policy.json",
-                              "sha256":  "67C0DBF9290D6FD239CBB50683AF7CB9B99307EDCC6EC7FC5332C5C368B30E26"
+                              "sha256":  "1E7474978C0BD92C80731CA1450089387702D2F8211C2CF098A5F0B7920A9751"
                           },
                           {
                               "path":  ".governance/subagent-trigger-policy.json",
@@ -178,6 +183,11 @@
                               "path":  ".governance/token-saver-policy.json",
                               "source":  "source/project/_common/custom/.governance/token-saver-policy.json",
                               "sha256":  "B8C079D8A69ED74B36B2BA1262DA1C86AC594590A591382D44D6E21EB61600E7"
+                          },
+                          {
+                              "path":  ".governance/trace-grading-policy.json",
+                              "source":  "source/project/_common/custom/.governance/trace-grading-policy.json",
+                              "sha256":  "330A8287BDAC162476C8247CA543290A5CF2D11E3E6C0882F1D994DC413B9D8E"
                           },
                           {
                               "path":  ".governance/tracked-files-policy.json",
@@ -255,9 +265,14 @@
                               "sha256":  "EFF4EC74A4994EAD009A78E840E962D20FE37317AFA481A7989C7489D8D322FD"
                           },
                           {
+                              "path":  "scripts/governance/backfill-trace-grading-fields.ps1",
+                              "source":  "source/project/_common/custom/scripts/governance/backfill-trace-grading-fields.ps1",
+                              "sha256":  "83EF1CAB8A210D5A2C726CF21C2568A15EE5DDC93873FB47BB9706AEE5478D9B"
+                          },
+                          {
                               "path":  "scripts/governance/check-anti-bloat-budgets.ps1",
                               "source":  "source/project/_common/custom/scripts/governance/check-anti-bloat-budgets.ps1",
-                              "sha256":  "4538405FE0C6849A56256A9326AC88F3A9B4E069D6E2D4EF5558FE84DF00CD7E"
+                              "sha256":  "1FFA8DCE28986ADFD3C92E58632AE3748DEBEB648CF3622DEB8D7CFEEBFDF9C3"
                           },
                           {
                               "path":  "scripts/governance/check-external-baselines.ps1",
@@ -277,7 +292,7 @@
                           {
                               "path":  "scripts/governance/check-skill-trigger-evals.ps1",
                               "source":  "source/project/_common/custom/scripts/governance/check-skill-trigger-evals.ps1",
-                              "sha256":  "1BDC3C148DEF3A06E7B3D49A0057DB0AE795CD59D7365FA9C9FAFAD91FAE6046"
+                              "sha256":  "EF80870C62429306671D5B74A9F91DD4F356B86DA90CB03868D7BF101F731ABE"
                           },
                           {
                               "path":  "scripts/governance/check-token-balance.ps1",
@@ -288,6 +303,11 @@
                               "path":  "scripts/governance/check-token-efficiency-trend.ps1",
                               "source":  "source/project/repo-governance-hub/custom/scripts/governance/check-token-efficiency-trend.ps1",
                               "sha256":  "D73949700B45014610DFA82CF82117F1DB281F17B754D7CF9940DC361FDC8347"
+                          },
+                          {
+                              "path":  "scripts/governance/check-trace-grading-readiness.ps1",
+                              "source":  "source/project/_common/custom/scripts/governance/check-trace-grading-readiness.ps1",
+                              "sha256":  "AEF5790E37386E709211D256042DEF9DEE28744A54730421722FB973F8E0AF90"
                           },
                           {
                               "path":  "scripts/governance/check-tracked-files.ps1",
@@ -312,7 +332,7 @@
                           {
                               "path":  "scripts/governance/promote-skill-candidates.ps1",
                               "source":  "source/project/_common/custom/scripts/governance/promote-skill-candidates.ps1",
-                              "sha256":  "10B530077E999E38590C5CB8156FE58A9F4507088979101597A0C1F65648188A"
+                              "sha256":  "3C87A7C6CC401DDF9F73D9A8860F485C8A8AB8B04A54B27C6784EC63C0D765E7"
                           },
                           {
                               "path":  "scripts/governance/register-skill-candidate.ps1",
@@ -342,12 +362,12 @@
                           {
                               "path":  "scripts/governance/run-recurring-review.ps1",
                               "source":  "source/project/repo-governance-hub/custom/scripts/governance/run-recurring-review.ps1",
-                              "sha256":  "546400D30A9F1DD24C61429461180FACC39E2A812D473D58E3C3736B8FC0EFA2"
+                              "sha256":  "1A94E9AB72C6553177E014BBD6637A1BFD2689EE00995A0AC1A226F85AB33BD1"
                           },
                           {
                               "path":  "scripts/governance/run-skill-lifecycle-review.ps1",
                               "source":  "source/project/_common/custom/scripts/governance/run-skill-lifecycle-review.ps1",
-                              "sha256":  "EDD58956C6C85A54719322923683AA1DEAC2AE771E160D01864AD8D07FF38CF7"
+                              "sha256":  "887BED9F8FC7B6B80B69DE65384B76AA6D38DB2F74A30A4968D6A6ACF98DC303"
                           },
                           {
                               "path":  "scripts/governance/run-target-autopilot.ps1",

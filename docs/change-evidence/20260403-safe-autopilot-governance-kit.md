@@ -9,3 +9,6 @@
 回滚动作=git checkout -- scripts/automation/run-safe-autopilot.ps1 docs/change-evidence/20260403-safe-autopilot-repo-governance-hub.md
 
 platform_na=reason: codex status 在非交互终端失败（stdin is not a terminal） | alternative_verification: 使用 codex --version 与 codex --help 补充平台能力验证 | evidence_link: docs/change-evidence/20260403-safe-autopilot-repo-governance-hub.md | expires_at: 2026-04-30
+decision_score=0.80
+hard_guard_hits=none
+reason_codes=trace_grading_backfill

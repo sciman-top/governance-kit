@@ -8,3 +8,6 @@
 执行命令=Get-Command powershell;Test-Path scripts/{verify-kit.ps1,validate-config.ps1,verify.ps1,doctor.ps1};powershell -File scripts/verify-kit.ps1;powershell -File tests/repo-governance-hub.optimization.tests.ps1;powershell -File scripts/validate-config.ps1;powershell -File scripts/verify.ps1;powershell -File scripts/install.ps1 -Mode safe;powershell -File scripts/verify.ps1;powershell -File scripts/doctor.ps1
 验证证据=verify-kit PASS; optimization tests PASS（新增策略分支与failure-context校验用例通过）；validate-config PASS（repositories=3 targets=31 rolloutRepos=1）；verify PASS(ok=31 fail=0)；doctor HEALTH=GREEN
 回滚动作=git checkout -- scripts/lib/common.ps1 scripts/run-project-governance-cycle.ps1 scripts/validate-config.ps1 scripts/verify-kit.ps1 scripts/install-full-stack.ps1 scripts/automation/run-safe-autopilot.ps1 config/project-rule-policy.json README.md tests/repo-governance-hub.optimization.tests.ps1 docs/governance/agent-remediation-contract.md && git clean -fd scripts/validate-failure-context.ps1 docs/governance/oneclick-target-state-matrix.md docs/change-evidence/20260403-oneclick-targetstate-policy-and-failure-contract.md
+decision_score=0.80
+hard_guard_hits=none
+reason_codes=trace_grading_backfill

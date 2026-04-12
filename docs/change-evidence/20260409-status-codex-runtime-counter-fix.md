@@ -20,3 +20,6 @@
 learning_points_3=Avoid regex over-escaping in PowerShell string patterns; validate counters with direct spot-check commands; keep lightweight post-fix verification path
 reusable_checklist=bugfix + command verification + contract verification + gates + evidence
 open_questions=Need dedicated status test for codex_target_mappings non-zero scenario
+decision_score=0.80
+hard_guard_hits=none
+reason_codes=trace_grading_backfill

@@ -33,3 +33,6 @@
 - 公共依赖加载失败应尽早以明确错误暴露，避免后续隐式异常。
 - 命令捕获类函数的失败断言需允许跨环境差异（非 0 语义优先于固定数值）。
 - 先补测试再演进公共函数，可显著降低回归概率。
+decision_score=0.80
+hard_guard_hits=none
+reason_codes=trace_grading_backfill

@@ -20,3 +20,6 @@
 learning_points_3=命名参数可降低脚本参数顺序误用风险; 语义等价重构也需要全门禁回归; Step-OrFail 路径保持不变可降低行为漂移
 reusable_checklist=统一 helper 调用写法; 保持 retry 文本不变; 运行 build/test/contract/hotspot
 open_questions=是否将所有 helper 调用统一到命名参数风格并加静态检查
+decision_score=0.80
+hard_guard_hits=none
+reason_codes=trace_grading_backfill

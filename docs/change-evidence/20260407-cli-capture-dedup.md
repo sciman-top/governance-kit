@@ -63,3 +63,6 @@
 
 ## open_questions
 - 是否在下一批将 `Resolve-KitRoot`/`Invoke-LoggedCommand` 族统一到共享库。
+decision_score=0.80
+hard_guard_hits=none
+reason_codes=trace_grading_backfill

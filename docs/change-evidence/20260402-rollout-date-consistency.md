@@ -28,3 +28,6 @@
 数据变更治理(迁移/回填/回滚)=N/A
 回滚动作=
 - git checkout -- scripts/status.ps1 scripts/rollout-status.ps1 tests/repo-governance-hub.optimization.tests.ps1
+decision_score=0.80
+hard_guard_hits=none
+reason_codes=trace_grading_backfill

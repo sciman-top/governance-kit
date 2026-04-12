@@ -60,3 +60,6 @@
 
 ## Notes
 - 该改动将“是否创建新技能”的决策从隐式变为显式动作，且把用户确认边界只绑定到 `create`，避免优化链路被不必要阻断。
+decision_score=0.80
+hard_guard_hits=none
+reason_codes=trace_grading_backfill

@@ -22,3 +22,6 @@ status=PASS
 readiness_score=80
 coverage=10/10
 advisory=README.md missing Quick Start section
+decision_score=0.80
+hard_guard_hits=none
+reason_codes=trace_grading_backfill

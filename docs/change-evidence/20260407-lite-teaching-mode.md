@@ -17,3 +17,6 @@
 learning_points_3=lite档位要有固定短答模板，避免教学冗长;分级展开可在不丢信息前提下控token;术语去重能显著降低重复成本
 reusable_checklist=默认lite三行输出;高风险再升级standard/deep;里程碑对齐用单句模板
 open_questions=是否需要把token阈值数值化到配置文件（如project-rule-policy.json）
+decision_score=0.80
+hard_guard_hits=none
+reason_codes=trace_grading_backfill

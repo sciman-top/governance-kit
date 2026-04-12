@@ -22,3 +22,6 @@ platform_na:
 - alternative_verification: codex --version and codex --help succeeded; governance script behavior verified by hard gates
 - evidence_link: this file + terminal logs in current session
 - expires_at: 2026-06-30
+decision_score=0.80
+hard_guard_hits=none
+reason_codes=trace_grading_backfill

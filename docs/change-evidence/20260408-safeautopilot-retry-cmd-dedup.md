@@ -20,3 +20,6 @@
 learning_points_3=失败上下文命令模板应集中管理; 文本重复是演进风险源; 等价重构后需验证 failure-context 结构未漂移
 reusable_checklist=提取重复命令模板函数; 保持返回文本兼容; 跑完整门禁
 open_questions=是否将其它脚本中的 retry command 文本也迁移到统一 helper
+decision_score=0.80
+hard_guard_hits=none
+reason_codes=trace_grading_backfill

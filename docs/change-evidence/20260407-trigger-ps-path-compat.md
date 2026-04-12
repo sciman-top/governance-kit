@@ -20,3 +20,6 @@
 learning_points_3=跨仓复用脚本不能强依赖本仓 helper; 先跨仓冒烟再跑本仓门禁可更快发现兼容问题; source 与目标仓必须同步更新避免 verify DIFF
 reusable_checklist=改 governance 分发脚本后执行 target smoke; 同步 repo-governance-hub/custom 与 _common/custom; 再跑 build->test->contract->hotspot
 open_questions=是否在 _common 脚本层引入稳定的轻量 helper 包以替代各脚本 fallback 逻辑
+decision_score=0.80
+hard_guard_hits=none
+reason_codes=trace_grading_backfill

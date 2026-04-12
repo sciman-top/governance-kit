@@ -22,3 +22,6 @@ status=PASS
 readiness_score=85
 coverage=12/12
 advisory=README.md missing demo/examples/screenshots trial signal
+decision_score=0.80
+hard_guard_hits=none
+reason_codes=trace_grading_backfill

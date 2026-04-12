@@ -16,3 +16,6 @@
 发布后验证(指标/阈值/窗口)=立即窗口；阈值 verify fail=0 + doctor HEALTH=GREEN
 数据变更治理(迁移/回填/回滚)=无配置结构变更；仅行为约束增强（最终 clean-checkpoint）
 回滚动作=1) git revert 本次提交 2) 或使用 backups/20260403-224210/ 恢复目标仓规则文件
+decision_score=0.80
+hard_guard_hits=none
+reason_codes=trace_grading_backfill

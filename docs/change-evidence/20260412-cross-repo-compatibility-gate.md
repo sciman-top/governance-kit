@@ -26,3 +26,4 @@ policy_path=.governance/cross-repo-compatibility-policy.json
 learning_points_3=1) 分发门禁需要显式通过信号而不是口头约定; 2) 跨仓问题应在分发前暴露而非上线后回滚; 3) 兼容规则必须可配置可升级
 reusable_checklist=定义兼容策略->实现检查脚本->写信号文件->接入verify/recurring->测试失败分支
 open_questions=是否在下一阶段加入跨仓 contract 快照差异比对
+reason_codes=trace_grading_backfill

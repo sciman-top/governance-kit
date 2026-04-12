@@ -20,3 +20,6 @@
 learning_points_3=命名参数有助于后续维护和审阅; 等价重构仍需全门禁验证; onboarding 链路与主链路应保持一致调用风格
 reusable_checklist=统一 helper 调用风格; 保持步骤顺序不变; 跑 build/test/contract/hotspot
 open_questions=是否把 install-full-stack 中所有 Step Action 的调用也统一加显式 ScriptArgs 空数组
+decision_score=0.80
+hard_guard_hits=none
+reason_codes=trace_grading_backfill

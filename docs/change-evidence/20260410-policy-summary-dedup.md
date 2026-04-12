@@ -20,3 +20,6 @@
 learning_points_3=重复日志格式应优先下沉 common helper; 低风险去重也必须跑完整硬门禁; policy 输出统一可降低后续维护误差
 reusable_checklist=识别重复输出 -> 提炼 common helper -> 逐脚本替换 -> 跑 build/test/contract/hotspot -> 留证据
 open_questions=是否把 autopilot 的 policy 输出也统一迁移到同一 helper
+decision_score=0.80
+hard_guard_hits=none
+reason_codes=trace_grading_backfill

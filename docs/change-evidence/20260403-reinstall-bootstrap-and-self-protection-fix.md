@@ -45,3 +45,6 @@ N/A=
 回滚动作=
 - git checkout -- scripts/bootstrap-repo.ps1 tests/repo-governance-hub.optimization.tests.ps1 .gitignore source/project/ClassroomToolkit/AGENTS.md source/project/ClassroomToolkit/CLAUDE.md source/project/ClassroomToolkit/GEMINI.md source/project/skills-manager/AGENTS.md source/project/skills-manager/CLAUDE.md source/project/skills-manager/GEMINI.md source/project/repo-governance-hub/AGENTS.md source/project/repo-governance-hub/CLAUDE.md source/project/repo-governance-hub/GEMINI.md config/targets.json
 - git clean -fd docs/change-evidence/20260403-reinstall-bootstrap-and-self-protection-fix.md
+decision_score=0.80
+hard_guard_hits=none
+reason_codes=trace_grading_backfill

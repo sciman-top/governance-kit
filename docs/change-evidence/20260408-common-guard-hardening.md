@@ -20,3 +20,6 @@
 learning_points_3=主链路脚本应在启动阶段尽早失败并给清晰原因; dot-source 前显式检查能减少排障时间; 防线类改动也必须全门禁回归
 reusable_checklist=识别主链路脚本; 添加 Test-Path -LiteralPath -PathType Leaf 校验; 跑 build/test/contract/hotspot
 open_questions=是否将同类 guard 扩展到其余工具脚本（collect/merge/remove 等）
+decision_score=0.80
+hard_guard_hits=none
+reason_codes=trace_grading_backfill
