@@ -129,12 +129,13 @@
   - 已解除跨仓数据阻断：`skills-manager` 侧 `trigger-eval summary` 已由 `no_data` 修复为 `ok`。
   - 当前 `create/promote` 返回健康空结果（`eligible_signature_count=0`），原因为无新增可晋升增量，不属于流程阻断。
   - 证据：`docs/change-evidence/20260413-phase2-trigger-eval-gate-checkpoint.md`、`docs/change-evidence/20260413-phase2-cross-repo-trigger-eval-unblocked.md`、`docs/change-evidence/20260413-phase2-skills-trial-closeout.md`。
-- Phase 3：`进行中`
+- Phase 3：`已完成（试点范围）`
   - 已落地 `docs/governance/output-filter-policy.md`（先 advisory 再 enforce）。
   - 已补充 W0 试点对照报告（见变更证据）。
   - 已完成运行态噪声收敛：`report-growth-readiness` 默认输出改为 `docs/governance/reviews/growth-readiness-latest.md`，避免在 `docs/change-evidence/` 持续生成未跟踪文件。
   - 证据：`docs/change-evidence/20260413-phase3-growth-readiness-output-noise-fix.md`。
-  - 下一步：按周对照质量指标并评估是否扩展到目标仓。
+  - 试点收口证据：`docs/change-evidence/20260413-phase3-output-filter-trial-closeout.md`。
+  - 下一步：相关周度观察与扩展决策并入 Phase4。
 - Phase 4：`进行中`
   - 已启动观察窗口（2026-04-13~2026-04-27），证据：`docs/change-evidence/20260413-rule-layering-pilot-kickoff.md`。
   - 已沉淀 W0 基线对照：`docs/change-evidence/20260413-rule-layering-week0-baseline.md`。
