@@ -136,9 +136,10 @@
   - 证据：`docs/change-evidence/20260413-phase3-growth-readiness-output-noise-fix.md`。
   - 试点收口证据：`docs/change-evidence/20260413-phase3-output-filter-trial-closeout.md`。
   - 下一步：相关周度观察与扩展决策并入 Phase4。
-- Phase 4：`进行中`
+- Phase 4：`已完成（可执行范围）`
   - 已启动观察窗口（2026-04-13~2026-04-27），证据：`docs/change-evidence/20260413-rule-layering-pilot-kickoff.md`。
   - 已沉淀 W0 基线对照：`docs/change-evidence/20260413-rule-layering-week0-baseline.md`。
   - 已追加窗口中期检查点：`docs/change-evidence/20260413-phase4-mid-window-checkpoint.md`（`doctor=GREEN`、`token_balance=OK`、`auto_rollback_triggered=false`）。
   - 已补充窗口收口清单：`docs/governance/rule-layering-pilot-closeout-checklist.md`（含决策矩阵、命令链与证据模板）。
-  - 未完成项：窗口期满后输出周度对照与推广决策。
+  - 时间窗口项按用户指令延期不阻断：`docs/change-evidence/20260413-phase4-window-skip-user-approved.md`。
+  - 后续待办（非阻断）：窗口期满后补充最终推广决策证据。
