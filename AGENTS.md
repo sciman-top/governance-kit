@@ -181,6 +181,9 @@
 - 新增可复用技能的 canonical 落点必须是：`source/project/skills-manager/custom/overrides/<skill-name>/SKILL.md`。
 - 本仓根 `.agents/skills/*` 不作为新技能正式创建路径（本仓默认 `.gitignore` 忽略 `/.agents/`）。
 - 技能创建/晋升必须通过策略门槛：`ack + trigger-eval + family uniqueness + lifecycle policy`，不得绕过 `promote-skill-candidates` 约束。
+- Windows PowerShell UTF-8 根治能力的 canonical 技能归属：`E:/CODE/skills-manager/overrides/custom-windows-encoding-guard`（含 `scripts/bootstrap.ps1`）；同类问题禁止新建并行“防乱码技能”。
+- `pwsh-encoding-mojibake-loop-*` 家族属于“已收敛问题签名”：默认应优化/桥接到 canonical guard，禁止重复 `create` 新技能（通过 `exclude_signature_patterns` 约束）。
+- 历史 auto 技能若保留，仅允许作为兼容桥接层（调用 canonical guard + 会话 wrapper），不得复制一套独立 UTF-8 逻辑。
 - 协作细则文档：`docs/governance/collaboration-contract-repo-skills-manager.md`。
 ### C.18 standalone 发布依赖边界（强制）
 - `skills-manager overrides` 属于跨仓协作能力，不得被视为本仓 standalone 发布运行时硬依赖。
