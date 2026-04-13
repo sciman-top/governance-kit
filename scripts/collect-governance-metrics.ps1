@@ -528,6 +528,18 @@ foreach ($repoRaw in $repos) {
     }
   }
   $metricsOut = Join-Path $metricsDir "metrics-auto.md"
+  $gateLatencyDeltaMs = "N/A"
+  $alertsSnapshotPath = Join-Path $metricsDir "alerts-latest.md"
+  $alertsRaw = Read-TextWithEncodingFallback -Path $alertsSnapshotPath
+  if (-not [string]::IsNullOrWhiteSpace($alertsRaw)) {
+    $deltaMatch = [regex]::Match($alertsRaw, "(?im)^\s*gate_latency_delta_ms\s*[:=]\s*([^\r\n]+)\s*$")
+    if ($deltaMatch.Success) {
+      $parsedDelta = ([string]$deltaMatch.Groups[1].Value).Trim()
+      if (-not [string]::IsNullOrWhiteSpace($parsedDelta)) {
+        $gateLatencyDeltaMs = $parsedDelta
+      }
+    }
+  }
 
   $content = @(
     "period=$today"
@@ -548,6 +560,7 @@ foreach ($repoRaw in $repos) {
     "waiver_active_count=$waiverActive"
     "waiver_expired_unrecovered_count=$waiverExpiredUnrecovered"
     "update_trigger_alert_count=$updateTriggerAlertCount"
+    "gate_latency_delta_ms=$gateLatencyDeltaMs"
     "practice_stack_ssdf_enabled_rate=$($practiceRates.ssdf)"
     "practice_stack_slsa_enabled_rate=$($practiceRates.slsa)"
     "practice_stack_sbom_enabled_rate=$($practiceRates.sbom)"

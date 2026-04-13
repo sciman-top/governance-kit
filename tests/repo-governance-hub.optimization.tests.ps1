@@ -1416,6 +1416,7 @@ single_task_token=9000
       New-Item -ItemType Directory -Path (Join-Path $repo ".governance") -Force | Out-Null
       New-Item -ItemType Directory -Path (Join-Path $repo "scripts\governance") -Force | Out-Null
       New-Item -ItemType Directory -Path (Join-Path $repo "docs\change-evidence") -Force | Out-Null
+      New-Item -ItemType Directory -Path (Join-Path $repo "docs\governance") -Force | Out-Null
       New-Item -ItemType Directory -Path $repo -Force | Out-Null
 
       Copy-Item -Path (Join-Path $repoRoot "scripts\collect-governance-metrics.ps1") -Destination (Join-Path $tmp "scripts\collect-governance-metrics.ps1") -Force
@@ -1481,6 +1482,11 @@ average_response_token=980
 single_task_token=6094
 '@ | Set-Content -Path (Join-Path $repo "docs\change-evidence\20260412-token-metrics-sample.md") -Encoding UTF8
 
+      @'
+status=OK
+gate_latency_delta_ms=321
+'@ | Set-Content -Path (Join-Path $repo "docs\governance\alerts-latest.md") -Encoding UTF8
+
       $output = & powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $tmp "scripts\collect-governance-metrics.ps1") 2>&1 | Out-String
       if ($LASTEXITCODE -ne 0) { throw "collect-governance-metrics failed with exit code $LASTEXITCODE" }
       $output | should match "collect-governance-metrics done"
@@ -1489,6 +1495,7 @@ single_task_token=6094
       $metrics | should match "average_response_token=980"
       $metrics | should match "single_task_token=6094"
       $metrics | should match "update_trigger_alert_count=2"
+      $metrics | should match "gate_latency_delta_ms=321"
       $metrics | should match "practice_stack_ssdf_enabled_rate=75\.00%"
       $metrics | should match "practice_stack_slsa_enabled_rate=75\.00%"
       $metrics | should match "practice_stack_sbom_enabled_rate=75\.00%"

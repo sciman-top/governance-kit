@@ -14,6 +14,7 @@ learning_loop_evidence_rate=
 waiver_active_count=
 waiver_expired_unrecovered_count=
 update_trigger_alert_count=
+gate_latency_delta_ms=
 practice_stack_ssdf_enabled_rate=
 practice_stack_slsa_enabled_rate=
 practice_stack_sbom_enabled_rate=
