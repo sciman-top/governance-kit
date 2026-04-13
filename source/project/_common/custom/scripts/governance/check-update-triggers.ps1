@@ -123,6 +123,12 @@ if ($null -eq $policy) {
         max_gate_latency_delta_ms = 5000
         alert_on_data_gap = $false
       }
+      dependency_review_policy_drift = [pscustomobject]@{
+        enabled = $false
+        severity = "high"
+        required_fail_on_severity = "high"
+        required_action_major = "v4"
+      }
     }
   }
 }
@@ -518,6 +524,51 @@ if ($null -ne $policy.triggers.PSObject.Properties['low_value_orphan_custom_sour
   }
 }
 
+# 8) dependency-review enforce drift
+$dependencyReviewPolicyDriftCount = 0
+if ($null -ne $policy.triggers.PSObject.Properties['dependency_review_policy_drift'] -and [bool]$policy.triggers.dependency_review_policy_drift.enabled) {
+  $workflowPath = Join-Path $kitRoot ".github\workflows\dependency-review.yml"
+  $steps.Add([pscustomobject]@{ name = "dependency-review-policy-drift"; exit_code = 0 }) | Out-Null
+  $requiredSeverity = "high"
+  $requiredActionMajor = "v4"
+  if ($null -ne $policy.triggers.dependency_review_policy_drift.PSObject.Properties['required_fail_on_severity']) {
+    $requiredSeverity = ([string]$policy.triggers.dependency_review_policy_drift.required_fail_on_severity).Trim().ToLowerInvariant()
+  }
+  if ($null -ne $policy.triggers.dependency_review_policy_drift.PSObject.Properties['required_action_major']) {
+    $requiredActionMajor = ([string]$policy.triggers.dependency_review_policy_drift.required_action_major).Trim().ToLowerInvariant()
+  }
+
+  if (-not (Test-Path -LiteralPath $workflowPath -PathType Leaf)) {
+    $dependencyReviewPolicyDriftCount = 1
+    Add-Alert -List $alerts `
+      -Id "dependency_review_policy_drift" `
+      -Severity ([string]$policy.triggers.dependency_review_policy_drift.severity) `
+      -Reason "dependency-review workflow missing" `
+      -RecommendedAction "Restore .github/workflows/dependency-review.yml from governance baseline and rerun verify." `
+      -Evidence ".github/workflows/dependency-review.yml"
+  } else {
+    $workflowText = Get-Content -LiteralPath $workflowPath -Raw
+    $missingReasons = [System.Collections.Generic.List[string]]::new()
+    $severityPattern = "(?im)^\s*fail-on-severity\s*:\s*" + [regex]::Escape($requiredSeverity) + "\s*$"
+    if (-not [regex]::IsMatch($workflowText, $severityPattern)) {
+      $missingReasons.Add(("fail-on-severity != {0}" -f $requiredSeverity)) | Out-Null
+    }
+    $actionPattern = "(?im)^\s*uses\s*:\s*actions/dependency-review-action@" + [regex]::Escape($requiredActionMajor) + "\s*$"
+    if (-not [regex]::IsMatch($workflowText, $actionPattern)) {
+      $missingReasons.Add(("dependency-review action major != {0}" -f $requiredActionMajor)) | Out-Null
+    }
+    if ($missingReasons.Count -gt 0) {
+      $dependencyReviewPolicyDriftCount = 1
+      Add-Alert -List $alerts `
+        -Id "dependency_review_policy_drift" `
+        -Severity ([string]$policy.triggers.dependency_review_policy_drift.severity) `
+        -Reason ([string]::Join("; ", @($missingReasons))) `
+        -RecommendedAction "Align dependency-review workflow to enforce policy (action major + fail-on-severity) and rerun verify." `
+        -Evidence ".github/workflows/dependency-review.yml"
+    }
+  }
+}
+
 $result = [pscustomobject]@{
   schema_version = "1.0"
   generated_at = (Get-Date).ToString("yyyy-MM-dd HH:mm:ss")
@@ -528,6 +579,7 @@ $result = [pscustomobject]@{
   gate_noise_budget_alert_count = [int]$gateNoiseBudgetAlertCount
   orphan_custom_source_count = [int]$orphanCustomCount
   release_distribution_policy_drift_count = [int]$releasePolicyDriftCount
+  dependency_review_policy_drift_count = [int]$dependencyReviewPolicyDriftCount
   alerts = @($alerts)
   steps = @($steps)
   policy_path = ($policyPath -replace '\\', '/')

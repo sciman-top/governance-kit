@@ -45,6 +45,12 @@
       "max_false_positive_rate": 0.05,
       "max_gate_latency_delta_ms": 5000,
       "alert_on_data_gap": false
+    },
+    "dependency_review_policy_drift": {
+      "enabled": true,
+      "severity": "high",
+      "required_fail_on_severity": "high",
+      "required_action_major": "v4"
     }
   }
 }
