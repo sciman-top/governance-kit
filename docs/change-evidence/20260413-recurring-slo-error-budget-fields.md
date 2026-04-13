@@ -1,0 +1,15 @@
+规则ID=RGH-20260413-recurring-slo-error-budget-fields
+风险等级=中
+影响模块=scripts/governance/run-recurring-review.ps1; scripts/governance/run-monthly-policy-review.ps1; source/project/_common/custom/scripts/governance/run-recurring-review.ps1; source/project/_common/custom/scripts/governance/run-monthly-policy-review.ps1; source/project/ClassroomToolkit/custom/scripts/governance/run-recurring-review.ps1; source/project/ClassroomToolkit/custom/scripts/governance/run-monthly-policy-review.ps1; source/project/skills-manager/custom/scripts/governance/run-recurring-review.ps1; source/project/skills-manager/custom/scripts/governance/run-monthly-policy-review.ps1; source/project/repo-governance-hub/custom/scripts/governance/run-recurring-review.ps1; source/project/repo-governance-hub/custom/scripts/governance/run-monthly-policy-review.ps1; tests/repo-governance-hub.optimization.tests.ps1
+当前落点=E:/CODE/repo-governance-hub/scripts/governance/run-recurring-review.ps1
+目标归宿=E:/CODE/repo-governance-hub/source/project/_common/custom/scripts/governance/run-recurring-review.ps1 + E:/CODE/repo-governance-hub/source/project/*/custom/scripts/governance/run-recurring-review.ps1
+任务理解快照=目标是在不改变阻断语义的前提下，为 weekly/monthly review 输出 SLO 与错误预算字段；非目标是新增硬门禁或强制阈值阻断。
+关键假设=metrics-auto.md 可能尚无 gate_pass_rate/rollback_rate 实值，需支持 N/A 与 DATA_GAP。
+执行命令=powershell -File scripts/install.ps1 -Mode safe; powershell -File scripts/verify-kit.ps1; powershell -File tests/repo-governance-hub.optimization.tests.ps1; powershell -File scripts/validate-config.ps1; powershell -File scripts/verify.ps1; powershell -File scripts/doctor.ps1
+验证证据=run-recurring-review 快照新增 slo_error_budget_status/slo_gate_pass_rate/error_budget_burn_rate/error_budget_remaining；monthly review 输出新增同名字段；全链路门禁通过
+可观测信号=docs/governance/alerts-latest.md 与 docs/governance/reviews/*-monthly-review.md 出现新增字段并可稳定输出 N/A/OK
+回滚动作=git restore scripts/governance/run-recurring-review.ps1 scripts/governance/run-monthly-policy-review.ps1 source/project/_common/custom/scripts/governance/run-recurring-review.ps1 source/project/_common/custom/scripts/governance/run-monthly-policy-review.ps1 source/project/ClassroomToolkit/custom/scripts/governance/run-recurring-review.ps1 source/project/ClassroomToolkit/custom/scripts/governance/run-monthly-policy-review.ps1 source/project/skills-manager/custom/scripts/governance/run-recurring-review.ps1 source/project/skills-manager/custom/scripts/governance/run-monthly-policy-review.ps1 source/project/repo-governance-hub/custom/scripts/governance/run-recurring-review.ps1 source/project/repo-governance-hub/custom/scripts/governance/run-monthly-policy-review.ps1 tests/repo-governance-hub.optimization.tests.ps1
+未确认假设与纠偏结论=未确认 target repo 中 gate_pass_rate 何时从 N/A 变为实值；已通过 DATA_GAP 状态兜底，避免误告警
+learning_points_3=1) 周检字段扩展优先 default-safe 输出;2) source 与 root 需同改避免 verify 漂移;3) 运行态信号文件需与功能改动隔离提交
+reusable_checklist=改 root 脚本 -> 同步 source 多副本 -> install safe 分发 -> 门禁全链 -> 仅提交任务文件
+open_questions=是否在后续引入 SLO 阈值策略文件并将 DATA_GAP 超窗升级为 alert
