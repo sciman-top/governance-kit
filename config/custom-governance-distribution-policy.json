@@ -1,0 +1,19 @@
+{
+  "schema_version": "1.0",
+  "enforce_new_only": true,
+  "known_violations": [
+    "source/project/_common/custom/scripts/governance/apply-growth-pack.ps1",
+    "source/project/_common/custom/scripts/governance/check-cross-repo-compatibility.ps1",
+    "source/project/_common/custom/scripts/governance/check-failure-replay-readiness.ps1",
+    "source/project/_common/custom/scripts/governance/check-risk-tier-approval.ps1",
+    "source/project/_common/custom/scripts/governance/check-rollout-promotion-readiness.ps1",
+    "source/project/_common/custom/scripts/governance/check-skill-family-health.ps1",
+    "source/project/_common/custom/scripts/governance/check-skill-lifecycle-health.ps1",
+    "source/project/_common/custom/scripts/governance/check-update-triggers.ps1",
+    "source/project/_common/custom/scripts/governance/report-growth-readiness.ps1",
+    "source/project/_common/custom/scripts/governance/run-monthly-policy-review.ps1",
+    "source/project/_common/custom/scripts/governance/run-recurring-review.ps1",
+    "source/project/_common/custom/scripts/governance/run-rollback-drill.ps1",
+    "source/project/_common/custom/scripts/governance/verify-growth-pack.ps1"
+  ]
+}

@@ -12,6 +12,7 @@
       "scripts/governance/check-tracked-files.ps1",
       "scripts/governance/check-anti-bloat-budgets.ps1",
       "scripts/governance/check-update-triggers.ps1",
+      "scripts/governance/fast-check.ps1",
       "scripts/governance/check-token-balance.ps1",
       "scripts/governance/check-proactive-suggestion-balance.ps1",
       "scripts/governance/check-token-efficiency-trend.ps1",
@@ -85,6 +86,7 @@
     "scripts/governance/check-tracked-files.ps1",
     "scripts/governance/check-anti-bloat-budgets.ps1",
     "scripts/governance/check-update-triggers.ps1",
+    "scripts/governance/fast-check.ps1",
     "scripts/governance/check-token-balance.ps1",
     "scripts/governance/check-proactive-suggestion-balance.ps1",
     "scripts/governance/check-token-efficiency-trend.ps1",
@@ -201,12 +203,16 @@
       "repoName": "repo-governance-hub",
       "files": [
         ".governance/release-profile.json",
+        ".governance/session-compaction-trigger-policy.json",
         "scripts/governance/check-cross-repo-compatibility.ps1",
         "scripts/governance/check-failure-replay-readiness.ps1",
         "scripts/governance/check-risk-tier-approval.ps1",
         "scripts/governance/check-rollout-promotion-readiness.ps1",
+        "scripts/governance/check-session-compaction-trigger.ps1",
         "scripts/governance/check-skill-family-health.ps1",
         "scripts/governance/check-skill-lifecycle-health.ps1",
+        "scripts/governance/fast-check.ps1",
+        "scripts/governance/invoke-output-filter-wrapper.ps1",
         "scripts/governance/run-rollback-drill.ps1",
         "scripts/verify.ps1"
       ]

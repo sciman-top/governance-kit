@@ -49,6 +49,7 @@ function Copy-WithPolicy([string]$Src, [string]$Dst, [bool]$CanOverwrite, [strin
 
 function Get-HookBlock([string]$Kind) {
   $trackedScope = if ($Kind -eq "pre-push") { "outgoing" } else { "staged" }
+  $fastCheckArgs = if ($Kind -eq "pre-push") { "" } else { " -DisableAutoEscalation" }
   return @'
 # >>> repo-governance-hub begin
 ROOT="$(git config --get governance.root)"
@@ -57,6 +58,15 @@ if [ -z "$ROOT" ]; then
 fi
 
 if [ -n "$ROOT" ]; then
+  if [ -f "$ROOT/scripts/governance/fast-check.ps1" ]; then
+    powershell -NoProfile -ExecutionPolicy Bypass -File "$ROOT/scripts/governance/fast-check.ps1"__FAST_CHECK_ARGS__
+    status=$?
+    if [ $status -ne 0 ]; then
+      echo "[BLOCK] governance fast-check failed"
+      exit $status
+    fi
+  fi
+
   powershell -NoProfile -ExecutionPolicy Bypass -File "$ROOT/scripts/verify.ps1" -TrackedFilesScope __TRACKED_SCOPE__
   status=$?
   if [ $status -ne 0 ]; then
@@ -65,7 +75,7 @@ if [ -n "$ROOT" ]; then
   fi
 fi
 # <<< repo-governance-hub end
-'@ -replace "__TRACKED_SCOPE__", $trackedScope
+'@ -replace "__TRACKED_SCOPE__", $trackedScope -replace "__FAST_CHECK_ARGS__", $fastCheckArgs
 }
 
 function Ensure-Hook([string]$HookPath, [string]$Kind, [string]$TemplatePath) {
@@ -92,8 +102,30 @@ function Ensure-Hook([string]$HookPath, [string]$Kind, [string]$TemplatePath) {
   }
 
   $existing = Get-Content -Path $HookPath -Raw
-  if ($existing -match "# >>> repo-governance-hub begin") {
-    Write-Host "[SKIP] .git/hooks/$Kind governance block already exists"
+  if ($existing -match "# >>> repo-governance-hub begin" -or $existing -match "# >>> governance-kit begin") {
+    $hasLegacyBlock = ($existing -match "# >>> governance-kit begin")
+    $repoBlockMatches = [regex]::Matches($existing, '# >>> repo-governance-hub begin').Count
+    $hasDuplicateRepoBlocks = ($repoBlockMatches -gt 1)
+    $normalizedExisting = $existing -replace "`r`n", "`n"
+    $normalizedBlock = $block -replace "`r`n", "`n"
+    if ($normalizedExisting.Contains($normalizedBlock) -and -not $hasLegacyBlock -and -not $hasDuplicateRepoBlocks) {
+      Write-Host "[SKIP] .git/hooks/$Kind governance block already up-to-date"
+      return
+    }
+    if ($planMode) {
+      Write-Host "[PLAN] UPDATE .git/hooks/$Kind (refresh governance block)"
+      return
+    }
+    $pattern = '(?s)# >>> (?:repo-governance-hub|governance-kit) begin.*?# <<< (?:repo-governance-hub|governance-kit) end'
+    $stripped = [regex]::Replace($existing, $pattern, "")
+    $normalizedStripped = $stripped.TrimEnd()
+    if ([string]::IsNullOrWhiteSpace($normalizedStripped)) {
+      $newContent = ($block.TrimEnd() + "`n")
+    } else {
+      $newContent = ($normalizedStripped + "`n`n" + $block.TrimEnd() + "`n")
+    }
+    Set-Content -Path $HookPath -Value $newContent -Encoding UTF8
+    Write-Host "[UPDATED] .git/hooks/$Kind refreshed governance block"
     return
   }
 

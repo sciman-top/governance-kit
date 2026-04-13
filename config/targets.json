@@ -365,6 +365,21 @@
     "boundary_class": "project"
   },
   {
+    "source": "source/project/repo-governance-hub/custom/scripts/governance/check-session-compaction-trigger.ps1",
+    "target": "E:/CODE/repo-governance-hub/scripts/governance/check-session-compaction-trigger.ps1",
+    "boundary_class": "project"
+  },
+  {
+    "source": "source/project/repo-governance-hub/custom/scripts/governance/invoke-output-filter-wrapper.ps1",
+    "target": "E:/CODE/repo-governance-hub/scripts/governance/invoke-output-filter-wrapper.ps1",
+    "boundary_class": "project"
+  },
+  {
+    "source": "source/project/repo-governance-hub/custom/.governance/session-compaction-trigger-policy.json",
+    "target": "E:/CODE/repo-governance-hub/.governance/session-compaction-trigger-policy.json",
+    "boundary_class": "project"
+  },
+  {
     "source": "source/project/ClassroomToolkit/custom/docs/PLANS.md",
     "target": "E:/CODE/ClassroomToolkit/docs/PLANS.md",
     "boundary_class": "project"
@@ -1507,6 +1522,21 @@
   {
     "source": "source/project/_common/custom/.github/rulesets/default.json",
     "target": "E:/CODE/repo-governance-hub/.github/rulesets/default.json",
+    "boundary_class": "shared-template"
+  },
+  {
+    "source": "source/project/repo-governance-hub/custom/scripts/governance/fast-check.ps1",
+    "target": "E:/CODE/repo-governance-hub/scripts/governance/fast-check.ps1",
+    "boundary_class": "project"
+  },
+  {
+    "source": "source/project/_common/custom/scripts/governance/fast-check.ps1",
+    "target": "E:/CODE/ClassroomToolkit/scripts/governance/fast-check.ps1",
+    "boundary_class": "shared-template"
+  },
+  {
+    "source": "source/project/_common/custom/scripts/governance/fast-check.ps1",
+    "target": "E:/CODE/skills-manager/scripts/governance/fast-check.ps1",
     "boundary_class": "shared-template"
   }
 ]

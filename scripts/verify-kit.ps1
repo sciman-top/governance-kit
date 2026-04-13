@@ -12,6 +12,7 @@ $mustExist = @(
   "config\rule-rollout.json",
   "config\project-rule-policy.json",
   "config\project-custom-files.json",
+  "config\custom-governance-distribution-policy.json",
   "config\clarification-policy.json",
   "config\release-distribution-policy.json",
   "config\real-repo-regression-matrix.json",
@@ -45,6 +46,7 @@ $mustExist = @(
   "scripts\sync.ps1",
   "scripts\verify.ps1",
   "scripts\governance\check-tracked-files.ps1",
+  "scripts\governance\check-custom-governance-distribution.ps1",
   "scripts\governance\run-recurring-review.ps1",
   "scripts\governance\run-monthly-policy-review.ps1",
   "scripts\governance\check-update-triggers.ps1",
@@ -331,6 +333,12 @@ if ($null -eq $refreshObj) {
 if ([int]$refreshObj.target_change_count -gt 0) {
   throw ("distribution mapping drift detected: target_change_count={0}. Run scripts/install.ps1 (or scripts/refresh-targets.ps1) to sync one-click install mapping." -f [int]$refreshObj.target_change_count)
 }
+
+$customDistributionScript = Join-Path $PSScriptRoot "governance\check-custom-governance-distribution.ps1"
+if (-not (Test-Path -LiteralPath $customDistributionScript -PathType Leaf)) {
+  throw "custom governance distribution script missing: $customDistributionScript"
+}
+Invoke-ChildScript -ScriptPath $customDistributionScript -ScriptArgs @("-FailOnViolation")
 
 $pruneScript = Join-Path $PSScriptRoot "prune-target-orphans.ps1"
 if (-not (Test-Path -LiteralPath $pruneScript -PathType Leaf)) {

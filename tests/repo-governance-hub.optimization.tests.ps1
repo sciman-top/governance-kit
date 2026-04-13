@@ -158,6 +158,42 @@ exit 0
 '@ | Set-Content -Path $Path -Encoding UTF8
 }
 
+function Set-DoctorJsonStubScript {
+  param(
+    [Parameter(Mandatory = $true)]
+    [string]$Path
+  )
+
+  @'
+param(
+  [switch]$SkipVerifyTargets,
+  [switch]$AsJson
+)
+
+if ($SkipVerifyTargets) {
+  $obj = [pscustomobject]@{
+    schema_version = "1.0"
+    health = "GREEN"
+    failed_steps = @()
+    slow_steps_top3 = @()
+    steps = @()
+  }
+  if ($AsJson) { $obj | ConvertTo-Json -Depth 6 | Write-Output } else { Write-Host "HEALTH=GREEN" }
+  exit 0
+}
+
+$obj = [pscustomobject]@{
+  schema_version = "1.0"
+  health = "GREEN"
+  failed_steps = @()
+  slow_steps_top3 = @()
+  steps = @()
+}
+if ($AsJson) { $obj | ConvertTo-Json -Depth 6 | Write-Output } else { Write-Host "HEALTH=GREEN" }
+exit 0
+'@ | Set-Content -Path $Path -Encoding UTF8
+}
+
 function Initialize-ClarificationTrackerFixture {
   param(
     [Parameter(Mandatory = $true)]
@@ -895,6 +931,141 @@ Fixture body.
       $obj.health | should be "GREEN"
       @($obj.failed_steps).Count | should be 0
       (@($obj.steps).Count -ge 5) | should be $true
+    } finally {
+      if (Test-Path $tmp) { Remove-Item -LiteralPath $tmp -Recurse -Force }
+    }
+  }
+
+  it "fast-check keeps fast-only mode for docs-only pending changes" {
+    $tmp = Join-Path $env:TEMP ("govkit-test-" + [guid]::NewGuid().ToString("N"))
+    try {
+      New-Item -ItemType Directory -Path (Join-Path $tmp "scripts\governance") -Force | Out-Null
+      New-Item -ItemType Directory -Path (Join-Path $tmp "scripts\lib") -Force | Out-Null
+      New-Item -ItemType Directory -Path (Join-Path $tmp "docs") -Force | Out-Null
+
+      Copy-Item -Path (Join-Path $repoRoot "scripts\governance\fast-check.ps1") -Destination (Join-Path $tmp "scripts\governance\fast-check.ps1") -Force
+      Copy-Item -Path (Join-Path $repoRoot "scripts\lib\common.ps1") -Destination (Join-Path $tmp "scripts\lib\common.ps1") -Force
+      Set-DoctorJsonStubScript -Path (Join-Path $tmp "scripts\doctor.ps1")
+
+      & git -C $tmp init | Out-Null
+      & git -C $tmp config user.email "govkit-test@example.com"
+      & git -C $tmp config user.name "govkit-test"
+      "base" | Set-Content -Path (Join-Path $tmp "docs\guide.md") -Encoding UTF8
+      & git -C $tmp add .
+      & git -C $tmp commit -m "init" | Out-Null
+
+      "changed" | Set-Content -Path (Join-Path $tmp "docs\guide.md") -Encoding UTF8
+
+      $json = & powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $tmp "scripts\governance\fast-check.ps1") -AsJson
+      if ($LASTEXITCODE -ne 0) { throw "fast-check.ps1 -AsJson failed with exit code $LASTEXITCODE" }
+      $obj = ($json | Out-String | ConvertFrom-Json)
+
+      $obj.mode | should be "fast_only"
+      $obj.auto_escalation.triggered | should be $false
+      $obj.auto_escalation.reason_codes -join "," | should match "pending_changes_low_risk"
+      $obj.fast_precheck.status | should be "PASS"
+      ($null -eq $obj.full_gate) | should be $true
+    } finally {
+      if (Test-Path $tmp) { Remove-Item -LiteralPath $tmp -Recurse -Force }
+    }
+  }
+
+  it "fast-check auto-escalates to full gate for high-risk pending changes" {
+    $tmp = Join-Path $env:TEMP ("govkit-test-" + [guid]::NewGuid().ToString("N"))
+    try {
+      New-Item -ItemType Directory -Path (Join-Path $tmp "scripts\governance") -Force | Out-Null
+      New-Item -ItemType Directory -Path (Join-Path $tmp "scripts\lib") -Force | Out-Null
+      New-Item -ItemType Directory -Path (Join-Path $tmp "config") -Force | Out-Null
+
+      Copy-Item -Path (Join-Path $repoRoot "scripts\governance\fast-check.ps1") -Destination (Join-Path $tmp "scripts\governance\fast-check.ps1") -Force
+      Copy-Item -Path (Join-Path $repoRoot "scripts\lib\common.ps1") -Destination (Join-Path $tmp "scripts\lib\common.ps1") -Force
+      Set-DoctorJsonStubScript -Path (Join-Path $tmp "scripts\doctor.ps1")
+
+      & git -C $tmp init | Out-Null
+      & git -C $tmp config user.email "govkit-test@example.com"
+      & git -C $tmp config user.name "govkit-test"
+      "{}" | Set-Content -Path (Join-Path $tmp "config\sample.json") -Encoding UTF8
+      & git -C $tmp add .
+      & git -C $tmp commit -m "init" | Out-Null
+
+      "{`"x`":1}" | Set-Content -Path (Join-Path $tmp "config\sample.json") -Encoding UTF8
+
+      $json = & powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $tmp "scripts\governance\fast-check.ps1") -AsJson
+      if ($LASTEXITCODE -ne 0) { throw "fast-check.ps1 -AsJson failed with exit code $LASTEXITCODE" }
+      $obj = ($json | Out-String | ConvertFrom-Json)
+
+      $obj.mode | should be "fast_plus_full"
+      $obj.auto_escalation.triggered | should be $true
+      $obj.auto_escalation.reason_codes -join "," | should match "high_risk_pending_changes"
+      (@($obj.auto_escalation.high_risk_files) -join ",") | should match "config/sample.json"
+      $obj.fast_precheck.status | should be "PASS"
+      $obj.full_gate.status | should be "PASS"
+    } finally {
+      if (Test-Path $tmp) { Remove-Item -LiteralPath $tmp -Recurse -Force }
+    }
+  }
+
+  it "custom governance distribution check fails when script is not merged into one-click mapping" {
+    $tmp = Join-Path $env:TEMP ("govkit-test-" + [guid]::NewGuid().ToString("N"))
+    try {
+      New-Item -ItemType Directory -Path (Join-Path $tmp "scripts\governance") -Force | Out-Null
+      New-Item -ItemType Directory -Path (Join-Path $tmp "scripts\lib") -Force | Out-Null
+      New-Item -ItemType Directory -Path (Join-Path $tmp "config") -Force | Out-Null
+      New-Item -ItemType Directory -Path (Join-Path $tmp "source\project\_common\custom\scripts\governance") -Force | Out-Null
+
+      Copy-Item -Path (Join-Path $repoRoot "scripts\governance\check-custom-governance-distribution.ps1") -Destination (Join-Path $tmp "scripts\governance\check-custom-governance-distribution.ps1") -Force
+      Copy-Item -Path (Join-Path $repoRoot "scripts\lib\common.ps1") -Destination (Join-Path $tmp "scripts\lib\common.ps1") -Force
+
+      "param(); Write-Host test" | Set-Content -Path (Join-Path $tmp "source\project\_common\custom\scripts\governance\new-capability.ps1") -Encoding UTF8
+      @'
+{
+  "default": [],
+  "repos": []
+}
+'@ | Set-Content -Path (Join-Path $tmp "config\project-custom-files.json") -Encoding UTF8
+      @() | ConvertTo-Json -Depth 4 | Set-Content -Path (Join-Path $tmp "config\targets.json") -Encoding UTF8
+
+      $output = & powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $tmp "scripts\governance\check-custom-governance-distribution.ps1") -FailOnViolation 2>&1 | Out-String
+      $LASTEXITCODE | should be 1
+      $output | should match "custom_governance_distribution.status=FAIL"
+      $output | should match "missing_project_custom_files_mapping"
+      $output | should match "missing_targets_mapping"
+    } finally {
+      if (Test-Path $tmp) { Remove-Item -LiteralPath $tmp -Recurse -Force }
+    }
+  }
+
+  it "custom governance distribution check passes when script is merged into one-click mapping" {
+    $tmp = Join-Path $env:TEMP ("govkit-test-" + [guid]::NewGuid().ToString("N"))
+    try {
+      New-Item -ItemType Directory -Path (Join-Path $tmp "scripts\governance") -Force | Out-Null
+      New-Item -ItemType Directory -Path (Join-Path $tmp "scripts\lib") -Force | Out-Null
+      New-Item -ItemType Directory -Path (Join-Path $tmp "config") -Force | Out-Null
+      New-Item -ItemType Directory -Path (Join-Path $tmp "source\project\_common\custom\scripts\governance") -Force | Out-Null
+
+      Copy-Item -Path (Join-Path $repoRoot "scripts\governance\check-custom-governance-distribution.ps1") -Destination (Join-Path $tmp "scripts\governance\check-custom-governance-distribution.ps1") -Force
+      Copy-Item -Path (Join-Path $repoRoot "scripts\lib\common.ps1") -Destination (Join-Path $tmp "scripts\lib\common.ps1") -Force
+
+      "param(); Write-Host test" | Set-Content -Path (Join-Path $tmp "source\project\_common\custom\scripts\governance\new-capability.ps1") -Encoding UTF8
+      @'
+{
+  "default": [
+    "scripts/governance/new-capability.ps1"
+  ],
+  "repos": []
+}
+'@ | Set-Content -Path (Join-Path $tmp "config\project-custom-files.json") -Encoding UTF8
+      @(
+        @{
+          source = "source/project/_common/custom/scripts/governance/new-capability.ps1"
+          target = "E:/CODE/FakeRepo/scripts/governance/new-capability.ps1"
+        }
+      ) | ConvertTo-Json -Depth 6 | Set-Content -Path (Join-Path $tmp "config\targets.json") -Encoding UTF8
+
+      $output = & powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $tmp "scripts\governance\check-custom-governance-distribution.ps1") -FailOnViolation 2>&1 | Out-String
+      $LASTEXITCODE | should be 0
+      $output | should match "custom_governance_distribution.status=PASS"
+      $output | should match "custom_governance_distribution.violation_count=0"
     } finally {
       if (Test-Path $tmp) { Remove-Item -LiteralPath $tmp -Recurse -Force }
     }

@@ -25,6 +25,18 @@
   - `powershell -File scripts/run-two-stage-gate.ps1`
   - JSON output: `powershell -File scripts/run-two-stage-gate.ps1 -AsJson`
 
+## Fast Check Entrypoint
+- Purpose: default local fast path with risk-based auto escalation.
+- Default behavior:
+  - always run `doctor -SkipVerifyTargets` as fast precheck;
+  - auto run full `doctor` only when pending files hit high-risk paths (`config/`, `scripts/`, `tests/`, `source/`, `hooks/`, `ci/`, `templates/`, `.governance/`, root `AGENTS/CLAUDE/GEMINI`).
+- Entrypoint:
+  - `powershell -File scripts/governance/fast-check.ps1`
+  - JSON output: `powershell -File scripts/governance/fast-check.ps1 -AsJson`
+- Controls:
+  - force full gate: `powershell -File scripts/governance/fast-check.ps1 -RunFullGate`
+  - disable auto escalation: `powershell -File scripts/governance/fast-check.ps1 -DisableAutoEscalation`
+
 ## Release Profile Coverage Entrypoints
 - `powershell -File scripts/verify-release-profile.ps1 -RepoPath <repo> [-AsJson]`
 - `powershell -File scripts/check-release-profile-coverage.ps1 [-AsJson]`
