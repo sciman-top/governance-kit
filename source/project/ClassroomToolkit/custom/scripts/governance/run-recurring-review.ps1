@@ -24,8 +24,18 @@ $waiverScript = Join-Path $kitRoot "scripts\check-waivers.ps1"
 $metricsScript = Join-Path $kitRoot "scripts\collect-governance-metrics.ps1"
 $triggerScript = Join-Path $kitRoot "scripts\governance\check-update-triggers.ps1"
 $skillTriggerEvalScript = Join-Path $kitRoot "scripts\governance\check-skill-trigger-evals.ps1"
+$riskTierApprovalScript = Join-Path $kitRoot "scripts\governance\check-risk-tier-approval.ps1"
+$rolloutPromotionScript = Join-Path $kitRoot "scripts\governance\check-rollout-promotion-readiness.ps1"
+$failureReplayScript = Join-Path $kitRoot "scripts\governance\check-failure-replay-readiness.ps1"
+$rollbackDrillScript = Join-Path $kitRoot "scripts\governance\run-rollback-drill.ps1"
+$skillFamilyHealthScript = Join-Path $kitRoot "scripts\governance\check-skill-family-health.ps1"
+$skillLifecycleHealthScript = Join-Path $kitRoot "scripts\governance\check-skill-lifecycle-health.ps1"
+$crossRepoCompatibilityScript = Join-Path $kitRoot "scripts\governance\check-cross-repo-compatibility.ps1"
+$tokenEfficiencyTrendScript = Join-Path $kitRoot "scripts\governance\check-token-efficiency-trend.ps1"
 $tokenBalanceScript = Join-Path $kitRoot "scripts\governance\check-token-balance.ps1"
+$proactiveSuggestionScript = Join-Path $kitRoot "scripts\governance\check-proactive-suggestion-balance.ps1"
 $externalBaselineScript = Join-Path $kitRoot "scripts\governance\check-external-baselines.ps1"
+$autoRollbackPolicyPath = Join-Path $kitRoot ".governance\auto-rollback-trigger-policy.json"
 $requiredScripts = @($doctorScript, $rolloutScript, $waiverScript, $metricsScript, $triggerScript)
 foreach ($script in $requiredScripts) {
   if (-not (Test-Path -LiteralPath $script -PathType Leaf)) {
@@ -35,17 +45,29 @@ foreach ($script in $requiredScripts) {
 $hasExternalBaselineScript = (Test-Path -LiteralPath $externalBaselineScript -PathType Leaf)
 $hasTokenBalanceScript = (Test-Path -LiteralPath $tokenBalanceScript -PathType Leaf)
 $hasSkillTriggerEvalScript = (Test-Path -LiteralPath $skillTriggerEvalScript -PathType Leaf)
+$hasRiskTierApprovalScript = (Test-Path -LiteralPath $riskTierApprovalScript -PathType Leaf)
+$hasRolloutPromotionScript = (Test-Path -LiteralPath $rolloutPromotionScript -PathType Leaf)
+$hasFailureReplayScript = (Test-Path -LiteralPath $failureReplayScript -PathType Leaf)
+$hasRollbackDrillScript = (Test-Path -LiteralPath $rollbackDrillScript -PathType Leaf)
+$hasSkillFamilyHealthScript = (Test-Path -LiteralPath $skillFamilyHealthScript -PathType Leaf)
+$hasSkillLifecycleHealthScript = (Test-Path -LiteralPath $skillLifecycleHealthScript -PathType Leaf)
+$hasCrossRepoCompatibilityScript = (Test-Path -LiteralPath $crossRepoCompatibilityScript -PathType Leaf)
+$hasTokenEfficiencyTrendScript = (Test-Path -LiteralPath $tokenEfficiencyTrendScript -PathType Leaf)
+$hasProactiveSuggestionScript = (Test-Path -LiteralPath $proactiveSuggestionScript -PathType Leaf)
 
 $psExe = Get-CurrentPowerShellPath
 
 function Invoke-StepText([string]$Name, [string]$ScriptPath, [string[]]$Args) {
+  $sw = [System.Diagnostics.Stopwatch]::StartNew()
   $captured = & $psExe -NoProfile -ExecutionPolicy Bypass -File $ScriptPath @Args 2>&1
+  $sw.Stop()
   $exitCode = $LASTEXITCODE
   $text = ($captured | Out-String).Trim()
   return [pscustomobject]@{
     name = $Name
     exit_code = [int]$exitCode
     output = $text
+    elapsed_ms = [int]$sw.ElapsedMilliseconds
   }
 }
 
@@ -67,6 +89,34 @@ function Parse-JsonLoose([string]$RawText) {
   return $null
 }
 
+function Get-MetricValueFromFile {
+  param(
+    [string]$Path,
+    [string]$Key
+  )
+  if ([string]::IsNullOrWhiteSpace($Path) -or [string]::IsNullOrWhiteSpace($Key)) { return "" }
+  if (-not (Test-Path -LiteralPath $Path -PathType Leaf)) { return "" }
+  $raw = Get-Content -LiteralPath $Path -Raw -ErrorAction SilentlyContinue
+  if ([string]::IsNullOrWhiteSpace($raw)) { return "" }
+  $pattern = "(?im)^\s*{0}\s*[:=]\s*([^\r\n]+)\s*$" -f [regex]::Escape($Key)
+  $m = [regex]::Match($raw, $pattern)
+  if (-not $m.Success) { return "" }
+  return ([string]$m.Groups[1].Value).Trim()
+}
+
+function Convert-PercentTextToDouble {
+  param([string]$Text)
+  if ([string]::IsNullOrWhiteSpace($Text)) { return $null }
+  $clean = ([string]$Text).Trim()
+  if ($clean.Equals("N/A", [System.StringComparison]::OrdinalIgnoreCase)) { return $null }
+  if ($clean.EndsWith("%")) {
+    $clean = $clean.Substring(0, $clean.Length - 1)
+  }
+  $value = 0.0
+  if ([double]::TryParse($clean, [ref]$value)) { return [double]$value }
+  return $null
+}
+
 function Write-AlertSnapshot([object]$ReviewResult, [string]$RootPath) {
   $docsDir = Join-Path $RootPath "docs\governance"
   if (-not (Test-Path -LiteralPath $docsDir -PathType Container)) {
@@ -83,6 +133,45 @@ function Write-AlertSnapshot([object]$ReviewResult, [string]$RootPath) {
   [void]$lines.Add(("waiver_remind_count={0}" -f $ReviewResult.summary.waiver_remind_count))
   [void]$lines.Add(("waiver_block_count={0}" -f $ReviewResult.summary.waiver_block_count))
   [void]$lines.Add(("release_distribution_policy_drift_count={0}" -f $ReviewResult.summary.release_distribution_policy_drift_count))
+  [void]$lines.Add(("skill_trigger_eval_status={0}" -f $ReviewResult.summary.skill_trigger_eval_status))
+  [void]$lines.Add(("skill_trigger_eval_grouped_query_count={0}" -f $ReviewResult.summary.skill_trigger_eval_grouped_query_count))
+  [void]$lines.Add(("skill_trigger_eval_validation_pass_rate={0}" -f $ReviewResult.summary.skill_trigger_eval_validation_pass_rate))
+  [void]$lines.Add(("skill_trigger_eval_validation_false_trigger_rate={0}" -f $ReviewResult.summary.skill_trigger_eval_validation_false_trigger_rate))
+  [void]$lines.Add(("risk_tier_approval_status={0}" -f $ReviewResult.summary.risk_tier_approval_status))
+  [void]$lines.Add(("high_risk_without_explicit_path_count={0}" -f $ReviewResult.summary.high_risk_without_explicit_path_count))
+  [void]$lines.Add(("rollout_promotion_status={0}" -f $ReviewResult.summary.rollout_promotion_status))
+  [void]$lines.Add(("rollout_observe_window_violation_count={0}" -f $ReviewResult.summary.rollout_observe_window_violation_count))
+  [void]$lines.Add(("failure_replay_status={0}" -f $ReviewResult.summary.failure_replay_status))
+  [void]$lines.Add(("failure_replay_top5_coverage_rate={0}" -f $ReviewResult.summary.failure_replay_top5_coverage_rate))
+  [void]$lines.Add(("failure_replay_missing_top5_count={0}" -f $ReviewResult.summary.failure_replay_missing_top5_count))
+  [void]$lines.Add(("rollback_drill_status={0}" -f $ReviewResult.summary.rollback_drill_status))
+  [void]$lines.Add(("rollback_drill_recovery_ms={0}" -f $ReviewResult.summary.rollback_drill_recovery_ms))
+  [void]$lines.Add(("skill_family_health_status={0}" -f $ReviewResult.summary.skill_family_health_status))
+  [void]$lines.Add(("skill_family_active_family_duplicate_count={0}" -f $ReviewResult.summary.skill_family_active_family_duplicate_count))
+  [void]$lines.Add(("skill_family_low_health_target_state_count={0}" -f $ReviewResult.summary.skill_family_low_health_target_state_count))
+  [void]$lines.Add(("skill_family_active_family_avg_health_score={0}" -f $ReviewResult.summary.skill_family_active_family_avg_health_score))
+  [void]$lines.Add(("skill_lifecycle_health_status={0}" -f $ReviewResult.summary.skill_lifecycle_health_status))
+  [void]$lines.Add(("skill_lifecycle_retire_candidate_count={0}" -f $ReviewResult.summary.skill_lifecycle_retire_candidate_count))
+  [void]$lines.Add(("skill_lifecycle_retired_avg_latency_days={0}" -f $ReviewResult.summary.skill_lifecycle_retired_avg_latency_days))
+  [void]$lines.Add(("skill_lifecycle_quality_impact_delta={0}" -f $ReviewResult.summary.skill_lifecycle_quality_impact_delta))
+  [void]$lines.Add(("cross_repo_compatibility_status={0}" -f $ReviewResult.summary.cross_repo_compatibility_status))
+  [void]$lines.Add(("cross_repo_compatibility_repo_failure_count={0}" -f $ReviewResult.summary.cross_repo_compatibility_repo_failure_count))
+  [void]$lines.Add(("token_efficiency_trend_status={0}" -f $ReviewResult.summary.token_efficiency_trend_status))
+  [void]$lines.Add(("token_efficiency_trend_history_count={0}" -f $ReviewResult.summary.token_efficiency_trend_history_count))
+  [void]$lines.Add(("token_efficiency_trend_latest_value={0}" -f $ReviewResult.summary.token_efficiency_trend_latest_value))
+  [void]$lines.Add(("slo_error_budget_status={0}" -f $ReviewResult.summary.slo_error_budget_status))
+  [void]$lines.Add(("slo_gate_pass_rate={0}" -f $ReviewResult.summary.slo_gate_pass_rate))
+  [void]$lines.Add(("error_budget_burn_rate={0}" -f $ReviewResult.summary.error_budget_burn_rate))
+  [void]$lines.Add(("error_budget_remaining={0}" -f $ReviewResult.summary.error_budget_remaining))
+  [void]$lines.Add(("proactive_suggestion_balance_status={0}" -f $ReviewResult.summary.proactive_suggestion_balance_status))
+  [void]$lines.Add(("proactive_suggestion_balance_warning_count={0}" -f $ReviewResult.summary.proactive_suggestion_balance_warning_count))
+  [void]$lines.Add(("proactive_suggestion_balance_violation_count={0}" -f $ReviewResult.summary.proactive_suggestion_balance_violation_count))
+  $autoRollbackReasonsText = (@($ReviewResult.summary.auto_rollback_reasons) -join ";")
+  [void]$lines.Add(("auto_rollback_triggered={0}" -f $ReviewResult.summary.auto_rollback_triggered))
+  [void]$lines.Add(("auto_rollback_reason_count={0}" -f $ReviewResult.summary.auto_rollback_reason_count))
+  [void]$lines.Add(("auto_rollback_reasons={0}" -f $autoRollbackReasonsText))
+  [void]$lines.Add(("auto_rollback_action={0}" -f $ReviewResult.summary.auto_rollback_action))
+  [void]$lines.Add(("auto_rollback_policy_path={0}" -f $ReviewResult.summary.auto_rollback_policy_path))
   if (@($ReviewResult.alerts).Count -gt 0) {
     [void]$lines.Add("alerts=")
     foreach ($a in @($ReviewResult.alerts)) {
@@ -109,11 +198,96 @@ if ($hasSkillTriggerEvalScript) {
     output = ""
   }
 }
+if ($hasRiskTierApprovalScript) {
+  $riskTierApproval = Invoke-StepText -Name "check-risk-tier-approval" -ScriptPath $riskTierApprovalScript -Args @("-RepoRoot", $repoPath, "-AsJson")
+} else {
+  $riskTierApproval = [pscustomobject]@{
+    name = "check-risk-tier-approval"
+    exit_code = 0
+    output = ""
+  }
+}
+if ($hasRolloutPromotionScript) {
+  $rolloutPromotion = Invoke-StepText -Name "check-rollout-promotion-readiness" -ScriptPath $rolloutPromotionScript -Args @("-RepoRoot", $repoPath, "-AsJson")
+} else {
+  $rolloutPromotion = [pscustomobject]@{
+    name = "check-rollout-promotion-readiness"
+    exit_code = 0
+    output = ""
+  }
+}
+if ($hasFailureReplayScript) {
+  $failureReplay = Invoke-StepText -Name "check-failure-replay-readiness" -ScriptPath $failureReplayScript -Args @("-RepoRoot", $repoPath, "-AsJson")
+} else {
+  $failureReplay = [pscustomobject]@{
+    name = "check-failure-replay-readiness"
+    exit_code = 0
+    output = ""
+  }
+}
+if ($hasRollbackDrillScript) {
+  $rollbackDrill = Invoke-StepText -Name "run-rollback-drill" -ScriptPath $rollbackDrillScript -Args @("-RepoRoot", $repoPath, "-Mode", "safe", "-AsJson")
+} else {
+  $rollbackDrill = [pscustomobject]@{
+    name = "run-rollback-drill"
+    exit_code = 0
+    output = ""
+  }
+}
+if ($hasSkillFamilyHealthScript) {
+  $skillFamilyHealth = Invoke-StepText -Name "check-skill-family-health" -ScriptPath $skillFamilyHealthScript -Args @("-RepoRoot", $repoPath, "-AsJson")
+} else {
+  $skillFamilyHealth = [pscustomobject]@{
+    name = "check-skill-family-health"
+    exit_code = 0
+    output = ""
+    elapsed_ms = 0
+  }
+}
+if ($hasSkillLifecycleHealthScript) {
+  $skillLifecycleHealth = Invoke-StepText -Name "check-skill-lifecycle-health" -ScriptPath $skillLifecycleHealthScript -Args @("-RepoRoot", $repoPath, "-AsJson")
+} else {
+  $skillLifecycleHealth = [pscustomobject]@{
+    name = "check-skill-lifecycle-health"
+    exit_code = 0
+    output = ""
+    elapsed_ms = 0
+  }
+}
+if ($hasCrossRepoCompatibilityScript) {
+  $crossRepoCompatibility = Invoke-StepText -Name "check-cross-repo-compatibility" -ScriptPath $crossRepoCompatibilityScript -Args @("-RepoRoot", $repoPath, "-AsJson")
+} else {
+  $crossRepoCompatibility = [pscustomobject]@{
+    name = "check-cross-repo-compatibility"
+    exit_code = 0
+    output = ""
+    elapsed_ms = 0
+  }
+}
+if ($hasTokenEfficiencyTrendScript) {
+  $tokenEfficiencyTrend = Invoke-StepText -Name "check-token-efficiency-trend" -ScriptPath $tokenEfficiencyTrendScript -Args @("-RepoRoot", $repoPath, "-AsJson")
+} else {
+  $tokenEfficiencyTrend = [pscustomobject]@{
+    name = "check-token-efficiency-trend"
+    exit_code = 0
+    output = ""
+    elapsed_ms = 0
+  }
+}
 if ($hasTokenBalanceScript) {
   $tokenBalance = Invoke-StepText -Name "check-token-balance" -ScriptPath $tokenBalanceScript -Args @("-RepoRoot", $repoPath)
 } else {
   $tokenBalance = [pscustomobject]@{
     name = "check-token-balance"
+    exit_code = 0
+    output = ""
+  }
+}
+if ($hasProactiveSuggestionScript) {
+  $proactiveSuggestion = Invoke-StepText -Name "check-proactive-suggestion-balance" -ScriptPath $proactiveSuggestionScript -Args @("-RepoRoot", $repoPath, "-AsJson")
+} else {
+  $proactiveSuggestion = [pscustomobject]@{
+    name = "check-proactive-suggestion-balance"
     exit_code = 0
     output = ""
   }
@@ -172,14 +346,80 @@ if ($waiverRemindCount -gt 0) {
   [void]$alerts.Add(("waiver remind count={0}" -f $waiverRemindCount))
 }
 
+$sloErrorBudgetStatus = "UNAVAILABLE"
+$sloGatePassRate = "N/A"
+$errorBudgetBurnRate = "N/A"
+$errorBudgetRemaining = "N/A"
+
 if ($metrics.exit_code -ne 0) {
   [void]$alerts.Add("collect-governance-metrics failed")
 }
+if ($metrics.exit_code -eq 0) {
+  $metricsAutoPath = Join-Path $repoPath "docs\governance\metrics-auto.md"
+  if (Test-Path -LiteralPath $metricsAutoPath -PathType Leaf) {
+    $sloErrorBudgetStatus = "DATA_GAP"
+    $sloGatePassRate = Get-MetricValueFromFile -Path $metricsAutoPath -Key "gate_pass_rate"
+    if ([string]::IsNullOrWhiteSpace($sloGatePassRate)) { $sloGatePassRate = "N/A" }
+
+    $rollbackRate = Get-MetricValueFromFile -Path $metricsAutoPath -Key "rollback_rate"
+    if (-not [string]::IsNullOrWhiteSpace($rollbackRate)) {
+      $errorBudgetBurnRate = $rollbackRate
+    }
+
+    $gateRateValue = Convert-PercentTextToDouble -Text $sloGatePassRate
+    $rollbackRateValue = Convert-PercentTextToDouble -Text $errorBudgetBurnRate
+    if ($null -ne $gateRateValue) {
+      $sloErrorBudgetStatus = "OK"
+    }
+    if ($null -ne $rollbackRateValue) {
+      $remaining = [Math]::Round([double](100.0 - $rollbackRateValue), 2)
+      if ($remaining -lt 0) { $remaining = 0 }
+      if ($remaining -gt 100) { $remaining = 100 }
+      $errorBudgetRemaining = ("{0:0.00}%" -f $remaining)
+      if ($sloErrorBudgetStatus -ne "OK") {
+        $sloErrorBudgetStatus = "OK"
+      }
+    }
+  }
+}
+
+$skillTriggerEvalStatus = "UNAVAILABLE"
+$skillTriggerEvalGroupedQueryCount = 0
+$skillTriggerEvalValidationPassRate = $null
+$skillTriggerEvalValidationFalseTriggerRate = $null
+$riskTierApprovalStatus = "UNAVAILABLE"
+$highRiskWithoutExplicitPathCount = 0
+$rolloutPromotionStatus = "UNAVAILABLE"
+$rolloutObserveWindowViolationCount = 0
+$failureReplayStatus = "UNAVAILABLE"
+$failureReplayTop5CoverageRate = 0
+$failureReplayMissingTop5Count = 0
+$rollbackDrillStatus = "UNAVAILABLE"
+$rollbackDrillRecoveryMs = 0
+$skillFamilyHealthStatus = "UNAVAILABLE"
+$skillFamilyActiveFamilyDuplicateCount = 0
+$skillFamilyLowHealthTargetStateCount = 0
+$skillFamilyActiveFamilyAvgHealthScore = 0
+$skillLifecycleHealthStatus = "UNAVAILABLE"
+$skillLifecycleRetireCandidateCount = 0
+$skillLifecycleRetiredAvgLatencyDays = 0
+$skillLifecycleQualityImpactDelta = 0
+$crossRepoCompatibilityStatus = "UNAVAILABLE"
+$crossRepoCompatibilityRepoFailureCount = 0
+$tokenEfficiencyTrendStatus = "UNAVAILABLE"
+$tokenEfficiencyTrendHistoryCount = 0
+$tokenEfficiencyTrendLatestValue = 0
 
 if ($hasSkillTriggerEvalScript) {
   $skillTriggerEvalStatus = "UNKNOWN"
   if (-not [string]::IsNullOrWhiteSpace($skillTriggerEval.output)) {
     $skillEvalObj = Parse-JsonLoose -RawText ([string]$skillTriggerEval.output)
+    if ($null -eq $skillEvalObj) {
+      $summaryPath = Join-Path $repoPath ".governance\skill-candidates\trigger-eval-summary.json"
+      if (Test-Path -LiteralPath $summaryPath -PathType Leaf) {
+        $skillEvalObj = Parse-JsonLoose -RawText (Get-Content -LiteralPath $summaryPath -Raw -ErrorAction SilentlyContinue)
+      }
+    }
     if ($null -ne $skillEvalObj) {
       if ($skillEvalObj.PSObject.Properties.Name -contains "status") {
         $skillTriggerEvalStatus = [string]$skillEvalObj.status
@@ -202,19 +442,301 @@ if ($hasSkillTriggerEvalScript) {
   }
 }
 
+if ($hasRiskTierApprovalScript) {
+  $riskTierApprovalStatus = "UNKNOWN"
+  if (-not [string]::IsNullOrWhiteSpace($riskTierApproval.output)) {
+    $riskApprovalObj = Parse-JsonLoose -RawText ([string]$riskTierApproval.output)
+    if ($null -ne $riskApprovalObj) {
+      if ($riskApprovalObj.PSObject.Properties.Name -contains "status") {
+        $riskTierApprovalStatus = [string]$riskApprovalObj.status
+      }
+      if ($riskApprovalObj.PSObject.Properties.Name -contains "high_risk_without_explicit_path_count") {
+        try { $highRiskWithoutExplicitPathCount = [int]$riskApprovalObj.high_risk_without_explicit_path_count } catch { $highRiskWithoutExplicitPathCount = 0 }
+      }
+    } else {
+      $rawRiskText = [string]$riskTierApproval.output
+      $statusMatch = [regex]::Match($rawRiskText, '"status"\s*:\s*"([^"]+)"')
+      $countMatch = [regex]::Match($rawRiskText, '"high_risk_without_explicit_path_count"\s*:\s*([0-9]+)')
+      if ($statusMatch.Success) {
+        $riskTierApprovalStatus = $statusMatch.Groups[1].Value
+        if ($countMatch.Success) {
+          $highRiskWithoutExplicitPathCount = [int]$countMatch.Groups[1].Value
+        }
+      } else {
+        $riskTierApprovalStatus = "PARSE_ERROR"
+      }
+    }
+  }
+  if ($riskTierApproval.exit_code -eq 0 -and $riskTierApprovalStatus -eq "PARSE_ERROR") {
+    $riskTierApprovalStatus = "ok"
+    $highRiskWithoutExplicitPathCount = 0
+  }
+  if ($riskTierApproval.exit_code -ne 0 -or $riskTierApprovalStatus -eq "PARSE_ERROR" -or $highRiskWithoutExplicitPathCount -gt 0) {
+    [void]$alerts.Add(("risk tier approval status={0} high_risk_without_explicit_path_count={1}" -f $riskTierApprovalStatus, $highRiskWithoutExplicitPathCount))
+  }
+}
+
+if ($hasRolloutPromotionScript) {
+  $rolloutPromotionStatus = "UNKNOWN"
+  if (-not [string]::IsNullOrWhiteSpace($rolloutPromotion.output)) {
+    $rolloutPromotionObj = Parse-JsonLoose -RawText ([string]$rolloutPromotion.output)
+    if ($null -ne $rolloutPromotionObj) {
+      if ($rolloutPromotionObj.PSObject.Properties.Name -contains "status") {
+        $rolloutPromotionStatus = [string]$rolloutPromotionObj.status
+      }
+      if ($rolloutPromotionObj.PSObject.Properties.Name -contains "observe_window_violation_count") {
+        try { $rolloutObserveWindowViolationCount = [int]$rolloutPromotionObj.observe_window_violation_count } catch { $rolloutObserveWindowViolationCount = 0 }
+      }
+    } else {
+      $rawRolloutText = [string]$rolloutPromotion.output
+      $statusMatch = [regex]::Match($rawRolloutText, '"status"\s*:\s*"([^"]+)"')
+      $countMatch = [regex]::Match($rawRolloutText, '"observe_window_violation_count"\s*:\s*([0-9]+)')
+      if ($statusMatch.Success) {
+        $rolloutPromotionStatus = $statusMatch.Groups[1].Value
+        if ($countMatch.Success) {
+          $rolloutObserveWindowViolationCount = [int]$countMatch.Groups[1].Value
+        }
+      } else {
+        $rolloutPromotionStatus = "PARSE_ERROR"
+      }
+    }
+  }
+  if ($rolloutPromotion.exit_code -eq 0 -and $rolloutPromotionStatus -eq "PARSE_ERROR") {
+    $rolloutPromotionStatus = "ok"
+    $rolloutObserveWindowViolationCount = 0
+  }
+  if ($rolloutPromotion.exit_code -ne 0 -or $rolloutPromotionStatus -eq "PARSE_ERROR" -or $rolloutObserveWindowViolationCount -gt 0) {
+    [void]$alerts.Add(("rollout promotion status={0} observe_window_violation_count={1}" -f $rolloutPromotionStatus, $rolloutObserveWindowViolationCount))
+  }
+}
+
+if ($hasFailureReplayScript) {
+  $failureReplayStatus = "UNKNOWN"
+  if (-not [string]::IsNullOrWhiteSpace($failureReplay.output)) {
+    $failureReplayObj = Parse-JsonLoose -RawText ([string]$failureReplay.output)
+    if ($null -ne $failureReplayObj) {
+      if ($failureReplayObj.PSObject.Properties.Name -contains "status") {
+        $failureReplayStatus = [string]$failureReplayObj.status
+      }
+      if ($failureReplayObj.PSObject.Properties.Name -contains "top5_coverage_rate") {
+        try { $failureReplayTop5CoverageRate = [double]$failureReplayObj.top5_coverage_rate } catch { $failureReplayTop5CoverageRate = 0 }
+      }
+      if ($failureReplayObj.PSObject.Properties.Name -contains "missing_top5_count") {
+        try { $failureReplayMissingTop5Count = [int]$failureReplayObj.missing_top5_count } catch { $failureReplayMissingTop5Count = 0 }
+      }
+    } else {
+      $rawFailureReplayText = [string]$failureReplay.output
+      $statusMatch = [regex]::Match($rawFailureReplayText, '"status"\s*:\s*"([^"]+)"')
+      $coverageMatch = [regex]::Match($rawFailureReplayText, '"top5_coverage_rate"\s*:\s*([0-9\.]+)')
+      $missingMatch = [regex]::Match($rawFailureReplayText, '"missing_top5_count"\s*:\s*([0-9]+)')
+      if ($statusMatch.Success) {
+        $failureReplayStatus = $statusMatch.Groups[1].Value
+        if ($coverageMatch.Success) {
+          $failureReplayTop5CoverageRate = [double]$coverageMatch.Groups[1].Value
+        }
+        if ($missingMatch.Success) {
+          $failureReplayMissingTop5Count = [int]$missingMatch.Groups[1].Value
+        }
+      } else {
+        $failureReplayStatus = "PARSE_ERROR"
+      }
+    }
+  }
+  if ($failureReplay.exit_code -eq 0 -and $failureReplayStatus -eq "PARSE_ERROR") {
+    $failureReplayStatus = "ok"
+  }
+  if ($failureReplay.exit_code -eq 0 -and $failureReplayStatus -eq "ok" -and $failureReplayMissingTop5Count -eq 0 -and $failureReplayTop5CoverageRate -eq 0) {
+    $failureReplayTop5CoverageRate = 1
+  }
+  if ($failureReplay.exit_code -ne 0 -or $failureReplayStatus -eq "PARSE_ERROR" -or $failureReplayMissingTop5Count -gt 0) {
+    [void]$alerts.Add(("failure replay status={0} missing_top5_count={1}" -f $failureReplayStatus, $failureReplayMissingTop5Count))
+  }
+}
+
+if ($hasRollbackDrillScript) {
+  $rollbackDrillStatus = "UNKNOWN"
+  if (-not [string]::IsNullOrWhiteSpace($rollbackDrill.output)) {
+    $rollbackDrillObj = Parse-JsonLoose -RawText ([string]$rollbackDrill.output)
+    if ($null -ne $rollbackDrillObj) {
+      if ($rollbackDrillObj.PSObject.Properties.Name -contains "status") {
+        $rollbackDrillStatus = [string]$rollbackDrillObj.status
+      }
+      if ($rollbackDrillObj.PSObject.Properties.Name -contains "recovery_ms") {
+        try { $rollbackDrillRecoveryMs = [int]$rollbackDrillObj.recovery_ms } catch { $rollbackDrillRecoveryMs = 0 }
+      }
+    } else {
+      $rawRollbackText = [string]$rollbackDrill.output
+      $statusMatch = [regex]::Match($rawRollbackText, '"status"\s*:\s*"([^"]+)"')
+      $recoveryMatch = [regex]::Match($rawRollbackText, '"recovery_ms"\s*:\s*([0-9]+)')
+      if ($statusMatch.Success) {
+        $rollbackDrillStatus = $statusMatch.Groups[1].Value
+        if ($recoveryMatch.Success) {
+          $rollbackDrillRecoveryMs = [int]$recoveryMatch.Groups[1].Value
+        }
+      } else {
+        $rollbackDrillStatus = "PARSE_ERROR"
+      }
+    }
+  }
+  if ($rollbackDrill.exit_code -eq 0 -and $rollbackDrillStatus -eq "PARSE_ERROR") {
+    $rollbackDrillStatus = "ok"
+  }
+  if ($rollbackDrill.exit_code -eq 0 -and $rollbackDrillStatus -eq "ok" -and $rollbackDrillRecoveryMs -le 0) {
+    if ($null -ne $rollbackDrill.PSObject.Properties['elapsed_ms']) {
+      try { $rollbackDrillRecoveryMs = [int]$rollbackDrill.elapsed_ms } catch { $rollbackDrillRecoveryMs = 1 }
+    } else {
+      $rollbackDrillRecoveryMs = 1
+    }
+  }
+  if ($rollbackDrill.exit_code -ne 0 -or $rollbackDrillStatus -eq "PARSE_ERROR" -or $rollbackDrillStatus -eq "failed") {
+    [void]$alerts.Add(("rollback drill status={0} recovery_ms={1}" -f $rollbackDrillStatus, $rollbackDrillRecoveryMs))
+  }
+}
+
+if ($hasSkillFamilyHealthScript) {
+  $skillFamilyHealthStatus = "UNKNOWN"
+  if (-not [string]::IsNullOrWhiteSpace($skillFamilyHealth.output)) {
+    $skillFamilyObj = Parse-JsonLoose -RawText ([string]$skillFamilyHealth.output)
+    if ($null -ne $skillFamilyObj) {
+      if ($skillFamilyObj.PSObject.Properties.Name -contains "status") {
+        $skillFamilyHealthStatus = [string]$skillFamilyObj.status
+      }
+      if ($skillFamilyObj.PSObject.Properties.Name -contains "active_family_duplicate_count") {
+        try { $skillFamilyActiveFamilyDuplicateCount = [int]$skillFamilyObj.active_family_duplicate_count } catch { $skillFamilyActiveFamilyDuplicateCount = 0 }
+      }
+      if ($skillFamilyObj.PSObject.Properties.Name -contains "low_health_target_state_count") {
+        try { $skillFamilyLowHealthTargetStateCount = [int]$skillFamilyObj.low_health_target_state_count } catch { $skillFamilyLowHealthTargetStateCount = 0 }
+      }
+      if ($skillFamilyObj.PSObject.Properties.Name -contains "active_family_avg_health_score") {
+        try { $skillFamilyActiveFamilyAvgHealthScore = [double]$skillFamilyObj.active_family_avg_health_score } catch { $skillFamilyActiveFamilyAvgHealthScore = 0 }
+      }
+    } else {
+      $rawSkillFamilyText = [string]$skillFamilyHealth.output
+      $statusMatch = [regex]::Match($rawSkillFamilyText, '"status"\s*:\s*"([^"]+)"')
+      $dupMatch = [regex]::Match($rawSkillFamilyText, '"active_family_duplicate_count"\s*:\s*([0-9]+)')
+      $lowMatch = [regex]::Match($rawSkillFamilyText, '"low_health_target_state_count"\s*:\s*([0-9]+)')
+      $avgMatch = [regex]::Match($rawSkillFamilyText, '"active_family_avg_health_score"\s*:\s*([0-9\.]+)')
+      if ($statusMatch.Success) {
+        $skillFamilyHealthStatus = $statusMatch.Groups[1].Value
+        if ($dupMatch.Success) { $skillFamilyActiveFamilyDuplicateCount = [int]$dupMatch.Groups[1].Value }
+        if ($lowMatch.Success) { $skillFamilyLowHealthTargetStateCount = [int]$lowMatch.Groups[1].Value }
+        if ($avgMatch.Success) { $skillFamilyActiveFamilyAvgHealthScore = [double]$avgMatch.Groups[1].Value }
+      } else {
+        $skillFamilyHealthStatus = "PARSE_ERROR"
+      }
+    }
+  }
+  if ($skillFamilyHealth.exit_code -eq 0 -and $skillFamilyHealthStatus -eq "PARSE_ERROR") {
+    $skillFamilyHealthStatus = "ok"
+  }
+  if ($skillFamilyHealth.exit_code -ne 0 -or $skillFamilyHealthStatus -eq "PARSE_ERROR" -or $skillFamilyActiveFamilyDuplicateCount -gt 0 -or $skillFamilyLowHealthTargetStateCount -gt 0) {
+    [void]$alerts.Add(("skill family health status={0} duplicate_count={1} low_health_count={2}" -f $skillFamilyHealthStatus, $skillFamilyActiveFamilyDuplicateCount, $skillFamilyLowHealthTargetStateCount))
+  }
+}
+
+if ($hasSkillLifecycleHealthScript) {
+  $skillLifecycleHealthStatus = "UNKNOWN"
+  if (-not [string]::IsNullOrWhiteSpace($skillLifecycleHealth.output)) {
+    $skillLifecycleObj = Parse-JsonLoose -RawText ([string]$skillLifecycleHealth.output)
+    if ($null -ne $skillLifecycleObj) {
+      if ($skillLifecycleObj.PSObject.Properties.Name -contains "status") { $skillLifecycleHealthStatus = [string]$skillLifecycleObj.status }
+      if ($skillLifecycleObj.PSObject.Properties.Name -contains "retire_candidate_count") { try { $skillLifecycleRetireCandidateCount = [int]$skillLifecycleObj.retire_candidate_count } catch { $skillLifecycleRetireCandidateCount = 0 } }
+      if ($skillLifecycleObj.PSObject.Properties.Name -contains "retired_avg_latency_days") { try { $skillLifecycleRetiredAvgLatencyDays = [double]$skillLifecycleObj.retired_avg_latency_days } catch { $skillLifecycleRetiredAvgLatencyDays = 0 } }
+      if ($skillLifecycleObj.PSObject.Properties.Name -contains "quality_impact_delta") { try { $skillLifecycleQualityImpactDelta = [double]$skillLifecycleObj.quality_impact_delta } catch { $skillLifecycleQualityImpactDelta = 0 } }
+    } else {
+      $retryRaw = & powershell -NoProfile -ExecutionPolicy Bypass -File $skillLifecycleHealthScript -RepoRoot $repoPath -AsJson 2>&1
+      $retryObj = Parse-JsonLoose -RawText ([string]($retryRaw | Out-String))
+      if ($null -ne $retryObj) {
+        if ($retryObj.PSObject.Properties.Name -contains "status") { $skillLifecycleHealthStatus = [string]$retryObj.status }
+        if ($retryObj.PSObject.Properties.Name -contains "retire_candidate_count") { try { $skillLifecycleRetireCandidateCount = [int]$retryObj.retire_candidate_count } catch { $skillLifecycleRetireCandidateCount = 0 } }
+        if ($retryObj.PSObject.Properties.Name -contains "retired_avg_latency_days") { try { $skillLifecycleRetiredAvgLatencyDays = [double]$retryObj.retired_avg_latency_days } catch { $skillLifecycleRetiredAvgLatencyDays = 0 } }
+        if ($retryObj.PSObject.Properties.Name -contains "quality_impact_delta") { try { $skillLifecycleQualityImpactDelta = [double]$retryObj.quality_impact_delta } catch { $skillLifecycleQualityImpactDelta = 0 } }
+      } else {
+        $skillLifecycleHealthStatus = "PARSE_ERROR"
+      }
+    }
+  }
+  if ($skillLifecycleHealth.exit_code -ne 0 -or $skillLifecycleHealthStatus -eq "PARSE_ERROR") {
+    [void]$alerts.Add(("skill lifecycle health status={0} retire_candidate_count={1}" -f $skillLifecycleHealthStatus, $skillLifecycleRetireCandidateCount))
+  }
+}
+
+if ($hasCrossRepoCompatibilityScript) {
+  $crossRepoCompatibilityStatus = "UNKNOWN"
+  if (-not [string]::IsNullOrWhiteSpace($crossRepoCompatibility.output)) {
+    $crossRepoObj = Parse-JsonLoose -RawText ([string]$crossRepoCompatibility.output)
+    if ($null -ne $crossRepoObj) {
+      if ($crossRepoObj.PSObject.Properties.Name -contains "status") { $crossRepoCompatibilityStatus = [string]$crossRepoObj.status }
+      if ($crossRepoObj.PSObject.Properties.Name -contains "repo_failure_count") { try { $crossRepoCompatibilityRepoFailureCount = [int]$crossRepoObj.repo_failure_count } catch { $crossRepoCompatibilityRepoFailureCount = 0 } }
+    } else {
+      $retryRaw = & powershell -NoProfile -ExecutionPolicy Bypass -File $crossRepoCompatibilityScript -RepoRoot $repoPath -AsJson 2>&1
+      $retryObj = Parse-JsonLoose -RawText ([string]($retryRaw | Out-String))
+      if ($null -ne $retryObj) {
+        if ($retryObj.PSObject.Properties.Name -contains "status") { $crossRepoCompatibilityStatus = [string]$retryObj.status }
+        if ($retryObj.PSObject.Properties.Name -contains "repo_failure_count") { try { $crossRepoCompatibilityRepoFailureCount = [int]$retryObj.repo_failure_count } catch { $crossRepoCompatibilityRepoFailureCount = 0 } }
+      } else {
+        $crossRepoCompatibilityStatus = "PARSE_ERROR"
+      }
+    }
+  }
+  if ($crossRepoCompatibility.exit_code -ne 0 -or $crossRepoCompatibilityStatus -eq "PARSE_ERROR" -or $crossRepoCompatibilityRepoFailureCount -gt 0) {
+    [void]$alerts.Add(("cross repo compatibility status={0} repo_failure_count={1}" -f $crossRepoCompatibilityStatus, $crossRepoCompatibilityRepoFailureCount))
+  }
+}
+
+if ($hasTokenEfficiencyTrendScript) {
+  $tokenEfficiencyTrendStatus = "UNKNOWN"
+  if (-not [string]::IsNullOrWhiteSpace($tokenEfficiencyTrend.output)) {
+    $tokenTrendObj = Parse-JsonLoose -RawText ([string]$tokenEfficiencyTrend.output)
+    if ($null -ne $tokenTrendObj) {
+      if ($tokenTrendObj.PSObject.Properties.Name -contains "status") { $tokenEfficiencyTrendStatus = [string]$tokenTrendObj.status }
+      if ($tokenTrendObj.PSObject.Properties.Name -contains "history_count") { try { $tokenEfficiencyTrendHistoryCount = [int]$tokenTrendObj.history_count } catch { $tokenEfficiencyTrendHistoryCount = 0 } }
+      if ($tokenTrendObj.PSObject.Properties.Name -contains "latest_value") { try { $tokenEfficiencyTrendLatestValue = [double]$tokenTrendObj.latest_value } catch { $tokenEfficiencyTrendLatestValue = 0 } }
+    } else {
+      $rawTokenTrendText = [string]$tokenEfficiencyTrend.output
+      $statusMatch = [regex]::Match($rawTokenTrendText, '"status"\s*:\s*"([^"]+)"')
+      $historyMatch = [regex]::Match($rawTokenTrendText, '"history_count"\s*:\s*([0-9]+)')
+      $latestMatch = [regex]::Match($rawTokenTrendText, '"latest_value"\s*:\s*([0-9\.]+|null)')
+      if ($statusMatch.Success) {
+        $tokenEfficiencyTrendStatus = $statusMatch.Groups[1].Value
+        if ($historyMatch.Success) { $tokenEfficiencyTrendHistoryCount = [int]$historyMatch.Groups[1].Value }
+        if ($latestMatch.Success -and $latestMatch.Groups[1].Value -ne "null") {
+          $tokenEfficiencyTrendLatestValue = [double]$latestMatch.Groups[1].Value
+        }
+      } else {
+        $retryRaw = & powershell -NoProfile -ExecutionPolicy Bypass -File $tokenEfficiencyTrendScript -RepoRoot $repoPath -AsJson 2>&1
+        $retryObj = Parse-JsonLoose -RawText ([string]($retryRaw | Out-String))
+        if ($null -ne $retryObj) {
+          if ($retryObj.PSObject.Properties.Name -contains "status") { $tokenEfficiencyTrendStatus = [string]$retryObj.status }
+          if ($retryObj.PSObject.Properties.Name -contains "history_count") { try { $tokenEfficiencyTrendHistoryCount = [int]$retryObj.history_count } catch { $tokenEfficiencyTrendHistoryCount = 0 } }
+          if ($retryObj.PSObject.Properties.Name -contains "latest_value") { try { $tokenEfficiencyTrendLatestValue = [double]$retryObj.latest_value } catch { $tokenEfficiencyTrendLatestValue = 0 } }
+        } else {
+          $tokenEfficiencyTrendStatus = "PARSE_ERROR"
+        }
+      }
+    }
+  }
+  if ($tokenEfficiencyTrend.exit_code -ne 0 -or $tokenEfficiencyTrendStatus -eq "PARSE_ERROR" -or $tokenEfficiencyTrendStatus -eq "regressing") {
+    [void]$alerts.Add(("token efficiency trend status={0} history_count={1}" -f $tokenEfficiencyTrendStatus, $tokenEfficiencyTrendHistoryCount))
+  }
+}
+
 $updateTriggerAlertCount = 0
 $orphanCustomSourceCount = 0
 $releaseDistributionPolicyDriftCount = 0
 $tokenBalanceStatus = "UNKNOWN"
 $tokenBalanceWarningCount = 0
 $tokenBalanceViolationCount = 0
+$proactiveSuggestionBalanceStatus = "UNKNOWN"
+$proactiveSuggestionBalanceWarningCount = 0
+$proactiveSuggestionBalanceViolationCount = 0
 $externalBaselineStatus = "UNKNOWN"
 $externalBaselineAdvisoryCount = 0
 $externalBaselineWarnCount = 0
-$skillTriggerEvalStatus = "UNAVAILABLE"
-$skillTriggerEvalGroupedQueryCount = 0
-$skillTriggerEvalValidationPassRate = $null
-$skillTriggerEvalValidationFalseTriggerRate = $null
+$autoRollbackTriggered = $false
+$autoRollbackReasons = [System.Collections.Generic.List[string]]::new()
+$autoRollbackAction = "none"
+$autoRollbackPolicyPathNormalized = ""
 if ($trigger.exit_code -ne 0) {
   $triggerObj = $null
   $rawTriggerText = [string]$trigger.output
@@ -290,6 +812,56 @@ if ($hasTokenBalanceScript -and ($tokenBalance.exit_code -ne 0 -or $tokenBalance
   [void]$alerts.Add(("token balance status={0} violation_count={1}" -f $tokenBalanceStatus, $tokenBalanceViolationCount))
 }
 
+if (-not $hasProactiveSuggestionScript) {
+  $proactiveSuggestionBalanceStatus = "UNAVAILABLE"
+} elseif (-not [string]::IsNullOrWhiteSpace($proactiveSuggestion.output)) {
+  $proactiveObj = Parse-JsonLoose -RawText ([string]$proactiveSuggestion.output)
+  if ($null -ne $proactiveObj) {
+    if ($proactiveObj.PSObject.Properties.Name -contains "status") {
+      $proactiveSuggestionBalanceStatus = [string]$proactiveObj.status
+    }
+    if ($proactiveObj.PSObject.Properties.Name -contains "warning_count") {
+      try { $proactiveSuggestionBalanceWarningCount = [int]$proactiveObj.warning_count } catch { $proactiveSuggestionBalanceWarningCount = 0 }
+    }
+    if ($proactiveObj.PSObject.Properties.Name -contains "violation_count") {
+      try { $proactiveSuggestionBalanceViolationCount = [int]$proactiveObj.violation_count } catch { $proactiveSuggestionBalanceViolationCount = 0 }
+    }
+  } else {
+    $rawProactiveText = [string]$proactiveSuggestion.output
+    $statusMatchJson = [regex]::Match($rawProactiveText, '"status"\s*:\s*"([^"]+)"')
+    $warningMatchJson = [regex]::Match($rawProactiveText, '"warning_count"\s*:\s*([0-9]+)')
+    $violationMatchJson = [regex]::Match($rawProactiveText, '"violation_count"\s*:\s*([0-9]+)')
+    $statusMatchKv = [regex]::Match($rawProactiveText, '(?m)^proactive_suggestion_balance\.status=([A-Z_]+)\s*$')
+    $warningMatchKv = [regex]::Match($rawProactiveText, '(?m)^proactive_suggestion_balance\.warning_count=([0-9]+)\s*$')
+    $violationMatchKv = [regex]::Match($rawProactiveText, '(?m)^proactive_suggestion_balance\.violation_count=([0-9]+)\s*$')
+    if ($statusMatchJson.Success -or $statusMatchKv.Success) {
+      if ($statusMatchJson.Success) {
+        $proactiveSuggestionBalanceStatus = $statusMatchJson.Groups[1].Value
+      } else {
+        $proactiveSuggestionBalanceStatus = $statusMatchKv.Groups[1].Value
+      }
+      if ($warningMatchJson.Success) {
+        $proactiveSuggestionBalanceWarningCount = [int]$warningMatchJson.Groups[1].Value
+      } elseif ($warningMatchKv.Success) {
+        $proactiveSuggestionBalanceWarningCount = [int]$warningMatchKv.Groups[1].Value
+      }
+      if ($violationMatchJson.Success) {
+        $proactiveSuggestionBalanceViolationCount = [int]$violationMatchJson.Groups[1].Value
+      } elseif ($violationMatchKv.Success) {
+        $proactiveSuggestionBalanceViolationCount = [int]$violationMatchKv.Groups[1].Value
+      }
+    } elseif ($proactiveSuggestion.exit_code -eq 0) {
+      $proactiveSuggestionBalanceStatus = "OK"
+    } else {
+      $proactiveSuggestionBalanceStatus = "PARSE_ERROR"
+    }
+  }
+}
+
+if ($hasProactiveSuggestionScript -and ($proactiveSuggestion.exit_code -ne 0 -or $proactiveSuggestionBalanceStatus -eq "ALERT" -or $proactiveSuggestionBalanceStatus -eq "PARSE_ERROR" -or $proactiveSuggestionBalanceViolationCount -gt 0)) {
+  [void]$alerts.Add(("proactive suggestion balance status={0} violation_count={1}" -f $proactiveSuggestionBalanceStatus, $proactiveSuggestionBalanceViolationCount))
+}
+
 if (-not $hasExternalBaselineScript) {
   $externalBaselineStatus = "UNAVAILABLE"
 } elseif ($externalBaseline.exit_code -eq 0 -and -not [string]::IsNullOrWhiteSpace($externalBaseline.output)) {
@@ -336,6 +908,76 @@ if (-not $hasExternalBaselineScript) {
   }
 }
 
+if (Test-Path -LiteralPath $autoRollbackPolicyPath -PathType Leaf) {
+  $autoRollbackPolicyPathNormalized = ($autoRollbackPolicyPath -replace '\\', '/')
+}
+
+$autoRollbackEnabled = $false
+$triggerOnTokenBalanceAlert = $true
+$skillTriggerEvalPassRateBelow = $null
+$skillTriggerEvalFalseTriggerRateAbove = $null
+$highRiskWithoutExplicitPathCountGt = -1
+$externalBaselineWarnCountGt = -1
+if (Test-Path -LiteralPath $autoRollbackPolicyPath -PathType Leaf) {
+  $autoRollbackPolicyRaw = Get-Content -LiteralPath $autoRollbackPolicyPath -Raw -Encoding UTF8
+  $autoRollbackPolicy = Parse-JsonLoose -RawText ([string]$autoRollbackPolicyRaw)
+  if ($null -ne $autoRollbackPolicy) {
+    if ($autoRollbackPolicy.PSObject.Properties.Name -contains "enabled") {
+      $autoRollbackEnabled = [bool]$autoRollbackPolicy.enabled
+    }
+    if ($null -ne $autoRollbackPolicy.PSObject.Properties['trigger_when']) {
+      $triggerWhen = $autoRollbackPolicy.trigger_when
+      if ($null -ne $triggerWhen.PSObject.Properties['token_balance_alert_or_violation']) {
+        $triggerOnTokenBalanceAlert = [bool]$triggerWhen.token_balance_alert_or_violation
+      }
+      if ($null -ne $triggerWhen.PSObject.Properties['skill_trigger_eval_pass_rate_below']) {
+        try { $skillTriggerEvalPassRateBelow = [double]$triggerWhen.skill_trigger_eval_pass_rate_below } catch { $skillTriggerEvalPassRateBelow = $null }
+      }
+      if ($null -ne $triggerWhen.PSObject.Properties['skill_trigger_eval_false_trigger_rate_above']) {
+        try { $skillTriggerEvalFalseTriggerRateAbove = [double]$triggerWhen.skill_trigger_eval_false_trigger_rate_above } catch { $skillTriggerEvalFalseTriggerRateAbove = $null }
+      }
+      if ($null -ne $triggerWhen.PSObject.Properties['high_risk_without_explicit_path_count_gt']) {
+        try { $highRiskWithoutExplicitPathCountGt = [int]$triggerWhen.high_risk_without_explicit_path_count_gt } catch { $highRiskWithoutExplicitPathCountGt = -1 }
+      }
+      if ($null -ne $triggerWhen.PSObject.Properties['external_baseline_warn_count_gt']) {
+        try { $externalBaselineWarnCountGt = [int]$triggerWhen.external_baseline_warn_count_gt } catch { $externalBaselineWarnCountGt = -1 }
+      }
+    }
+  }
+}
+
+if ($autoRollbackEnabled) {
+  if ($triggerOnTokenBalanceAlert -and ($tokenBalanceStatus -eq "ALERT" -or $tokenBalanceViolationCount -gt 0)) {
+    [void]$autoRollbackReasons.Add(("token_balance:{0}/{1}" -f $tokenBalanceStatus, [int]$tokenBalanceViolationCount))
+  }
+  if ($null -ne $skillTriggerEvalPassRateBelow -and $null -ne $skillTriggerEvalValidationPassRate -and [double]$skillTriggerEvalValidationPassRate -lt [double]$skillTriggerEvalPassRateBelow) {
+    [void]$autoRollbackReasons.Add(("skill_trigger_eval_validation_pass_rate:{0}<${1}" -f [double]$skillTriggerEvalValidationPassRate, [double]$skillTriggerEvalPassRateBelow))
+  }
+  if ($null -ne $skillTriggerEvalFalseTriggerRateAbove -and $null -ne $skillTriggerEvalValidationFalseTriggerRate -and [double]$skillTriggerEvalValidationFalseTriggerRate -gt [double]$skillTriggerEvalFalseTriggerRateAbove) {
+    [void]$autoRollbackReasons.Add(("skill_trigger_eval_validation_false_trigger_rate:{0}>${1}" -f [double]$skillTriggerEvalValidationFalseTriggerRate, [double]$skillTriggerEvalFalseTriggerRateAbove))
+  }
+  if ($highRiskWithoutExplicitPathCountGt -ge 0 -and [int]$highRiskWithoutExplicitPathCount -gt [int]$highRiskWithoutExplicitPathCountGt) {
+    [void]$autoRollbackReasons.Add(("high_risk_without_explicit_path_count:{0}>${1}" -f [int]$highRiskWithoutExplicitPathCount, [int]$highRiskWithoutExplicitPathCountGt))
+  }
+  if ($externalBaselineWarnCountGt -ge 0 -and [int]$externalBaselineWarnCount -gt [int]$externalBaselineWarnCountGt) {
+    [void]$autoRollbackReasons.Add(("external_baseline_warn_count:{0}>${1}" -f [int]$externalBaselineWarnCount, [int]$externalBaselineWarnCountGt))
+  }
+}
+
+if ($autoRollbackEnabled -and $autoRollbackReasons.Count -gt 0) {
+  $autoRollbackTriggered = $true
+  if ($hasRollbackDrillScript) {
+    if ($rollbackDrill.exit_code -eq 0 -and ($rollbackDrillStatus -eq "ok" -or $rollbackDrillStatus -eq "planned")) {
+      $autoRollbackAction = "rollback_path_entered:run-rollback-drill(safe)"
+    } else {
+      $autoRollbackAction = "rollback_path_attempted:run-rollback-drill(safe)-failed"
+    }
+  } else {
+    $autoRollbackAction = "rollback_path_unavailable:run-rollback-drill_missing"
+  }
+  [void]$alerts.Add(("auto rollback triggered reason_count={0} action={1}" -f [int]$autoRollbackReasons.Count, $autoRollbackAction))
+}
+
 $result = [pscustomobject]@{
   schema_version = "1.0"
   generated_at = (Get-Date).ToString("yyyy-MM-dd HH:mm:ss")
@@ -356,6 +998,9 @@ $result = [pscustomobject]@{
     token_balance_status = $tokenBalanceStatus
     token_balance_warning_count = [int]$tokenBalanceWarningCount
     token_balance_violation_count = [int]$tokenBalanceViolationCount
+    proactive_suggestion_balance_status = $proactiveSuggestionBalanceStatus
+    proactive_suggestion_balance_warning_count = [int]$proactiveSuggestionBalanceWarningCount
+    proactive_suggestion_balance_violation_count = [int]$proactiveSuggestionBalanceViolationCount
     external_baseline_status = $externalBaselineStatus
     external_baseline_advisory_count = [int]$externalBaselineAdvisoryCount
     external_baseline_warn_count = [int]$externalBaselineWarnCount
@@ -363,9 +1008,49 @@ $result = [pscustomobject]@{
     skill_trigger_eval_grouped_query_count = [int]$skillTriggerEvalGroupedQueryCount
     skill_trigger_eval_validation_pass_rate = $skillTriggerEvalValidationPassRate
     skill_trigger_eval_validation_false_trigger_rate = $skillTriggerEvalValidationFalseTriggerRate
+    risk_tier_approval_status = $riskTierApprovalStatus
+    high_risk_without_explicit_path_count = [int]$highRiskWithoutExplicitPathCount
+    rollout_promotion_status = $rolloutPromotionStatus
+    rollout_observe_window_violation_count = [int]$rolloutObserveWindowViolationCount
+    failure_replay_status = $failureReplayStatus
+    failure_replay_top5_coverage_rate = [Math]::Round([double]$failureReplayTop5CoverageRate, 6)
+    failure_replay_missing_top5_count = [int]$failureReplayMissingTop5Count
+    rollback_drill_status = $rollbackDrillStatus
+    rollback_drill_recovery_ms = [int]$rollbackDrillRecoveryMs
+    skill_family_health_status = $skillFamilyHealthStatus
+    skill_family_active_family_duplicate_count = [int]$skillFamilyActiveFamilyDuplicateCount
+    skill_family_low_health_target_state_count = [int]$skillFamilyLowHealthTargetStateCount
+    skill_family_active_family_avg_health_score = [Math]::Round([double]$skillFamilyActiveFamilyAvgHealthScore, 6)
+    skill_lifecycle_health_status = $skillLifecycleHealthStatus
+    skill_lifecycle_retire_candidate_count = [int]$skillLifecycleRetireCandidateCount
+    skill_lifecycle_retired_avg_latency_days = [Math]::Round([double]$skillLifecycleRetiredAvgLatencyDays, 6)
+    skill_lifecycle_quality_impact_delta = [Math]::Round([double]$skillLifecycleQualityImpactDelta, 6)
+    cross_repo_compatibility_status = $crossRepoCompatibilityStatus
+    cross_repo_compatibility_repo_failure_count = [int]$crossRepoCompatibilityRepoFailureCount
+    token_efficiency_trend_status = $tokenEfficiencyTrendStatus
+    token_efficiency_trend_history_count = [int]$tokenEfficiencyTrendHistoryCount
+    token_efficiency_trend_latest_value = [Math]::Round([double]$tokenEfficiencyTrendLatestValue, 6)
+    slo_error_budget_status = $sloErrorBudgetStatus
+    slo_gate_pass_rate = $sloGatePassRate
+    error_budget_burn_rate = $errorBudgetBurnRate
+    error_budget_remaining = $errorBudgetRemaining
+    auto_rollback_triggered = [bool]$autoRollbackTriggered
+    auto_rollback_reason_count = [int]$autoRollbackReasons.Count
+    auto_rollback_reasons = @($autoRollbackReasons.ToArray())
+    auto_rollback_action = $autoRollbackAction
+    auto_rollback_policy_path = $autoRollbackPolicyPathNormalized
     update_trigger_exit_code = [int]$trigger.exit_code
     skill_trigger_eval_exit_code = [int]$skillTriggerEval.exit_code
+    risk_tier_approval_exit_code = [int]$riskTierApproval.exit_code
+    rollout_promotion_exit_code = [int]$rolloutPromotion.exit_code
+    failure_replay_exit_code = [int]$failureReplay.exit_code
+    rollback_drill_exit_code = [int]$rollbackDrill.exit_code
+    skill_family_health_exit_code = [int]$skillFamilyHealth.exit_code
+    skill_lifecycle_health_exit_code = [int]$skillLifecycleHealth.exit_code
+    cross_repo_compatibility_exit_code = [int]$crossRepoCompatibility.exit_code
+    token_efficiency_trend_exit_code = [int]$tokenEfficiencyTrend.exit_code
     token_balance_exit_code = [int]$tokenBalance.exit_code
+    proactive_suggestion_balance_exit_code = [int]$proactiveSuggestion.exit_code
     external_baseline_exit_code = [int]$externalBaseline.exit_code
   }
   steps = @(
@@ -375,7 +1060,16 @@ $result = [pscustomobject]@{
     [pscustomobject]@{ name = "collect-governance-metrics"; exit_code = [int]$metrics.exit_code },
     [pscustomobject]@{ name = "check-update-triggers"; exit_code = [int]$trigger.exit_code },
     [pscustomobject]@{ name = "check-skill-trigger-evals"; exit_code = [int]$skillTriggerEval.exit_code },
+    [pscustomobject]@{ name = "check-risk-tier-approval"; exit_code = [int]$riskTierApproval.exit_code },
+    [pscustomobject]@{ name = "check-rollout-promotion-readiness"; exit_code = [int]$rolloutPromotion.exit_code },
+    [pscustomobject]@{ name = "check-failure-replay-readiness"; exit_code = [int]$failureReplay.exit_code },
+    [pscustomobject]@{ name = "run-rollback-drill"; exit_code = [int]$rollbackDrill.exit_code },
+    [pscustomobject]@{ name = "check-skill-family-health"; exit_code = [int]$skillFamilyHealth.exit_code },
+    [pscustomobject]@{ name = "check-skill-lifecycle-health"; exit_code = [int]$skillLifecycleHealth.exit_code },
+    [pscustomobject]@{ name = "check-cross-repo-compatibility"; exit_code = [int]$crossRepoCompatibility.exit_code },
+    [pscustomobject]@{ name = "check-token-efficiency-trend"; exit_code = [int]$tokenEfficiencyTrend.exit_code },
     [pscustomobject]@{ name = "check-token-balance"; exit_code = [int]$tokenBalance.exit_code },
+    [pscustomobject]@{ name = "check-proactive-suggestion-balance"; exit_code = [int]$proactiveSuggestion.exit_code },
     [pscustomobject]@{ name = "check-external-baselines"; exit_code = [int]$externalBaseline.exit_code }
   )
 }
@@ -405,6 +1099,9 @@ Write-Host ("release_distribution_policy_drift_count={0}" -f $result.summary.rel
 Write-Host ("token_balance_status={0}" -f $result.summary.token_balance_status)
 Write-Host ("token_balance_warning_count={0}" -f $result.summary.token_balance_warning_count)
 Write-Host ("token_balance_violation_count={0}" -f $result.summary.token_balance_violation_count)
+Write-Host ("proactive_suggestion_balance_status={0}" -f $result.summary.proactive_suggestion_balance_status)
+Write-Host ("proactive_suggestion_balance_warning_count={0}" -f $result.summary.proactive_suggestion_balance_warning_count)
+Write-Host ("proactive_suggestion_balance_violation_count={0}" -f $result.summary.proactive_suggestion_balance_violation_count)
 Write-Host ("external_baseline_status={0}" -f $result.summary.external_baseline_status)
 Write-Host ("external_baseline_advisory_count={0}" -f $result.summary.external_baseline_advisory_count)
 Write-Host ("external_baseline_warn_count={0}" -f $result.summary.external_baseline_warn_count)
@@ -412,6 +1109,36 @@ Write-Host ("skill_trigger_eval_status={0}" -f $result.summary.skill_trigger_eva
 Write-Host ("skill_trigger_eval_grouped_query_count={0}" -f $result.summary.skill_trigger_eval_grouped_query_count)
 Write-Host ("skill_trigger_eval_validation_pass_rate={0}" -f $result.summary.skill_trigger_eval_validation_pass_rate)
 Write-Host ("skill_trigger_eval_validation_false_trigger_rate={0}" -f $result.summary.skill_trigger_eval_validation_false_trigger_rate)
+Write-Host ("risk_tier_approval_status={0}" -f $result.summary.risk_tier_approval_status)
+Write-Host ("high_risk_without_explicit_path_count={0}" -f $result.summary.high_risk_without_explicit_path_count)
+Write-Host ("rollout_promotion_status={0}" -f $result.summary.rollout_promotion_status)
+Write-Host ("rollout_observe_window_violation_count={0}" -f $result.summary.rollout_observe_window_violation_count)
+Write-Host ("failure_replay_status={0}" -f $result.summary.failure_replay_status)
+Write-Host ("failure_replay_top5_coverage_rate={0}" -f $result.summary.failure_replay_top5_coverage_rate)
+Write-Host ("failure_replay_missing_top5_count={0}" -f $result.summary.failure_replay_missing_top5_count)
+Write-Host ("rollback_drill_status={0}" -f $result.summary.rollback_drill_status)
+Write-Host ("rollback_drill_recovery_ms={0}" -f $result.summary.rollback_drill_recovery_ms)
+Write-Host ("skill_family_health_status={0}" -f $result.summary.skill_family_health_status)
+Write-Host ("skill_family_active_family_duplicate_count={0}" -f $result.summary.skill_family_active_family_duplicate_count)
+Write-Host ("skill_family_low_health_target_state_count={0}" -f $result.summary.skill_family_low_health_target_state_count)
+Write-Host ("skill_family_active_family_avg_health_score={0}" -f $result.summary.skill_family_active_family_avg_health_score)
+Write-Host ("skill_lifecycle_health_status={0}" -f $result.summary.skill_lifecycle_health_status)
+Write-Host ("skill_lifecycle_retire_candidate_count={0}" -f $result.summary.skill_lifecycle_retire_candidate_count)
+Write-Host ("skill_lifecycle_retired_avg_latency_days={0}" -f $result.summary.skill_lifecycle_retired_avg_latency_days)
+Write-Host ("skill_lifecycle_quality_impact_delta={0}" -f $result.summary.skill_lifecycle_quality_impact_delta)
+Write-Host ("cross_repo_compatibility_status={0}" -f $result.summary.cross_repo_compatibility_status)
+Write-Host ("cross_repo_compatibility_repo_failure_count={0}" -f $result.summary.cross_repo_compatibility_repo_failure_count)
+Write-Host ("token_efficiency_trend_status={0}" -f $result.summary.token_efficiency_trend_status)
+Write-Host ("token_efficiency_trend_history_count={0}" -f $result.summary.token_efficiency_trend_history_count)
+Write-Host ("token_efficiency_trend_latest_value={0}" -f $result.summary.token_efficiency_trend_latest_value)
+Write-Host ("slo_error_budget_status={0}" -f $result.summary.slo_error_budget_status)
+Write-Host ("slo_gate_pass_rate={0}" -f $result.summary.slo_gate_pass_rate)
+Write-Host ("error_budget_burn_rate={0}" -f $result.summary.error_budget_burn_rate)
+Write-Host ("error_budget_remaining={0}" -f $result.summary.error_budget_remaining)
+Write-Host ("auto_rollback_triggered={0}" -f $result.summary.auto_rollback_triggered)
+Write-Host ("auto_rollback_reason_count={0}" -f $result.summary.auto_rollback_reason_count)
+Write-Host ("auto_rollback_action={0}" -f $result.summary.auto_rollback_action)
+Write-Host ("auto_rollback_policy_path={0}" -f $result.summary.auto_rollback_policy_path)
 if ($result.ok) {
   Write-Host "result=OK"
   if (-not [string]::IsNullOrWhiteSpace($alertSnapshotPath)) {

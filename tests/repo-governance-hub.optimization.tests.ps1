@@ -3523,6 +3523,10 @@ exit 0
       ($snapshot -match "token_efficiency_trend_status=UNAVAILABLE") | should be $true
       ($snapshot -match "token_efficiency_trend_history_count=0") | should be $true
       ($snapshot -match "token_efficiency_trend_latest_value=0") | should be $true
+      ($snapshot -match "slo_error_budget_status=UNAVAILABLE") | should be $true
+      ($snapshot -match "slo_gate_pass_rate=N/A") | should be $true
+      ($snapshot -match "error_budget_burn_rate=N/A") | should be $true
+      ($snapshot -match "error_budget_remaining=N/A") | should be $true
       ($snapshot -match "auto_rollback_triggered=False") | should be $true
       ($snapshot -match "auto_rollback_reason_count=0") | should be $true
       ($snapshot -match "auto_rollback_action=none") | should be $true

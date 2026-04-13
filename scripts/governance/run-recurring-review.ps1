@@ -89,6 +89,34 @@ function Parse-JsonLoose([string]$RawText) {
   return $null
 }
 
+function Get-MetricValueFromFile {
+  param(
+    [string]$Path,
+    [string]$Key
+  )
+  if ([string]::IsNullOrWhiteSpace($Path) -or [string]::IsNullOrWhiteSpace($Key)) { return "" }
+  if (-not (Test-Path -LiteralPath $Path -PathType Leaf)) { return "" }
+  $raw = Get-Content -LiteralPath $Path -Raw -ErrorAction SilentlyContinue
+  if ([string]::IsNullOrWhiteSpace($raw)) { return "" }
+  $pattern = "(?im)^\s*{0}\s*[:=]\s*([^\r\n]+)\s*$" -f [regex]::Escape($Key)
+  $m = [regex]::Match($raw, $pattern)
+  if (-not $m.Success) { return "" }
+  return ([string]$m.Groups[1].Value).Trim()
+}
+
+function Convert-PercentTextToDouble {
+  param([string]$Text)
+  if ([string]::IsNullOrWhiteSpace($Text)) { return $null }
+  $clean = ([string]$Text).Trim()
+  if ($clean.Equals("N/A", [System.StringComparison]::OrdinalIgnoreCase)) { return $null }
+  if ($clean.EndsWith("%")) {
+    $clean = $clean.Substring(0, $clean.Length - 1)
+  }
+  $value = 0.0
+  if ([double]::TryParse($clean, [ref]$value)) { return [double]$value }
+  return $null
+}
+
 function Write-AlertSnapshot([object]$ReviewResult, [string]$RootPath) {
   $docsDir = Join-Path $RootPath "docs\governance"
   if (-not (Test-Path -LiteralPath $docsDir -PathType Container)) {
@@ -131,6 +159,10 @@ function Write-AlertSnapshot([object]$ReviewResult, [string]$RootPath) {
   [void]$lines.Add(("token_efficiency_trend_status={0}" -f $ReviewResult.summary.token_efficiency_trend_status))
   [void]$lines.Add(("token_efficiency_trend_history_count={0}" -f $ReviewResult.summary.token_efficiency_trend_history_count))
   [void]$lines.Add(("token_efficiency_trend_latest_value={0}" -f $ReviewResult.summary.token_efficiency_trend_latest_value))
+  [void]$lines.Add(("slo_error_budget_status={0}" -f $ReviewResult.summary.slo_error_budget_status))
+  [void]$lines.Add(("slo_gate_pass_rate={0}" -f $ReviewResult.summary.slo_gate_pass_rate))
+  [void]$lines.Add(("error_budget_burn_rate={0}" -f $ReviewResult.summary.error_budget_burn_rate))
+  [void]$lines.Add(("error_budget_remaining={0}" -f $ReviewResult.summary.error_budget_remaining))
   [void]$lines.Add(("proactive_suggestion_balance_status={0}" -f $ReviewResult.summary.proactive_suggestion_balance_status))
   [void]$lines.Add(("proactive_suggestion_balance_warning_count={0}" -f $ReviewResult.summary.proactive_suggestion_balance_warning_count))
   [void]$lines.Add(("proactive_suggestion_balance_violation_count={0}" -f $ReviewResult.summary.proactive_suggestion_balance_violation_count))
@@ -314,8 +346,41 @@ if ($waiverRemindCount -gt 0) {
   [void]$alerts.Add(("waiver remind count={0}" -f $waiverRemindCount))
 }
 
+$sloErrorBudgetStatus = "UNAVAILABLE"
+$sloGatePassRate = "N/A"
+$errorBudgetBurnRate = "N/A"
+$errorBudgetRemaining = "N/A"
+
 if ($metrics.exit_code -ne 0) {
   [void]$alerts.Add("collect-governance-metrics failed")
+}
+if ($metrics.exit_code -eq 0) {
+  $metricsAutoPath = Join-Path $repoPath "docs\governance\metrics-auto.md"
+  if (Test-Path -LiteralPath $metricsAutoPath -PathType Leaf) {
+    $sloErrorBudgetStatus = "DATA_GAP"
+    $sloGatePassRate = Get-MetricValueFromFile -Path $metricsAutoPath -Key "gate_pass_rate"
+    if ([string]::IsNullOrWhiteSpace($sloGatePassRate)) { $sloGatePassRate = "N/A" }
+
+    $rollbackRate = Get-MetricValueFromFile -Path $metricsAutoPath -Key "rollback_rate"
+    if (-not [string]::IsNullOrWhiteSpace($rollbackRate)) {
+      $errorBudgetBurnRate = $rollbackRate
+    }
+
+    $gateRateValue = Convert-PercentTextToDouble -Text $sloGatePassRate
+    $rollbackRateValue = Convert-PercentTextToDouble -Text $errorBudgetBurnRate
+    if ($null -ne $gateRateValue) {
+      $sloErrorBudgetStatus = "OK"
+    }
+    if ($null -ne $rollbackRateValue) {
+      $remaining = [Math]::Round([double](100.0 - $rollbackRateValue), 2)
+      if ($remaining -lt 0) { $remaining = 0 }
+      if ($remaining -gt 100) { $remaining = 100 }
+      $errorBudgetRemaining = ("{0:0.00}%" -f $remaining)
+      if ($sloErrorBudgetStatus -ne "OK") {
+        $sloErrorBudgetStatus = "OK"
+      }
+    }
+  }
 }
 
 $skillTriggerEvalStatus = "UNAVAILABLE"
@@ -965,6 +1030,10 @@ $result = [pscustomobject]@{
     token_efficiency_trend_status = $tokenEfficiencyTrendStatus
     token_efficiency_trend_history_count = [int]$tokenEfficiencyTrendHistoryCount
     token_efficiency_trend_latest_value = [Math]::Round([double]$tokenEfficiencyTrendLatestValue, 6)
+    slo_error_budget_status = $sloErrorBudgetStatus
+    slo_gate_pass_rate = $sloGatePassRate
+    error_budget_burn_rate = $errorBudgetBurnRate
+    error_budget_remaining = $errorBudgetRemaining
     auto_rollback_triggered = [bool]$autoRollbackTriggered
     auto_rollback_reason_count = [int]$autoRollbackReasons.Count
     auto_rollback_reasons = @($autoRollbackReasons.ToArray())
@@ -1062,6 +1131,10 @@ Write-Host ("cross_repo_compatibility_repo_failure_count={0}" -f $result.summary
 Write-Host ("token_efficiency_trend_status={0}" -f $result.summary.token_efficiency_trend_status)
 Write-Host ("token_efficiency_trend_history_count={0}" -f $result.summary.token_efficiency_trend_history_count)
 Write-Host ("token_efficiency_trend_latest_value={0}" -f $result.summary.token_efficiency_trend_latest_value)
+Write-Host ("slo_error_budget_status={0}" -f $result.summary.slo_error_budget_status)
+Write-Host ("slo_gate_pass_rate={0}" -f $result.summary.slo_gate_pass_rate)
+Write-Host ("error_budget_burn_rate={0}" -f $result.summary.error_budget_burn_rate)
+Write-Host ("error_budget_remaining={0}" -f $result.summary.error_budget_remaining)
 Write-Host ("auto_rollback_triggered={0}" -f $result.summary.auto_rollback_triggered)
 Write-Host ("auto_rollback_reason_count={0}" -f $result.summary.auto_rollback_reason_count)
 Write-Host ("auto_rollback_action={0}" -f $result.summary.auto_rollback_action)

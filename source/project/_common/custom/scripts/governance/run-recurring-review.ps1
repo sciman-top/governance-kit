@@ -33,7 +33,9 @@ $skillLifecycleHealthScript = Join-Path $kitRoot "scripts\governance\check-skill
 $crossRepoCompatibilityScript = Join-Path $kitRoot "scripts\governance\check-cross-repo-compatibility.ps1"
 $tokenEfficiencyTrendScript = Join-Path $kitRoot "scripts\governance\check-token-efficiency-trend.ps1"
 $tokenBalanceScript = Join-Path $kitRoot "scripts\governance\check-token-balance.ps1"
+$proactiveSuggestionScript = Join-Path $kitRoot "scripts\governance\check-proactive-suggestion-balance.ps1"
 $externalBaselineScript = Join-Path $kitRoot "scripts\governance\check-external-baselines.ps1"
+$autoRollbackPolicyPath = Join-Path $kitRoot ".governance\auto-rollback-trigger-policy.json"
 $requiredScripts = @($doctorScript, $rolloutScript, $waiverScript, $metricsScript, $triggerScript)
 foreach ($script in $requiredScripts) {
   if (-not (Test-Path -LiteralPath $script -PathType Leaf)) {
@@ -51,6 +53,7 @@ $hasSkillFamilyHealthScript = (Test-Path -LiteralPath $skillFamilyHealthScript -
 $hasSkillLifecycleHealthScript = (Test-Path -LiteralPath $skillLifecycleHealthScript -PathType Leaf)
 $hasCrossRepoCompatibilityScript = (Test-Path -LiteralPath $crossRepoCompatibilityScript -PathType Leaf)
 $hasTokenEfficiencyTrendScript = (Test-Path -LiteralPath $tokenEfficiencyTrendScript -PathType Leaf)
+$hasProactiveSuggestionScript = (Test-Path -LiteralPath $proactiveSuggestionScript -PathType Leaf)
 
 $psExe = Get-CurrentPowerShellPath
 
@@ -83,6 +86,34 @@ function Parse-JsonLoose([string]$RawText) {
       }
     }
   }
+  return $null
+}
+
+function Get-MetricValueFromFile {
+  param(
+    [string]$Path,
+    [string]$Key
+  )
+  if ([string]::IsNullOrWhiteSpace($Path) -or [string]::IsNullOrWhiteSpace($Key)) { return "" }
+  if (-not (Test-Path -LiteralPath $Path -PathType Leaf)) { return "" }
+  $raw = Get-Content -LiteralPath $Path -Raw -ErrorAction SilentlyContinue
+  if ([string]::IsNullOrWhiteSpace($raw)) { return "" }
+  $pattern = "(?im)^\s*{0}\s*[:=]\s*([^\r\n]+)\s*$" -f [regex]::Escape($Key)
+  $m = [regex]::Match($raw, $pattern)
+  if (-not $m.Success) { return "" }
+  return ([string]$m.Groups[1].Value).Trim()
+}
+
+function Convert-PercentTextToDouble {
+  param([string]$Text)
+  if ([string]::IsNullOrWhiteSpace($Text)) { return $null }
+  $clean = ([string]$Text).Trim()
+  if ($clean.Equals("N/A", [System.StringComparison]::OrdinalIgnoreCase)) { return $null }
+  if ($clean.EndsWith("%")) {
+    $clean = $clean.Substring(0, $clean.Length - 1)
+  }
+  $value = 0.0
+  if ([double]::TryParse($clean, [ref]$value)) { return [double]$value }
   return $null
 }
 
@@ -128,6 +159,19 @@ function Write-AlertSnapshot([object]$ReviewResult, [string]$RootPath) {
   [void]$lines.Add(("token_efficiency_trend_status={0}" -f $ReviewResult.summary.token_efficiency_trend_status))
   [void]$lines.Add(("token_efficiency_trend_history_count={0}" -f $ReviewResult.summary.token_efficiency_trend_history_count))
   [void]$lines.Add(("token_efficiency_trend_latest_value={0}" -f $ReviewResult.summary.token_efficiency_trend_latest_value))
+  [void]$lines.Add(("slo_error_budget_status={0}" -f $ReviewResult.summary.slo_error_budget_status))
+  [void]$lines.Add(("slo_gate_pass_rate={0}" -f $ReviewResult.summary.slo_gate_pass_rate))
+  [void]$lines.Add(("error_budget_burn_rate={0}" -f $ReviewResult.summary.error_budget_burn_rate))
+  [void]$lines.Add(("error_budget_remaining={0}" -f $ReviewResult.summary.error_budget_remaining))
+  [void]$lines.Add(("proactive_suggestion_balance_status={0}" -f $ReviewResult.summary.proactive_suggestion_balance_status))
+  [void]$lines.Add(("proactive_suggestion_balance_warning_count={0}" -f $ReviewResult.summary.proactive_suggestion_balance_warning_count))
+  [void]$lines.Add(("proactive_suggestion_balance_violation_count={0}" -f $ReviewResult.summary.proactive_suggestion_balance_violation_count))
+  $autoRollbackReasonsText = (@($ReviewResult.summary.auto_rollback_reasons) -join ";")
+  [void]$lines.Add(("auto_rollback_triggered={0}" -f $ReviewResult.summary.auto_rollback_triggered))
+  [void]$lines.Add(("auto_rollback_reason_count={0}" -f $ReviewResult.summary.auto_rollback_reason_count))
+  [void]$lines.Add(("auto_rollback_reasons={0}" -f $autoRollbackReasonsText))
+  [void]$lines.Add(("auto_rollback_action={0}" -f $ReviewResult.summary.auto_rollback_action))
+  [void]$lines.Add(("auto_rollback_policy_path={0}" -f $ReviewResult.summary.auto_rollback_policy_path))
   if (@($ReviewResult.alerts).Count -gt 0) {
     [void]$lines.Add("alerts=")
     foreach ($a in @($ReviewResult.alerts)) {
@@ -239,6 +283,15 @@ if ($hasTokenBalanceScript) {
     output = ""
   }
 }
+if ($hasProactiveSuggestionScript) {
+  $proactiveSuggestion = Invoke-StepText -Name "check-proactive-suggestion-balance" -ScriptPath $proactiveSuggestionScript -Args @("-RepoRoot", $repoPath, "-AsJson")
+} else {
+  $proactiveSuggestion = [pscustomobject]@{
+    name = "check-proactive-suggestion-balance"
+    exit_code = 0
+    output = ""
+  }
+}
 if ($hasExternalBaselineScript) {
   $externalBaseline = Invoke-StepText -Name "check-external-baselines" -ScriptPath $externalBaselineScript -Args @("-RepoRoot", $repoPath, "-AsJson")
 } else {
@@ -293,8 +346,41 @@ if ($waiverRemindCount -gt 0) {
   [void]$alerts.Add(("waiver remind count={0}" -f $waiverRemindCount))
 }
 
+$sloErrorBudgetStatus = "UNAVAILABLE"
+$sloGatePassRate = "N/A"
+$errorBudgetBurnRate = "N/A"
+$errorBudgetRemaining = "N/A"
+
 if ($metrics.exit_code -ne 0) {
   [void]$alerts.Add("collect-governance-metrics failed")
+}
+if ($metrics.exit_code -eq 0) {
+  $metricsAutoPath = Join-Path $repoPath "docs\governance\metrics-auto.md"
+  if (Test-Path -LiteralPath $metricsAutoPath -PathType Leaf) {
+    $sloErrorBudgetStatus = "DATA_GAP"
+    $sloGatePassRate = Get-MetricValueFromFile -Path $metricsAutoPath -Key "gate_pass_rate"
+    if ([string]::IsNullOrWhiteSpace($sloGatePassRate)) { $sloGatePassRate = "N/A" }
+
+    $rollbackRate = Get-MetricValueFromFile -Path $metricsAutoPath -Key "rollback_rate"
+    if (-not [string]::IsNullOrWhiteSpace($rollbackRate)) {
+      $errorBudgetBurnRate = $rollbackRate
+    }
+
+    $gateRateValue = Convert-PercentTextToDouble -Text $sloGatePassRate
+    $rollbackRateValue = Convert-PercentTextToDouble -Text $errorBudgetBurnRate
+    if ($null -ne $gateRateValue) {
+      $sloErrorBudgetStatus = "OK"
+    }
+    if ($null -ne $rollbackRateValue) {
+      $remaining = [Math]::Round([double](100.0 - $rollbackRateValue), 2)
+      if ($remaining -lt 0) { $remaining = 0 }
+      if ($remaining -gt 100) { $remaining = 100 }
+      $errorBudgetRemaining = ("{0:0.00}%" -f $remaining)
+      if ($sloErrorBudgetStatus -ne "OK") {
+        $sloErrorBudgetStatus = "OK"
+      }
+    }
+  }
 }
 
 $skillTriggerEvalStatus = "UNAVAILABLE"
@@ -641,9 +727,16 @@ $releaseDistributionPolicyDriftCount = 0
 $tokenBalanceStatus = "UNKNOWN"
 $tokenBalanceWarningCount = 0
 $tokenBalanceViolationCount = 0
+$proactiveSuggestionBalanceStatus = "UNKNOWN"
+$proactiveSuggestionBalanceWarningCount = 0
+$proactiveSuggestionBalanceViolationCount = 0
 $externalBaselineStatus = "UNKNOWN"
 $externalBaselineAdvisoryCount = 0
 $externalBaselineWarnCount = 0
+$autoRollbackTriggered = $false
+$autoRollbackReasons = [System.Collections.Generic.List[string]]::new()
+$autoRollbackAction = "none"
+$autoRollbackPolicyPathNormalized = ""
 if ($trigger.exit_code -ne 0) {
   $triggerObj = $null
   $rawTriggerText = [string]$trigger.output
@@ -719,6 +812,56 @@ if ($hasTokenBalanceScript -and ($tokenBalance.exit_code -ne 0 -or $tokenBalance
   [void]$alerts.Add(("token balance status={0} violation_count={1}" -f $tokenBalanceStatus, $tokenBalanceViolationCount))
 }
 
+if (-not $hasProactiveSuggestionScript) {
+  $proactiveSuggestionBalanceStatus = "UNAVAILABLE"
+} elseif (-not [string]::IsNullOrWhiteSpace($proactiveSuggestion.output)) {
+  $proactiveObj = Parse-JsonLoose -RawText ([string]$proactiveSuggestion.output)
+  if ($null -ne $proactiveObj) {
+    if ($proactiveObj.PSObject.Properties.Name -contains "status") {
+      $proactiveSuggestionBalanceStatus = [string]$proactiveObj.status
+    }
+    if ($proactiveObj.PSObject.Properties.Name -contains "warning_count") {
+      try { $proactiveSuggestionBalanceWarningCount = [int]$proactiveObj.warning_count } catch { $proactiveSuggestionBalanceWarningCount = 0 }
+    }
+    if ($proactiveObj.PSObject.Properties.Name -contains "violation_count") {
+      try { $proactiveSuggestionBalanceViolationCount = [int]$proactiveObj.violation_count } catch { $proactiveSuggestionBalanceViolationCount = 0 }
+    }
+  } else {
+    $rawProactiveText = [string]$proactiveSuggestion.output
+    $statusMatchJson = [regex]::Match($rawProactiveText, '"status"\s*:\s*"([^"]+)"')
+    $warningMatchJson = [regex]::Match($rawProactiveText, '"warning_count"\s*:\s*([0-9]+)')
+    $violationMatchJson = [regex]::Match($rawProactiveText, '"violation_count"\s*:\s*([0-9]+)')
+    $statusMatchKv = [regex]::Match($rawProactiveText, '(?m)^proactive_suggestion_balance\.status=([A-Z_]+)\s*$')
+    $warningMatchKv = [regex]::Match($rawProactiveText, '(?m)^proactive_suggestion_balance\.warning_count=([0-9]+)\s*$')
+    $violationMatchKv = [regex]::Match($rawProactiveText, '(?m)^proactive_suggestion_balance\.violation_count=([0-9]+)\s*$')
+    if ($statusMatchJson.Success -or $statusMatchKv.Success) {
+      if ($statusMatchJson.Success) {
+        $proactiveSuggestionBalanceStatus = $statusMatchJson.Groups[1].Value
+      } else {
+        $proactiveSuggestionBalanceStatus = $statusMatchKv.Groups[1].Value
+      }
+      if ($warningMatchJson.Success) {
+        $proactiveSuggestionBalanceWarningCount = [int]$warningMatchJson.Groups[1].Value
+      } elseif ($warningMatchKv.Success) {
+        $proactiveSuggestionBalanceWarningCount = [int]$warningMatchKv.Groups[1].Value
+      }
+      if ($violationMatchJson.Success) {
+        $proactiveSuggestionBalanceViolationCount = [int]$violationMatchJson.Groups[1].Value
+      } elseif ($violationMatchKv.Success) {
+        $proactiveSuggestionBalanceViolationCount = [int]$violationMatchKv.Groups[1].Value
+      }
+    } elseif ($proactiveSuggestion.exit_code -eq 0) {
+      $proactiveSuggestionBalanceStatus = "OK"
+    } else {
+      $proactiveSuggestionBalanceStatus = "PARSE_ERROR"
+    }
+  }
+}
+
+if ($hasProactiveSuggestionScript -and ($proactiveSuggestion.exit_code -ne 0 -or $proactiveSuggestionBalanceStatus -eq "ALERT" -or $proactiveSuggestionBalanceStatus -eq "PARSE_ERROR" -or $proactiveSuggestionBalanceViolationCount -gt 0)) {
+  [void]$alerts.Add(("proactive suggestion balance status={0} violation_count={1}" -f $proactiveSuggestionBalanceStatus, $proactiveSuggestionBalanceViolationCount))
+}
+
 if (-not $hasExternalBaselineScript) {
   $externalBaselineStatus = "UNAVAILABLE"
 } elseif ($externalBaseline.exit_code -eq 0 -and -not [string]::IsNullOrWhiteSpace($externalBaseline.output)) {
@@ -765,6 +908,76 @@ if (-not $hasExternalBaselineScript) {
   }
 }
 
+if (Test-Path -LiteralPath $autoRollbackPolicyPath -PathType Leaf) {
+  $autoRollbackPolicyPathNormalized = ($autoRollbackPolicyPath -replace '\\', '/')
+}
+
+$autoRollbackEnabled = $false
+$triggerOnTokenBalanceAlert = $true
+$skillTriggerEvalPassRateBelow = $null
+$skillTriggerEvalFalseTriggerRateAbove = $null
+$highRiskWithoutExplicitPathCountGt = -1
+$externalBaselineWarnCountGt = -1
+if (Test-Path -LiteralPath $autoRollbackPolicyPath -PathType Leaf) {
+  $autoRollbackPolicyRaw = Get-Content -LiteralPath $autoRollbackPolicyPath -Raw -Encoding UTF8
+  $autoRollbackPolicy = Parse-JsonLoose -RawText ([string]$autoRollbackPolicyRaw)
+  if ($null -ne $autoRollbackPolicy) {
+    if ($autoRollbackPolicy.PSObject.Properties.Name -contains "enabled") {
+      $autoRollbackEnabled = [bool]$autoRollbackPolicy.enabled
+    }
+    if ($null -ne $autoRollbackPolicy.PSObject.Properties['trigger_when']) {
+      $triggerWhen = $autoRollbackPolicy.trigger_when
+      if ($null -ne $triggerWhen.PSObject.Properties['token_balance_alert_or_violation']) {
+        $triggerOnTokenBalanceAlert = [bool]$triggerWhen.token_balance_alert_or_violation
+      }
+      if ($null -ne $triggerWhen.PSObject.Properties['skill_trigger_eval_pass_rate_below']) {
+        try { $skillTriggerEvalPassRateBelow = [double]$triggerWhen.skill_trigger_eval_pass_rate_below } catch { $skillTriggerEvalPassRateBelow = $null }
+      }
+      if ($null -ne $triggerWhen.PSObject.Properties['skill_trigger_eval_false_trigger_rate_above']) {
+        try { $skillTriggerEvalFalseTriggerRateAbove = [double]$triggerWhen.skill_trigger_eval_false_trigger_rate_above } catch { $skillTriggerEvalFalseTriggerRateAbove = $null }
+      }
+      if ($null -ne $triggerWhen.PSObject.Properties['high_risk_without_explicit_path_count_gt']) {
+        try { $highRiskWithoutExplicitPathCountGt = [int]$triggerWhen.high_risk_without_explicit_path_count_gt } catch { $highRiskWithoutExplicitPathCountGt = -1 }
+      }
+      if ($null -ne $triggerWhen.PSObject.Properties['external_baseline_warn_count_gt']) {
+        try { $externalBaselineWarnCountGt = [int]$triggerWhen.external_baseline_warn_count_gt } catch { $externalBaselineWarnCountGt = -1 }
+      }
+    }
+  }
+}
+
+if ($autoRollbackEnabled) {
+  if ($triggerOnTokenBalanceAlert -and ($tokenBalanceStatus -eq "ALERT" -or $tokenBalanceViolationCount -gt 0)) {
+    [void]$autoRollbackReasons.Add(("token_balance:{0}/{1}" -f $tokenBalanceStatus, [int]$tokenBalanceViolationCount))
+  }
+  if ($null -ne $skillTriggerEvalPassRateBelow -and $null -ne $skillTriggerEvalValidationPassRate -and [double]$skillTriggerEvalValidationPassRate -lt [double]$skillTriggerEvalPassRateBelow) {
+    [void]$autoRollbackReasons.Add(("skill_trigger_eval_validation_pass_rate:{0}<${1}" -f [double]$skillTriggerEvalValidationPassRate, [double]$skillTriggerEvalPassRateBelow))
+  }
+  if ($null -ne $skillTriggerEvalFalseTriggerRateAbove -and $null -ne $skillTriggerEvalValidationFalseTriggerRate -and [double]$skillTriggerEvalValidationFalseTriggerRate -gt [double]$skillTriggerEvalFalseTriggerRateAbove) {
+    [void]$autoRollbackReasons.Add(("skill_trigger_eval_validation_false_trigger_rate:{0}>${1}" -f [double]$skillTriggerEvalValidationFalseTriggerRate, [double]$skillTriggerEvalFalseTriggerRateAbove))
+  }
+  if ($highRiskWithoutExplicitPathCountGt -ge 0 -and [int]$highRiskWithoutExplicitPathCount -gt [int]$highRiskWithoutExplicitPathCountGt) {
+    [void]$autoRollbackReasons.Add(("high_risk_without_explicit_path_count:{0}>${1}" -f [int]$highRiskWithoutExplicitPathCount, [int]$highRiskWithoutExplicitPathCountGt))
+  }
+  if ($externalBaselineWarnCountGt -ge 0 -and [int]$externalBaselineWarnCount -gt [int]$externalBaselineWarnCountGt) {
+    [void]$autoRollbackReasons.Add(("external_baseline_warn_count:{0}>${1}" -f [int]$externalBaselineWarnCount, [int]$externalBaselineWarnCountGt))
+  }
+}
+
+if ($autoRollbackEnabled -and $autoRollbackReasons.Count -gt 0) {
+  $autoRollbackTriggered = $true
+  if ($hasRollbackDrillScript) {
+    if ($rollbackDrill.exit_code -eq 0 -and ($rollbackDrillStatus -eq "ok" -or $rollbackDrillStatus -eq "planned")) {
+      $autoRollbackAction = "rollback_path_entered:run-rollback-drill(safe)"
+    } else {
+      $autoRollbackAction = "rollback_path_attempted:run-rollback-drill(safe)-failed"
+    }
+  } else {
+    $autoRollbackAction = "rollback_path_unavailable:run-rollback-drill_missing"
+  }
+  [void]$alerts.Add(("auto rollback triggered reason_count={0} action={1}" -f [int]$autoRollbackReasons.Count, $autoRollbackAction))
+}
+
 $result = [pscustomobject]@{
   schema_version = "1.0"
   generated_at = (Get-Date).ToString("yyyy-MM-dd HH:mm:ss")
@@ -785,6 +998,9 @@ $result = [pscustomobject]@{
     token_balance_status = $tokenBalanceStatus
     token_balance_warning_count = [int]$tokenBalanceWarningCount
     token_balance_violation_count = [int]$tokenBalanceViolationCount
+    proactive_suggestion_balance_status = $proactiveSuggestionBalanceStatus
+    proactive_suggestion_balance_warning_count = [int]$proactiveSuggestionBalanceWarningCount
+    proactive_suggestion_balance_violation_count = [int]$proactiveSuggestionBalanceViolationCount
     external_baseline_status = $externalBaselineStatus
     external_baseline_advisory_count = [int]$externalBaselineAdvisoryCount
     external_baseline_warn_count = [int]$externalBaselineWarnCount
@@ -814,6 +1030,15 @@ $result = [pscustomobject]@{
     token_efficiency_trend_status = $tokenEfficiencyTrendStatus
     token_efficiency_trend_history_count = [int]$tokenEfficiencyTrendHistoryCount
     token_efficiency_trend_latest_value = [Math]::Round([double]$tokenEfficiencyTrendLatestValue, 6)
+    slo_error_budget_status = $sloErrorBudgetStatus
+    slo_gate_pass_rate = $sloGatePassRate
+    error_budget_burn_rate = $errorBudgetBurnRate
+    error_budget_remaining = $errorBudgetRemaining
+    auto_rollback_triggered = [bool]$autoRollbackTriggered
+    auto_rollback_reason_count = [int]$autoRollbackReasons.Count
+    auto_rollback_reasons = @($autoRollbackReasons.ToArray())
+    auto_rollback_action = $autoRollbackAction
+    auto_rollback_policy_path = $autoRollbackPolicyPathNormalized
     update_trigger_exit_code = [int]$trigger.exit_code
     skill_trigger_eval_exit_code = [int]$skillTriggerEval.exit_code
     risk_tier_approval_exit_code = [int]$riskTierApproval.exit_code
@@ -825,6 +1050,7 @@ $result = [pscustomobject]@{
     cross_repo_compatibility_exit_code = [int]$crossRepoCompatibility.exit_code
     token_efficiency_trend_exit_code = [int]$tokenEfficiencyTrend.exit_code
     token_balance_exit_code = [int]$tokenBalance.exit_code
+    proactive_suggestion_balance_exit_code = [int]$proactiveSuggestion.exit_code
     external_baseline_exit_code = [int]$externalBaseline.exit_code
   }
   steps = @(
@@ -843,6 +1069,7 @@ $result = [pscustomobject]@{
     [pscustomobject]@{ name = "check-cross-repo-compatibility"; exit_code = [int]$crossRepoCompatibility.exit_code },
     [pscustomobject]@{ name = "check-token-efficiency-trend"; exit_code = [int]$tokenEfficiencyTrend.exit_code },
     [pscustomobject]@{ name = "check-token-balance"; exit_code = [int]$tokenBalance.exit_code },
+    [pscustomobject]@{ name = "check-proactive-suggestion-balance"; exit_code = [int]$proactiveSuggestion.exit_code },
     [pscustomobject]@{ name = "check-external-baselines"; exit_code = [int]$externalBaseline.exit_code }
   )
 }
@@ -872,6 +1099,9 @@ Write-Host ("release_distribution_policy_drift_count={0}" -f $result.summary.rel
 Write-Host ("token_balance_status={0}" -f $result.summary.token_balance_status)
 Write-Host ("token_balance_warning_count={0}" -f $result.summary.token_balance_warning_count)
 Write-Host ("token_balance_violation_count={0}" -f $result.summary.token_balance_violation_count)
+Write-Host ("proactive_suggestion_balance_status={0}" -f $result.summary.proactive_suggestion_balance_status)
+Write-Host ("proactive_suggestion_balance_warning_count={0}" -f $result.summary.proactive_suggestion_balance_warning_count)
+Write-Host ("proactive_suggestion_balance_violation_count={0}" -f $result.summary.proactive_suggestion_balance_violation_count)
 Write-Host ("external_baseline_status={0}" -f $result.summary.external_baseline_status)
 Write-Host ("external_baseline_advisory_count={0}" -f $result.summary.external_baseline_advisory_count)
 Write-Host ("external_baseline_warn_count={0}" -f $result.summary.external_baseline_warn_count)
@@ -901,6 +1131,14 @@ Write-Host ("cross_repo_compatibility_repo_failure_count={0}" -f $result.summary
 Write-Host ("token_efficiency_trend_status={0}" -f $result.summary.token_efficiency_trend_status)
 Write-Host ("token_efficiency_trend_history_count={0}" -f $result.summary.token_efficiency_trend_history_count)
 Write-Host ("token_efficiency_trend_latest_value={0}" -f $result.summary.token_efficiency_trend_latest_value)
+Write-Host ("slo_error_budget_status={0}" -f $result.summary.slo_error_budget_status)
+Write-Host ("slo_gate_pass_rate={0}" -f $result.summary.slo_gate_pass_rate)
+Write-Host ("error_budget_burn_rate={0}" -f $result.summary.error_budget_burn_rate)
+Write-Host ("error_budget_remaining={0}" -f $result.summary.error_budget_remaining)
+Write-Host ("auto_rollback_triggered={0}" -f $result.summary.auto_rollback_triggered)
+Write-Host ("auto_rollback_reason_count={0}" -f $result.summary.auto_rollback_reason_count)
+Write-Host ("auto_rollback_action={0}" -f $result.summary.auto_rollback_action)
+Write-Host ("auto_rollback_policy_path={0}" -f $result.summary.auto_rollback_policy_path)
 if ($result.ok) {
   Write-Host "result=OK"
   if (-not [string]::IsNullOrWhiteSpace($alertSnapshotPath)) {
