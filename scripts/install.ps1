@@ -39,13 +39,9 @@ $scriptLock = New-ScriptLock -KitRoot $kitRoot -LockName "install" -TimeoutSecon
 $fullCycleTargets = @()
 $modePlan = $Mode -eq "plan"
 $fullCycleMode = if ($modePlan) { "plan" } else { "safe" }
-
-if ($AutoRemediate.IsPresent -and $NoAutoRemediate.IsPresent) {
-  Write-Host "[DEPRECATED] -AutoRemediate/-NoAutoRemediate are ignored. Remediation is handled by the outer AI session."
-} elseif ($AutoRemediate.IsPresent -or $NoAutoRemediate.IsPresent) {
+if ($AutoRemediate.IsPresent -or $NoAutoRemediate.IsPresent) {
   Write-Host "[DEPRECATED] -AutoRemediate/-NoAutoRemediate are ignored. Remediation is handled by the outer AI session."
 }
-
 if ($SkipPostGate.IsPresent) {
   Write-Host "[WARN] SkipPostGate enabled; full local gate chain after install is skipped."
 }
@@ -58,17 +54,14 @@ if ($SkipGrowthPackAutoIntegrate.IsPresent) {
 if ($PSBoundParameters.ContainsKey("MaxAutoFixAttempts")) {
   Write-Host "[DEPRECATED] -MaxAutoFixAttempts is ignored because in-script auto remediation is disabled."
 }
-
 function Get-FullCycleRepos {
   param(
     [Parameter(Mandatory = $true)][string]$KitRoot,
     [Parameter(Mandatory = $true)][array]$Targets
   )
-
   $repos = [System.Collections.Generic.List[string]]::new()
   $seen = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::OrdinalIgnoreCase)
   $repositoriesPath = Join-Path $KitRoot "config\repositories.json"
-
   if (Test-Path -LiteralPath $repositoriesPath) {
     try {
       $repoItems = @(Read-JsonArray $repositoriesPath)
@@ -83,7 +76,6 @@ function Get-FullCycleRepos {
       throw "repositories.json is not valid JSON: $repositoriesPath"
     }
   }
-
   if ($repos.Count -eq 0) {
     foreach ($item in $Targets) {
       if ($null -eq $item -or [string]::IsNullOrWhiteSpace([string]$item.target)) { continue }
@@ -97,10 +89,8 @@ function Get-FullCycleRepos {
       }
     }
   }
-
   return @($repos)
 }
-
 function Invoke-GrowthPackStages {
   param(
     [Parameter(Mandatory = $true)][string]$ScriptsRoot,
@@ -109,7 +99,6 @@ function Invoke-GrowthPackStages {
     [bool]$SkipGrowthPackApply = $false,
     [bool]$SkipGrowthPackAutoIntegrate = $false
   )
-
   if ($SkipGrowthPackApply) { return }
   $growthApplyScript = Join-Path $ScriptsRoot "governance\apply-growth-pack.ps1"
   if (-not (Test-Path -LiteralPath $growthApplyScript -PathType Leaf)) {
@@ -117,7 +106,6 @@ function Invoke-GrowthPackStages {
     return
   }
   Invoke-ChildScript -ScriptPath $growthApplyScript -ScriptArgs @("-Mode", $Mode, "-Strategy", $GrowthPackStrategy)
-
   if ($SkipGrowthPackAutoIntegrate) { return }
   $growthIntegrateScript = Join-Path $ScriptsRoot "governance\integrate-growth-suggestions.ps1"
   if (Test-Path -LiteralPath $growthIntegrateScript -PathType Leaf) {
@@ -126,9 +114,7 @@ function Invoke-GrowthPackStages {
     Write-Host "[INFO] skip growth-pack auto-integrate: integrate-growth-suggestions.ps1 not found in current workspace"
   }
 }
-
 try {
-
 if (-not $SkipTargetsRefresh) {
   if (-not (Test-Path -LiteralPath $refreshScript -PathType Leaf)) {
     Write-Host "[INFO] skip targets refresh: refresh-targets.ps1 not found in current workspace"
@@ -142,17 +128,14 @@ if (-not $SkipTargetsRefresh) {
     }
   }
 }
-
 try {
   $targets = @(Read-JsonArray $targetsPath)
 } catch {
   throw "targets.json is not valid JSON: $targetsPath"
 }
-
 if ($targets.Count -eq 0) {
   throw "targets.json has no entries: $targetsPath"
 }
-
 $repoRoots = @((Read-TargetRepoRoots $kitRoot))
 $enforceBoundary = ($repoRoots.Count -gt 0)
 if (-not $enforceBoundary) {
@@ -163,7 +146,6 @@ $enforceBoundaryClass = $false
 if ($null -ne $projectRulePolicy.defaults -and $null -ne $projectRulePolicy.defaults.PSObject.Properties['enforce_boundary_class']) {
   $enforceBoundaryClass = [bool]$projectRulePolicy.defaults.enforce_boundary_class
 }
-
 if ($ShowScope) {
   Write-Host "=== SCOPE install ==="
   Write-Host "targets.count=$($targets.Count)"
@@ -175,12 +157,10 @@ if ($ShowScope) {
     Write-Host ("- " + $srcRel + " -> " + ($dstRaw -replace '/', '\'))
   }
 }
-
 $cfgFail = Test-TargetsConfigEntries -Targets $targets -RepoRoots $repoRoots -EnforceBoundary:$enforceBoundary -EnforceBoundaryClass:$enforceBoundaryClass
 if ($cfgFail -gt 0) {
   throw "targets.json validation failed: $cfgFail issue(s)"
 }
-
 $timestamp = Get-Date -Format "yyyyMMdd-HHmmss"
 $backupRoot = Join-Path $kitRoot ("backups\\" + $timestamp)
 

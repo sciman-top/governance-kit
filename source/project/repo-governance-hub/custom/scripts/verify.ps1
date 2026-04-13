@@ -234,10 +234,37 @@ if (-not (Test-Path -LiteralPath $antiBloatScript -PathType Leaf)) {
   Write-Host "[ANTI-BLOAT] skip: script not found"
 } else {
   try {
-    Invoke-ChildScript -ScriptPath $antiBloatScript -ScriptArgs @("-PolicyOnly")
+    Invoke-ChildScript -ScriptPath $antiBloatScript -ScriptArgs @("-RepoRoot", $kitRoot)
   } catch {
-    Write-Host ("[ANTI-BLOAT] policy validation failed: " + $_.Exception.Message)
+    Write-Host ("[ANTI-BLOAT] budget check failed: " + $_.Exception.Message)
     $antiBloatFail++
+  }
+}
+
+$tokenBalanceFail = 0
+$tokenBalanceScript = Join-Path $PSScriptRoot "governance\check-token-balance.ps1"
+if (-not (Test-Path -LiteralPath $tokenBalanceScript -PathType Leaf)) {
+  Write-Host "[TOKEN-BALANCE] script missing: $tokenBalanceScript"
+  $tokenBalanceFail++
+} else {
+  try {
+    Invoke-ChildScript -ScriptPath $tokenBalanceScript -ScriptArgs @("-RepoRoot", $kitRoot)
+  } catch {
+    Write-Host ("[TOKEN-BALANCE] check failed: " + $_.Exception.Message)
+    $tokenBalanceFail++
+  }
+}
+
+$proactiveSuggestionFail = 0
+$proactiveSuggestionScript = Join-Path $PSScriptRoot "governance\check-proactive-suggestion-balance.ps1"
+if (-not (Test-Path -LiteralPath $proactiveSuggestionScript -PathType Leaf)) {
+  Write-Host "[PROACTIVE-SUGGESTION] skip: script not found"
+} else {
+  try {
+    Invoke-ChildScript -ScriptPath $proactiveSuggestionScript -ScriptArgs @("-RepoRoot", $kitRoot)
+  } catch {
+    Write-Host ("[PROACTIVE-SUGGESTION] check failed: " + $_.Exception.Message)
+    $proactiveSuggestionFail++
   }
 }
 
@@ -353,4 +380,18 @@ if (-not (Test-Path -LiteralPath $tokenEfficiencyTrendScript -PathType Leaf)) {
   }
 }
 
-if ($fail -gt 0 -or $policyFail -gt 0 -or $trackedFilesFail -gt 0 -or $growthFail -gt 0 -or $antiBloatFail -gt 0 -or $riskTierApprovalFail -gt 0 -or $rolloutPromotionFail -gt 0 -or $failureReplayFail -gt 0 -or $rollbackDrillFail -gt 0 -or $skillFamilyHealthFail -gt 0 -or $skillLifecycleHealthFail -gt 0 -or $crossRepoCompatibilityFail -gt 0 -or $tokenEfficiencyTrendFail -gt 0) { exit 1 }
+$traceGradingFail = 0
+$traceGradingScript = Join-Path $PSScriptRoot "governance\check-trace-grading-readiness.ps1"
+if (-not (Test-Path -LiteralPath $traceGradingScript -PathType Leaf)) {
+  Write-Host "[TRACE-GRADING] script missing: $traceGradingScript"
+  $traceGradingFail++
+} else {
+  try {
+    Invoke-ChildScript -ScriptPath $traceGradingScript -ScriptArgs @("-RepoRoot", $kitRoot)
+  } catch {
+    Write-Host ("[TRACE-GRADING] check failed: " + $_.Exception.Message)
+    $traceGradingFail++
+  }
+}
+
+if ($fail -gt 0 -or $policyFail -gt 0 -or $trackedFilesFail -gt 0 -or $growthFail -gt 0 -or $antiBloatFail -gt 0 -or $tokenBalanceFail -gt 0 -or $proactiveSuggestionFail -gt 0 -or $riskTierApprovalFail -gt 0 -or $rolloutPromotionFail -gt 0 -or $failureReplayFail -gt 0 -or $rollbackDrillFail -gt 0 -or $skillFamilyHealthFail -gt 0 -or $skillLifecycleHealthFail -gt 0 -or $crossRepoCompatibilityFail -gt 0 -or $tokenEfficiencyTrendFail -gt 0 -or $traceGradingFail -gt 0) { exit 1 }

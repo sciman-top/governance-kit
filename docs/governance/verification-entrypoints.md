@@ -17,6 +17,14 @@
   - `git config --get commit.template`
   - `git config --get governance.root`
 
+## Two-Stage Gate Entrypoint
+- Purpose: faster feedback without changing hard-gate semantics.
+- Stage 1 (fast precheck): skip heavy target verification.
+- Stage 2 (full gate): run complete `doctor` chain.
+- Entrypoint:
+  - `powershell -File scripts/run-two-stage-gate.ps1`
+  - JSON output: `powershell -File scripts/run-two-stage-gate.ps1 -AsJson`
+
 ## Release Profile Coverage Entrypoints
 - `powershell -File scripts/verify-release-profile.ps1 -RepoPath <repo> [-AsJson]`
 - `powershell -File scripts/check-release-profile-coverage.ps1 [-AsJson]`

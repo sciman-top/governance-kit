@@ -226,6 +226,18 @@ foreach ($item in $steps) {
 
 $ok = $failedSteps.Count -eq 0
 $health = if ($ok) { "GREEN" } else { "RED" }
+$slowStepsTop3 = @(
+  $stepResults |
+    Sort-Object -Property duration_ms -Descending |
+    Select-Object -First 3 |
+    ForEach-Object {
+      [pscustomobject]@{
+        step = [string]$_.step
+        status = [string]$_.status
+        duration_ms = [int]$_.duration_ms
+      }
+    }
+)
 $clarification = Get-ClarificationObservability -KitRootPath $kitRoot
 $externalBaselineStatus = "N/A"
 $externalBaselineAdvisoryCount = -1
@@ -263,6 +275,7 @@ if ($AsJson) {
       advisory_count = $externalBaselineAdvisoryCount
       warn_count = $externalBaselineWarnCount
     }
+    slow_steps_top3 = @($slowStepsTop3)
     steps = @($stepResults)
   }
   $jsonResult | ConvertTo-Json -Depth 8 | Write-Output
@@ -277,6 +290,10 @@ Write-Host ("clarification_tracked_files=" + $clarification.tracked_files)
 Write-Host ("external_baseline_status=" + $externalBaselineStatus)
 Write-Host ("external_baseline_advisory_count=" + $externalBaselineAdvisoryCount)
 Write-Host ("external_baseline_warn_count=" + $externalBaselineWarnCount)
+if (@($slowStepsTop3).Count -gt 0) {
+  $slowSummary = @($slowStepsTop3 | ForEach-Object { "{0}:{1}" -f $_.step, $_.duration_ms }) -join ","
+  Write-Host ("slow_steps_top3=" + $slowSummary)
+}
 if ($ok) {
   Write-Host "HEALTH=GREEN"
   exit 0

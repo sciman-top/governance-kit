@@ -47,6 +47,9 @@ $orphans = [System.Collections.Generic.List[object]]::new()
 $repoDirs = @(Get-ChildItem -Path $projectRoot -Directory -ErrorAction SilentlyContinue)
 foreach ($repoDir in $repoDirs) {
   $repoName = $repoDir.Name
+  if ($repoName.Equals("_common", [System.StringComparison]::OrdinalIgnoreCase)) {
+    continue
+  }
   $customDir = Join-Path $repoDir.FullName "custom"
   if (!(Test-Path -LiteralPath $customDir)) { continue }
 
