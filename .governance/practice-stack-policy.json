@@ -13,6 +13,7 @@
     "ssdf": "required",
     "slsa": "required",
     "sbom": "required",
-    "scorecard": "required"
+    "scorecard": "required",
+    "repository_rulesets": "recommended"
   }
 }

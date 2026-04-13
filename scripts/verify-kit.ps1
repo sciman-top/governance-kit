@@ -29,6 +29,7 @@ $mustExist = @(
   ".governance\skill-candidates\trigger-eval-runs.sample.jsonl",
   ".governance\practice-stack-policy.json",
   ".governance\external-baseline-policy.json",
+  ".governance\repository-ruleset-policy.json",
   ".governance\anti-bloat-policy.json",
   ".governance\token-balance-policy.json",
   "scripts\add-repo.ps1",
@@ -145,6 +146,7 @@ $mustExist = @(
   "source\project\_common\custom\.governance\skill-candidates\trigger-eval-runs.sample.jsonl",
   "source\project\_common\custom\.governance\practice-stack-policy.json",
   "source\project\_common\custom\.governance\external-baseline-policy.json",
+  "source\project\_common\custom\.governance\repository-ruleset-policy.json",
   "source\project\_common\custom\.governance\anti-bloat-policy.json",
   "source\project\_common\custom\.governance\token-balance-policy.json",
   "source\project\_common\custom\scripts\governance\check-anti-bloat-budgets.ps1",
@@ -159,6 +161,8 @@ $mustExist = @(
   ".github\CODEOWNERS",
   ".github\workflows\codeql.yml",
   ".github\workflows\dependency-review.yml",
+  "docs\governance\repository-ruleset-policy.md",
+  "source\project\_common\custom\docs\governance\repository-ruleset-policy.md",
   "source\project"
 )
 

@@ -60,6 +60,16 @@
       "evidence_any_of": [
         ".github/CODEOWNERS"
       ]
+    },
+    "repository_rulesets": {
+      "enabled": true,
+      "level": "recommended",
+      "evidence_any_of": [
+        ".governance/repository-ruleset-policy.json",
+        ".github/rulesets/default.json",
+        ".governance/repository-ruleset-config.json",
+        "docs/governance/repository-ruleset-policy.md"
+      ]
     }
   }
 }

@@ -38,6 +38,7 @@
       ".governance/anti-bloat-policy.json",
       ".governance/practice-stack-policy.json",
       ".governance/external-baseline-policy.json",
+      ".governance/repository-ruleset-policy.json",
       ".github/CODEOWNERS",
       ".github/workflows/codeql.yml",
       ".github/workflows/dependency-review.yml",
@@ -47,7 +48,8 @@
       "docs/governance/ssdf-mapping.md",
       "docs/governance/slsa-target-level.md",
       "docs/governance/sbom-policy.md",
-      "docs/governance/scorecard-policy.md"
+      "docs/governance/scorecard-policy.md",
+      "docs/governance/repository-ruleset-policy.md"
     ],
     "default": [
       "tools/browser-session/start-browser-session.ps1",
@@ -117,6 +119,7 @@
     ".governance/anti-bloat-policy.json",
     ".governance/practice-stack-policy.json",
     ".governance/external-baseline-policy.json",
+    ".governance/repository-ruleset-policy.json",
     ".github/CODEOWNERS",
     ".github/workflows/codeql.yml",
     ".github/workflows/dependency-review.yml",
@@ -127,6 +130,7 @@
     "docs/governance/slsa-target-level.md",
     "docs/governance/sbom-policy.md",
     "docs/governance/scorecard-policy.md",
+    "docs/governance/repository-ruleset-policy.md",
     ".governance/templates/task-snapshot-minimal.md",
     ".governance/templates/lite-response.md",
     ".governance/templates/clarification-trigger.md",

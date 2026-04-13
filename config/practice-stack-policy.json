@@ -13,7 +13,8 @@
     "ssdf": "required",
     "slsa": "required",
     "sbom": "required",
-    "scorecard": "required"
+    "scorecard": "required",
+    "repository_rulesets": "recommended"
   },
   "repos": [
     {
@@ -31,7 +32,8 @@
         "ssdf": true,
         "slsa": true,
         "sbom": true,
-        "scorecard": true
+        "scorecard": true,
+        "repository_rulesets": true
       }
     },
     {
@@ -49,7 +51,8 @@
         "ssdf": true,
         "slsa": true,
         "sbom": true,
-        "scorecard": true
+        "scorecard": true,
+        "repository_rulesets": true
       }
     },
     {
@@ -67,7 +70,8 @@
         "ssdf": true,
         "slsa": true,
         "sbom": true,
-        "scorecard": true
+        "scorecard": true,
+        "repository_rulesets": true
       }
     }
   ]
