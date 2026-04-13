@@ -116,6 +116,13 @@ if ($null -eq $policy) {
       release_distribution_policy_drift = [pscustomobject]@{ enabled = $true; severity = "high" }
       skill_trigger_eval_summary_stale = [pscustomobject]@{ enabled = $false; severity = "medium"; max_age_days = 8 }
       low_value_orphan_custom_sources = [pscustomobject]@{ enabled = $false; severity = "medium" }
+      gate_noise_budget_breach = [pscustomobject]@{
+        enabled = $false
+        severity = "medium"
+        max_false_positive_rate = 0.05
+        max_gate_latency_delta_ms = 5000
+        alert_on_data_gap = $false
+      }
     }
   }
 }
@@ -205,6 +212,79 @@ if ([bool]$policy.triggers.waiver_expired_unrecovered.enabled) {
       -Reason ("waiver_expired_unrecovered_count={0}" -f $expired) `
       -RecommendedAction "Recover or close expired waivers and rerun scripts/check-waivers.ps1." `
       -Evidence "docs/governance/metrics-auto.md"
+  }
+}
+
+# 3.5) gate noise budget breach
+$gateNoiseBudgetAlertCount = 0
+if ($null -ne $policy.triggers.PSObject.Properties['gate_noise_budget_breach'] -and [bool]$policy.triggers.gate_noise_budget_breach.enabled) {
+  $alertsSnapshotPath = Join-Path $kitRoot "docs\governance\alerts-latest.md"
+  $steps.Add([pscustomobject]@{ name = "gate-noise-budget"; exit_code = 0 }) | Out-Null
+  $cfg = $policy.triggers.gate_noise_budget_breach
+  $maxFalsePositiveRate = 0.05
+  $maxGateLatencyDeltaMs = 5000
+  $alertOnDataGap = $false
+  if ($null -ne $cfg.PSObject.Properties['max_false_positive_rate']) { $maxFalsePositiveRate = [double]$cfg.max_false_positive_rate }
+  if ($null -ne $cfg.PSObject.Properties['max_gate_latency_delta_ms']) { $maxGateLatencyDeltaMs = [int]$cfg.max_gate_latency_delta_ms }
+  if ($null -ne $cfg.PSObject.Properties['alert_on_data_gap']) { $alertOnDataGap = [bool]$cfg.alert_on_data_gap }
+
+  $breachReasons = [System.Collections.Generic.List[string]]::new()
+  if (-not (Test-Path -LiteralPath $alertsSnapshotPath -PathType Leaf)) {
+    if ($alertOnDataGap) {
+      $breachReasons.Add("alerts snapshot missing") | Out-Null
+    }
+  } else {
+    $snapshotKv = Parse-KeyValueMap -Path $alertsSnapshotPath
+    $falsePositiveRaw = ""
+    if ($snapshotKv.ContainsKey("skill_trigger_eval_validation_false_trigger_rate")) {
+      $falsePositiveRaw = [string]$snapshotKv["skill_trigger_eval_validation_false_trigger_rate"]
+    } elseif ($snapshotKv.ContainsKey("validation_false_trigger_rate")) {
+      $falsePositiveRaw = [string]$snapshotKv["validation_false_trigger_rate"]
+    }
+    $gateLatencyRaw = ""
+    if ($snapshotKv.ContainsKey("gate_latency_delta_ms")) {
+      $gateLatencyRaw = [string]$snapshotKv["gate_latency_delta_ms"]
+    }
+
+    $falsePositiveParsed = $false
+    $falsePositiveValue = 0.0
+    if (-not [string]::IsNullOrWhiteSpace($falsePositiveRaw) -and -not $falsePositiveRaw.Equals("N/A", [System.StringComparison]::OrdinalIgnoreCase)) {
+      $falsePositiveParsed = [double]::TryParse(
+        $falsePositiveRaw,
+        [System.Globalization.NumberStyles]::Float,
+        [System.Globalization.CultureInfo]::InvariantCulture,
+        [ref]$falsePositiveValue
+      )
+      if (-not $falsePositiveParsed) {
+        $falsePositiveParsed = [double]::TryParse($falsePositiveRaw, [ref]$falsePositiveValue)
+      }
+      if ($falsePositiveParsed -and $falsePositiveValue -gt $maxFalsePositiveRate) {
+        $breachReasons.Add(("false_trigger_rate={0} > {1}" -f $falsePositiveValue, $maxFalsePositiveRate)) | Out-Null
+      }
+    } elseif ($alertOnDataGap) {
+      $breachReasons.Add("false_trigger_rate missing_or_na") | Out-Null
+    }
+
+    $gateLatencyParsed = $false
+    $gateLatencyValue = 0
+    if (-not [string]::IsNullOrWhiteSpace($gateLatencyRaw) -and -not $gateLatencyRaw.Equals("N/A", [System.StringComparison]::OrdinalIgnoreCase)) {
+      $gateLatencyParsed = [int]::TryParse($gateLatencyRaw, [ref]$gateLatencyValue)
+      if ($gateLatencyParsed -and $gateLatencyValue -gt $maxGateLatencyDeltaMs) {
+        $breachReasons.Add(("gate_latency_delta_ms={0} > {1}" -f $gateLatencyValue, $maxGateLatencyDeltaMs)) | Out-Null
+      }
+    } elseif ($alertOnDataGap) {
+      $breachReasons.Add("gate_latency_delta_ms missing_or_na") | Out-Null
+    }
+  }
+
+  if ($breachReasons.Count -gt 0) {
+    $gateNoiseBudgetAlertCount = 1
+    Add-Alert -List $alerts `
+      -Id "gate_noise_budget_breach" `
+      -Severity ([string]$policy.triggers.gate_noise_budget_breach.severity) `
+      -Reason ([string]::Join("; ", @($breachReasons))) `
+      -RecommendedAction "Tune noisy checks to advisory, reduce false positives, and keep gate latency delta within policy threshold." `
+      -Evidence "docs/governance/alerts-latest.md"
   }
 }
 
@@ -445,6 +525,7 @@ $result = [pscustomobject]@{
   status = if ($alerts.Count -eq 0) { "OK" } else { "ALERT" }
   alert_count = $alerts.Count
   skill_trigger_eval_alert_count = [int]$skillTriggerEvalAlertCount
+  gate_noise_budget_alert_count = [int]$gateNoiseBudgetAlertCount
   orphan_custom_source_count = [int]$orphanCustomCount
   release_distribution_policy_drift_count = [int]$releasePolicyDriftCount
   alerts = @($alerts)

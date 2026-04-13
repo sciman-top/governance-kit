@@ -38,6 +38,13 @@
       "enabled": true,
       "severity": "medium",
       "max_age_days": 8
+    },
+    "gate_noise_budget_breach": {
+      "enabled": true,
+      "severity": "medium",
+      "max_false_positive_rate": 0.05,
+      "max_gate_latency_delta_ms": 5000,
+      "alert_on_data_gap": false
     }
   }
 }
