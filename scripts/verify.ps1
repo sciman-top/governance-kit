@@ -296,6 +296,19 @@ if (-not (Test-Path -LiteralPath $rolloutPromotionScript -PathType Leaf)) {
   }
 }
 
+$rulesetConfigFail = 0
+$rulesetConfigScript = Join-Path $PSScriptRoot "governance\check-repository-ruleset-config.ps1"
+if (-not (Test-Path -LiteralPath $rulesetConfigScript -PathType Leaf)) {
+  Write-Host "[RULESET-CONFIG] script missing: $rulesetConfigScript"
+} else {
+  try {
+    Invoke-ChildScript -ScriptPath $rulesetConfigScript -ScriptArgs @("-RepoRoot", $kitRoot)
+  } catch {
+    Write-Host ("[RULESET-CONFIG] check failed: " + $_.Exception.Message)
+    $rulesetConfigFail++
+  }
+}
+
 $failureReplayFail = 0
 $failureReplayScript = Join-Path $PSScriptRoot "governance\check-failure-replay-readiness.ps1"
 if (-not (Test-Path -LiteralPath $failureReplayScript -PathType Leaf)) {
@@ -394,4 +407,4 @@ if (-not (Test-Path -LiteralPath $traceGradingScript -PathType Leaf)) {
   }
 }
 
-if ($fail -gt 0 -or $policyFail -gt 0 -or $trackedFilesFail -gt 0 -or $growthFail -gt 0 -or $antiBloatFail -gt 0 -or $tokenBalanceFail -gt 0 -or $proactiveSuggestionFail -gt 0 -or $riskTierApprovalFail -gt 0 -or $rolloutPromotionFail -gt 0 -or $failureReplayFail -gt 0 -or $rollbackDrillFail -gt 0 -or $skillFamilyHealthFail -gt 0 -or $skillLifecycleHealthFail -gt 0 -or $crossRepoCompatibilityFail -gt 0 -or $tokenEfficiencyTrendFail -gt 0 -or $traceGradingFail -gt 0) { exit 1 }
+if ($fail -gt 0 -or $policyFail -gt 0 -or $trackedFilesFail -gt 0 -or $growthFail -gt 0 -or $antiBloatFail -gt 0 -or $tokenBalanceFail -gt 0 -or $proactiveSuggestionFail -gt 0 -or $riskTierApprovalFail -gt 0 -or $rolloutPromotionFail -gt 0 -or $rulesetConfigFail -gt 0 -or $failureReplayFail -gt 0 -or $rollbackDrillFail -gt 0 -or $skillFamilyHealthFail -gt 0 -or $skillLifecycleHealthFail -gt 0 -or $crossRepoCompatibilityFail -gt 0 -or $tokenEfficiencyTrendFail -gt 0 -or $traceGradingFail -gt 0) { exit 1 }

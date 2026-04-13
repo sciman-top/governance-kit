@@ -1463,5 +1463,50 @@
     "source": "source/project/_common/custom/docs/governance/repository-ruleset-policy.md",
     "target": "E:/CODE/repo-governance-hub/docs/governance/repository-ruleset-policy.md",
     "boundary_class": "shared-template"
+  },
+  {
+    "source": "source/project/_common/custom/scripts/governance/check-repository-ruleset-config.ps1",
+    "target": "E:/CODE/ClassroomToolkit/scripts/governance/check-repository-ruleset-config.ps1",
+    "boundary_class": "shared-template"
+  },
+  {
+    "source": "source/project/_common/custom/.governance/repository-ruleset-config.json",
+    "target": "E:/CODE/ClassroomToolkit/.governance/repository-ruleset-config.json",
+    "boundary_class": "shared-template"
+  },
+  {
+    "source": "source/project/_common/custom/.github/rulesets/default.json",
+    "target": "E:/CODE/ClassroomToolkit/.github/rulesets/default.json",
+    "boundary_class": "shared-template"
+  },
+  {
+    "source": "source/project/_common/custom/scripts/governance/check-repository-ruleset-config.ps1",
+    "target": "E:/CODE/skills-manager/scripts/governance/check-repository-ruleset-config.ps1",
+    "boundary_class": "shared-template"
+  },
+  {
+    "source": "source/project/_common/custom/.governance/repository-ruleset-config.json",
+    "target": "E:/CODE/skills-manager/.governance/repository-ruleset-config.json",
+    "boundary_class": "shared-template"
+  },
+  {
+    "source": "source/project/_common/custom/.github/rulesets/default.json",
+    "target": "E:/CODE/skills-manager/.github/rulesets/default.json",
+    "boundary_class": "shared-template"
+  },
+  {
+    "source": "source/project/_common/custom/scripts/governance/check-repository-ruleset-config.ps1",
+    "target": "E:/CODE/repo-governance-hub/scripts/governance/check-repository-ruleset-config.ps1",
+    "boundary_class": "shared-template"
+  },
+  {
+    "source": "source/project/_common/custom/.governance/repository-ruleset-config.json",
+    "target": "E:/CODE/repo-governance-hub/.governance/repository-ruleset-config.json",
+    "boundary_class": "shared-template"
+  },
+  {
+    "source": "source/project/_common/custom/.github/rulesets/default.json",
+    "target": "E:/CODE/repo-governance-hub/.github/rulesets/default.json",
+    "boundary_class": "shared-template"
   }
 ]
