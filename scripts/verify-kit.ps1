@@ -149,10 +149,16 @@ $mustExist = @(
   "source\project\_common\custom\.governance\token-balance-policy.json",
   "source\project\_common\custom\scripts\governance\check-anti-bloat-budgets.ps1",
   "source\project\_common\custom\scripts\governance\check-token-balance.ps1",
+  "source\project\_common\custom\.github\CODEOWNERS",
+  "source\project\_common\custom\.github\workflows\codeql.yml",
+  "source\project\_common\custom\.github\workflows\dependency-review.yml",
   "source\project\_common\custom\.codex\config.toml",
   "source\project\_common\custom\.codex\agents\planner.toml",
   "source\project\_common\custom\.codex\agents\reuse-analyst.toml",
   "source\project\_common\custom\.codex\agents\reviewer.toml",
+  ".github\CODEOWNERS",
+  ".github\workflows\codeql.yml",
+  ".github\workflows\dependency-review.yml",
   "source\project"
 )
 
