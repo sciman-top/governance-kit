@@ -1,0 +1,15 @@
+规则ID=RGH-20260413-gate-latency-delta-weekly-monthly
+风险等级=中
+影响模块=scripts/governance/run-recurring-review.ps1; scripts/governance/run-monthly-policy-review.ps1; source/project/_common/custom/scripts/governance/run-recurring-review.ps1; source/project/_common/custom/scripts/governance/run-monthly-policy-review.ps1; source/project/ClassroomToolkit/custom/scripts/governance/run-recurring-review.ps1; source/project/ClassroomToolkit/custom/scripts/governance/run-monthly-policy-review.ps1; source/project/skills-manager/custom/scripts/governance/run-recurring-review.ps1; source/project/skills-manager/custom/scripts/governance/run-monthly-policy-review.ps1; source/project/repo-governance-hub/custom/scripts/governance/run-recurring-review.ps1; source/project/repo-governance-hub/custom/scripts/governance/run-monthly-policy-review.ps1; tests/repo-governance-hub.optimization.tests.ps1
+当前落点=E:/CODE/repo-governance-hub/scripts/governance/run-recurring-review.ps1
+目标归宿=E:/CODE/repo-governance-hub/source/project/_common/custom/scripts/governance/run-recurring-review.ps1 + source/project/*/custom/scripts/governance/run-recurring-review.ps1
+任务理解快照=在不改变门禁阻断语义前提下，为周检/月检增加门禁耗时可观测字段，并支持与上次快照对比。
+关键假设=alerts-latest 可能首次不存在或缺字段，需输出 gate_latency_delta_ms=N/A。
+执行命令=powershell -File scripts/install.ps1 -Mode safe; powershell -File scripts/verify-kit.ps1; powershell -File tests/repo-governance-hub.optimization.tests.ps1; powershell -File scripts/validate-config.ps1; powershell -File scripts/verify.ps1; powershell -File scripts/doctor.ps1; powershell -File scripts/governance/run-recurring-review.ps1 -RepoRoot . -NoNotifyOnAlert -AsJson
+验证证据=run-recurring-review summary 输出 doctor_elapsed_ms/gate_latency_delta_ms；alerts-latest 与 monthly-review 写入对应字段；全链路门禁通过
+可观测信号=docs/governance/alerts-latest.md 中包含 doctor_elapsed_ms 与 gate_latency_delta_ms；首次为 N/A，后续可见数值差分
+回滚动作=git restore scripts/governance/run-recurring-review.ps1 scripts/governance/run-monthly-policy-review.ps1 source/project/_common/custom/scripts/governance/run-recurring-review.ps1 source/project/_common/custom/scripts/governance/run-monthly-policy-review.ps1 source/project/ClassroomToolkit/custom/scripts/governance/run-recurring-review.ps1 source/project/ClassroomToolkit/custom/scripts/governance/run-monthly-policy-review.ps1 source/project/skills-manager/custom/scripts/governance/run-recurring-review.ps1 source/project/skills-manager/custom/scripts/governance/run-monthly-policy-review.ps1 source/project/repo-governance-hub/custom/scripts/governance/run-recurring-review.ps1 source/project/repo-governance-hub/custom/scripts/governance/run-monthly-policy-review.ps1 tests/repo-governance-hub.optimization.tests.ps1
+未确认假设与纠偏结论=未确认各仓执行频率是否足以形成稳定趋势；已先交付字段与差分逻辑，后续按数据窗口再设阈值
+learning_points_3=1) 运行态快照对比可直接复用 key=value 解析函数;2) 首次采集必须提供 N/A 兜底;3) 安装分发后需再次全链路验证 source/target 一致性
+reusable_checklist=改 root -> 同步 source 多副本 -> install safe -> 全链路门禁 -> 回滚运行态文件 -> 提交
+open_questions=是否在下一轮把 gate_latency_delta_ms 引入 update-trigger-policy 做超阈值告警

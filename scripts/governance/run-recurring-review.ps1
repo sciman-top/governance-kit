@@ -129,6 +129,8 @@ function Write-AlertSnapshot([object]$ReviewResult, [string]$RootPath) {
   [void]$lines.Add(("repo_root={0}" -f $ReviewResult.repo_root))
   [void]$lines.Add(("status={0}" -f $status))
   [void]$lines.Add(("doctor_health={0}" -f $ReviewResult.summary.doctor_health))
+  [void]$lines.Add(("doctor_elapsed_ms={0}" -f $ReviewResult.summary.doctor_elapsed_ms))
+  [void]$lines.Add(("gate_latency_delta_ms={0}" -f $ReviewResult.summary.gate_latency_delta_ms))
   [void]$lines.Add(("observe_overdue={0}" -f $ReviewResult.summary.observe_overdue))
   [void]$lines.Add(("waiver_remind_count={0}" -f $ReviewResult.summary.waiver_remind_count))
   [void]$lines.Add(("waiver_block_count={0}" -f $ReviewResult.summary.waiver_block_count))
@@ -344,6 +346,17 @@ if ($waiver.exit_code -ne 0 -or $waiverBlockCount -gt 0) {
 }
 if ($waiverRemindCount -gt 0) {
   [void]$alerts.Add(("waiver remind count={0}" -f $waiverRemindCount))
+}
+
+$doctorElapsedMs = [int]$doctor.elapsed_ms
+$gateLatencyDeltaMs = "N/A"
+$previousAlertSnapshotPath = Join-Path $repoPath "docs\governance\alerts-latest.md"
+if (Test-Path -LiteralPath $previousAlertSnapshotPath -PathType Leaf) {
+  $previousDoctorElapsedText = Get-MetricValueFromFile -Path $previousAlertSnapshotPath -Key "doctor_elapsed_ms"
+  $previousDoctorElapsed = 0
+  if ([int]::TryParse($previousDoctorElapsedText, [ref]$previousDoctorElapsed)) {
+    $gateLatencyDeltaMs = [string]($doctorElapsedMs - $previousDoctorElapsed)
+  }
 }
 
 $sloErrorBudgetStatus = "UNAVAILABLE"
@@ -988,6 +1001,8 @@ $result = [pscustomobject]@{
   summary = [pscustomobject]@{
     doctor_exit_code = [int]$doctor.exit_code
     doctor_health = $doctorHealth
+    doctor_elapsed_ms = [int]$doctorElapsedMs
+    gate_latency_delta_ms = $gateLatencyDeltaMs
     observe_overdue = $observeOverdue
     waiver_remind_count = [int]$waiverRemindCount
     waiver_block_count = [int]$waiverBlockCount
@@ -1090,6 +1105,8 @@ Write-Host ("generated_at={0}" -f $result.generated_at)
 Write-Host ("repo_root={0}" -f $result.repo_root)
 Write-Host ("cadence={0}" -f $result.cadence)
 Write-Host ("doctor_health={0}" -f $result.summary.doctor_health)
+Write-Host ("doctor_elapsed_ms={0}" -f $result.summary.doctor_elapsed_ms)
+Write-Host ("gate_latency_delta_ms={0}" -f $result.summary.gate_latency_delta_ms)
 Write-Host ("observe_overdue={0}" -f $result.summary.observe_overdue)
 Write-Host ("waiver_remind_count={0}" -f $result.summary.waiver_remind_count)
 Write-Host ("waiver_block_count={0}" -f $result.summary.waiver_block_count)

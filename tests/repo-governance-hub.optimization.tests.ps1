@@ -3499,6 +3499,8 @@ exit 0
       (Test-Path (Join-Path $tmp "docs\governance\alerts-latest.md")) | should be $true
       $snapshot = Get-Content -Path (Join-Path $tmp "docs\governance\alerts-latest.md") -Raw
       ($snapshot -match "status=ALERT") | should be $true
+      ($snapshot -match "doctor_elapsed_ms=[0-9]+") | should be $true
+      ($snapshot -match "gate_latency_delta_ms=N/A") | should be $true
       ($snapshot -match "skill_trigger_eval_status=UNAVAILABLE") | should be $true
       ($snapshot -match "skill_trigger_eval_grouped_query_count=0") | should be $true
       ($snapshot -match "risk_tier_approval_status=UNAVAILABLE") | should be $true
