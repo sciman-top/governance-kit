@@ -336,6 +336,55 @@ function Get-PracticeStackEnableRates {
   }
 }
 
+function Get-ExternalBaselineEnableRates {
+  param([string]$RepoWin)
+
+  $policyPath = Join-Path $RepoWin ".governance\external-baseline-policy.json"
+  if (-not (Test-Path -LiteralPath $policyPath -PathType Leaf)) {
+    return [pscustomobject]@{
+      code_scanning = "N/A"
+      dependency_review = "N/A"
+      codeowners = "N/A"
+      repository_rulesets = "N/A"
+    }
+  }
+
+  $policy = $null
+  try {
+    $policy = Read-JsonFile -Path $policyPath -DisplayName $policyPath
+  } catch {
+    $policy = $null
+  }
+  if ($null -eq $policy -or $null -eq $policy.checks) {
+    return [pscustomobject]@{
+      code_scanning = "N/A"
+      dependency_review = "N/A"
+      codeowners = "N/A"
+      repository_rulesets = "N/A"
+    }
+  }
+
+  function Resolve-CheckEnabledRate {
+    param(
+      [object]$Checks,
+      [string]$Name
+    )
+    if ($null -eq $Checks.PSObject.Properties[$Name]) { return "N/A" }
+    $node = $Checks.$Name
+    if ($null -eq $node -or $null -eq $node.PSObject.Properties["enabled"]) { return "N/A" }
+    $enabled = [bool]$node.enabled
+    if ($enabled) { return "100.00%" }
+    return "0.00%"
+  }
+
+  return [pscustomobject]@{
+    code_scanning = (Resolve-CheckEnabledRate -Checks $policy.checks -Name "code_scanning")
+    dependency_review = (Resolve-CheckEnabledRate -Checks $policy.checks -Name "dependency_review")
+    codeowners = (Resolve-CheckEnabledRate -Checks $policy.checks -Name "codeowners")
+    repository_rulesets = (Resolve-CheckEnabledRate -Checks $policy.checks -Name "repository_rulesets")
+  }
+}
+
 $ruleVersion = "unknown"
 if (Test-Path $globalAgents) {
   $meta = Get-RuleDocMetadata -Path $globalAgents
@@ -409,6 +458,7 @@ foreach ($repoRaw in $repos) {
   $tokenQuality = Get-TokenQualitySnapshot -EvidenceFiles $evidenceFiles
   $repoName = Split-Path -Leaf $repoWin
   $practiceRates = Get-PracticeStackEnableRates -RepoWin $repoWin -RepoName $repoName
+  $externalBaselineRates = Get-ExternalBaselineEnableRates -RepoWin $repoWin
 
   $updateTriggerAlertCount = "N/A"
   $updateTriggerScript = Join-Path $repoWin "scripts\governance\check-update-triggers.ps1"
@@ -502,6 +552,10 @@ foreach ($repoRaw in $repos) {
     "practice_stack_slsa_enabled_rate=$($practiceRates.slsa)"
     "practice_stack_sbom_enabled_rate=$($practiceRates.sbom)"
     "practice_stack_scorecard_enabled_rate=$($practiceRates.scorecard)"
+    "practice_stack_code_scanning_enabled_rate=$($externalBaselineRates.code_scanning)"
+    "practice_stack_dependency_review_enabled_rate=$($externalBaselineRates.dependency_review)"
+    "practice_stack_codeowners_enabled_rate=$($externalBaselineRates.codeowners)"
+    "practice_stack_repository_rulesets_enabled_rate=$($externalBaselineRates.repository_rulesets)"
     "supply_chain_sbom_validation_pass_rate=N/A"
     "slsa_target_level=N/A"
     "scorecard_average=N/A"
