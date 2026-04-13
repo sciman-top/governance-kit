@@ -37,9 +37,9 @@
 ## Phase Mapping
 - Phase 0: matrix + rollout metadata completed in this document and `practice-stack-policy.json` metadata fields.
 - Phase 1: high-value security baseline fill completed and distributed.
-- Phase 2: partially completed (SLO/error budget + gate latency delta reporting + gate noise budget trigger + dependency-review enforce drift check done; SLSA provenance remains).
+- Phase 2: completed for executable controls (SLO/error budget + gate latency delta reporting + gate noise budget trigger + dependency-review enforce drift check + SLSA provenance pipeline and placeholder guard all landed). Residual work is trend observation, not capability gap.
 
 ## Remaining Gaps (next auto iteration)
-1. Add SLSA provenance attestation verification pipeline and corresponding recurring review signal.
-2. Verify two-cycle stability for the new gate noise budget trigger, then decide threshold tightening.
-3. Verify two-cycle stability for dependency-review enforce drift alerts before tightening threshold/policy.
+1. Verify two-cycle stability for the new gate noise budget trigger, then decide threshold tightening.
+2. Verify two-cycle stability for dependency-review enforce drift alerts before tightening threshold/policy.
+3. Verify SLSA provenance workflow signal quality in recurring review snapshots for two cycles.

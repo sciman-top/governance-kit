@@ -129,6 +129,10 @@ if ($null -eq $policy) {
         required_fail_on_severity = "high"
         required_action_major = "v4"
       }
+      slsa_provenance_placeholder = [pscustomobject]@{
+        enabled = $false
+        severity = "high"
+      }
     }
   }
 }
@@ -569,6 +573,40 @@ if ($null -ne $policy.triggers.PSObject.Properties['dependency_review_policy_dri
   }
 }
 
+# 9) slsa provenance placeholder detection
+$slsaProvenancePlaceholderCount = 0
+if ($null -ne $policy.triggers.PSObject.Properties['slsa_provenance_placeholder'] -and [bool]$policy.triggers.slsa_provenance_placeholder.enabled) {
+  $slsaWorkflowPath = Join-Path $kitRoot ".github\workflows\slsa.yml"
+  $steps.Add([pscustomobject]@{ name = "slsa-provenance-placeholder"; exit_code = 0 }) | Out-Null
+  if (-not (Test-Path -LiteralPath $slsaWorkflowPath -PathType Leaf)) {
+    $slsaProvenancePlaceholderCount = 1
+    Add-Alert -List $alerts `
+      -Id "slsa_provenance_placeholder" `
+      -Severity ([string]$policy.triggers.slsa_provenance_placeholder.severity) `
+      -Reason "slsa workflow missing" `
+      -RecommendedAction "Restore .github/workflows/slsa.yml from governance baseline." `
+      -Evidence ".github/workflows/slsa.yml"
+  } else {
+    $slsaText = Get-Content -LiteralPath $slsaWorkflowPath -Raw
+    $placeholderHit = [regex]::IsMatch($slsaText, "(?im)placeholder|provenance-note")
+    $generatorHit = [regex]::IsMatch($slsaText, "(?im)slsa-framework/slsa-github-generator")
+    $idTokenHit = [regex]::IsMatch($slsaText, "(?im)id-token\s*:\s*write")
+    if ($placeholderHit -or -not $generatorHit -or -not $idTokenHit) {
+      $slsaProvenancePlaceholderCount = 1
+      $reasonParts = [System.Collections.Generic.List[string]]::new()
+      if ($placeholderHit) { $reasonParts.Add("placeholder_signature_detected") | Out-Null }
+      if (-not $generatorHit) { $reasonParts.Add("generator_workflow_missing") | Out-Null }
+      if (-not $idTokenHit) { $reasonParts.Add("id-token:write missing") | Out-Null }
+      Add-Alert -List $alerts `
+        -Id "slsa_provenance_placeholder" `
+        -Severity ([string]$policy.triggers.slsa_provenance_placeholder.severity) `
+        -Reason ([string]::Join("; ", @($reasonParts))) `
+        -RecommendedAction "Switch slsa workflow to generator-based attestation pipeline and keep id-token: write permission." `
+        -Evidence ".github/workflows/slsa.yml"
+    }
+  }
+}
+
 $result = [pscustomobject]@{
   schema_version = "1.0"
   generated_at = (Get-Date).ToString("yyyy-MM-dd HH:mm:ss")
@@ -580,6 +618,7 @@ $result = [pscustomobject]@{
   orphan_custom_source_count = [int]$orphanCustomCount
   release_distribution_policy_drift_count = [int]$releasePolicyDriftCount
   dependency_review_policy_drift_count = [int]$dependencyReviewPolicyDriftCount
+  slsa_provenance_placeholder_count = [int]$slsaProvenancePlaceholderCount
   alerts = @($alerts)
   steps = @($steps)
   policy_path = ($policyPath -replace '\\', '/')

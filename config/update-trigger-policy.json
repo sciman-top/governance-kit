@@ -51,6 +51,10 @@
       "severity": "high",
       "required_fail_on_severity": "high",
       "required_action_major": "v4"
+    },
+    "slsa_provenance_placeholder": {
+      "enabled": true,
+      "severity": "high"
     }
   }
 }

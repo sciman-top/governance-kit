@@ -4009,6 +4009,57 @@ jobs:
     }
   }
 
+  it "check-update-triggers reports slsa provenance placeholder" {
+    $tmp = Join-Path $env:TEMP ("govkit-test-" + [guid]::NewGuid().ToString("N"))
+    try {
+      New-Item -ItemType Directory -Path (Join-Path $tmp "scripts\governance") -Force | Out-Null
+      New-Item -ItemType Directory -Path (Join-Path $tmp "scripts\lib") -Force | Out-Null
+      New-Item -ItemType Directory -Path (Join-Path $tmp "config") -Force | Out-Null
+      New-Item -ItemType Directory -Path (Join-Path $tmp ".github\workflows") -Force | Out-Null
+
+      Copy-Item -Path (Join-Path $repoRoot "scripts\governance\check-update-triggers.ps1") -Destination (Join-Path $tmp "scripts\governance\check-update-triggers.ps1") -Force
+      Copy-Item -Path (Join-Path $repoRoot "scripts\lib\common.ps1") -Destination (Join-Path $tmp "scripts\lib\common.ps1") -Force
+
+      @'
+name: slsa
+jobs:
+  provenance:
+    name: Emit provenance placeholder
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo placeholder
+'@ | Set-Content -Path (Join-Path $tmp ".github\workflows\slsa.yml") -Encoding UTF8
+
+      @'
+{
+  "schema_version": "1.0",
+  "cadence": { "recurring_review_days": 7, "monthly_review_day": 1 },
+  "triggers": {
+    "cli_version_drift": { "enabled": false, "severity": "high" },
+    "rollout_observe_overdue": { "enabled": false, "severity": "medium" },
+    "metrics_snapshot_stale": { "enabled": false, "severity": "medium", "max_age_days": 8 },
+    "waiver_expired_unrecovered": { "enabled": false, "severity": "high" },
+    "platform_na_expired": { "enabled": false, "severity": "medium" },
+    "release_distribution_policy_drift": { "enabled": false, "severity": "high" },
+    "skill_trigger_eval_summary_stale": { "enabled": false, "severity": "medium", "max_age_days": 8 },
+    "low_value_orphan_custom_sources": { "enabled": false, "severity": "medium" },
+    "gate_noise_budget_breach": { "enabled": false, "severity": "medium", "max_false_positive_rate": 0.05, "max_gate_latency_delta_ms": 5000, "alert_on_data_gap": false },
+    "dependency_review_policy_drift": { "enabled": false, "severity": "high", "required_fail_on_severity": "high", "required_action_major": "v4" },
+    "slsa_provenance_placeholder": { "enabled": true, "severity": "high" }
+  }
+}
+'@ | Set-Content -Path (Join-Path $tmp "config\update-trigger-policy.json") -Encoding UTF8
+
+      $json = & powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $tmp "scripts\governance\check-update-triggers.ps1") -RepoRoot $tmp -AsJson
+      $LASTEXITCODE | should be 1
+      $obj = $json | ConvertFrom-Json
+      [int]$obj.slsa_provenance_placeholder_count | should be 1
+      @($obj.alerts | Where-Object { $_.id -eq "slsa_provenance_placeholder" }).Count | should be 1
+    } finally {
+      if (Test-Path $tmp) { Remove-Item -LiteralPath $tmp -Recurse -Force }
+    }
+  }
+
   it "common Get-CodexRuntimeFilesForRepo respects policy default disabled and repo opt-in" {
     $tmp = Join-Path $env:TEMP ("govkit-test-" + [guid]::NewGuid().ToString("N"))
     try {
