@@ -9,16 +9,17 @@ param(
 
 $ErrorActionPreference = "Stop"
 $kitRoot = Split-Path -Parent $PSScriptRoot
-$policyPath = Join-Path $kitRoot "config\codex-runtime-policy.json"
 $commonPath = Join-Path $PSScriptRoot "lib\common.ps1"
 if (-not (Test-Path -LiteralPath $commonPath -PathType Leaf)) {
   throw "Missing common helper: $commonPath"
 }
 . $commonPath
+$policyPath = Resolve-AgentRuntimePolicyPath -KitRoot $kitRoot
+$policyFileName = Split-Path -Leaf $policyPath
 Write-ModeRisk -ScriptName "set-codex-runtime-policy.ps1" -Mode $Mode
 
 if (-not (Test-Path -LiteralPath $policyPath -PathType Leaf)) {
-  throw "codex-runtime-policy.json not found: $policyPath"
+  throw "$policyFileName not found: $policyPath"
 }
 
 $rawEnabled = ($Enabled + "").Trim().ToLowerInvariant()
@@ -46,9 +47,9 @@ if (-not [string]::IsNullOrWhiteSpace($RepoName)) {
   $repoNameNorm = Get-RepoName $repoNorm
 }
 
-$policy = Read-JsonFile -Path $policyPath -DefaultValue $null -DisplayName "codex-runtime-policy.json"
+$policy = Read-JsonFile -Path $policyPath -DefaultValue $null -DisplayName $policyFileName
 if ($null -eq $policy) {
-  throw "codex-runtime-policy.json is empty: $policyPath"
+  throw "$policyFileName is empty: $policyPath"
 }
 if ($null -eq $policy.PSObject.Properties['repos']) {
   $policy | Add-Member -NotePropertyName repos -NotePropertyValue @() -Force

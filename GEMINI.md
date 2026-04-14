@@ -179,6 +179,11 @@
 - standalone 发布判定由 `scripts/verify-release-profile.ps1` + `config/standalone-release-policy.json` 执行：`release_enabled=true` 命中外部绝对路径依赖即阻断，`release_enabled=false` 记 advisory。
 - 规则/文档中允许描述协作路径，但发布脚本与发布产物不得隐式要求 `E:/CODE/skills-manager` 存在。
 - 详情：`docs/governance/standalone-release-dependency-contract.md`。
+### C.19 Worktree 隔离目录约定
+- 默认归宿：`~/.config/superpowers/worktrees/repo-governance-hub/`（项目外全局目录，避免仓内污染）。
+- 本仓无现成目录且无更高优先级指令时，外层 AI 代理应直接使用上述默认归宿，不再二次询问。
+- 若临时改用仓内 `.worktrees/` 或 `worktrees/`，必须先通过 `git check-ignore` 验证已忽略，未忽略先修复 `.gitignore` 再创建。
+- 安全约束：同一任务仅使用一种 worktree 根目录，避免跨目录混用导致证据与回滚路径分裂。
 ## D. 维护校验清单（项目级）
 - 仅落地本仓事实，不复述全局规则正文。
 - 与全局职责互补，不重叠、不缺失。

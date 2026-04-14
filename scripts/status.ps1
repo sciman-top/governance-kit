@@ -5,12 +5,12 @@
 $ErrorActionPreference = "Stop"
 $kitRoot = Split-Path -Parent $PSScriptRoot
 $rolloutPath = Join-Path $kitRoot "config\rule-rollout.json"
-$codexRuntimePolicyPath = Join-Path $kitRoot "config\codex-runtime-policy.json"
 $commonPath = Join-Path $PSScriptRoot "lib\common.ps1"
 if (-not (Test-Path -LiteralPath $commonPath -PathType Leaf)) {
   throw "Missing common helper: $commonPath"
 }
 . $commonPath
+$codexRuntimePolicyPath = Resolve-AgentRuntimePolicyPath -KitRoot $kitRoot
 
 $repos = @(Read-JsonArray (Join-Path $kitRoot "config\repositories.json"))
 $targets = @(Read-JsonArray (Join-Path $kitRoot "config\targets.json"))
@@ -129,7 +129,7 @@ if (Test-Path -LiteralPath $codexRuntimePolicyPath -PathType Leaf) {
       codex_repo_target_mappings = $codexRepoTargetCount
     }
   } catch {
-    [void]$warnings.Add("invalid codex-runtime-policy.json: $codexRuntimePolicyPath")
+    [void]$warnings.Add("invalid runtime policy JSON: $codexRuntimePolicyPath")
     $codexRuntimeSummary = [pscustomobject]@{
       policy_found = $true
       enabled_by_default = $false

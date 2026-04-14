@@ -1,8 +1,8 @@
 {
   "version": 1,
   "tool": "repo-governance-hub",
-  "updated_at": "2026-04-13T18:32:13",
-  "managed_count": 90,
+  "updated_at": "2026-04-14T00:54:11",
+  "managed_count": 100,
   "managed_files": [
     {
       "path": ".agents/plugins/marketplace.json",
@@ -45,6 +45,11 @@
       "sha256": "5C5021B0022A93B988F2EC600545370DD6669CB72E8B7335DBF6FC50AE9885F3"
     },
     {
+      "path": ".github/rulesets/default.json",
+      "source": "source/project/_common/custom/.github/rulesets/default.json",
+      "sha256": "1292FF7247BDE1EF44E7E1866C92649EA67A0F4FE910C9B3782C82360B8E498D"
+    },
+    {
       "path": ".github/workflows/codeql.yml",
       "source": "source/project/_common/custom/.github/workflows/codeql.yml",
       "sha256": "A03EC9C80CBC4F94C3BF1DF64C1A90ECFD8487FF73ACFE901C76DCDBCAD9ADF8"
@@ -67,7 +72,12 @@
     {
       "path": ".github/workflows/slsa.yml",
       "source": "source/project/_common/custom/.github/workflows/slsa.yml",
-      "sha256": "5D590D97AA27BBE2612B3BC7E6A9B766E1A88F389995CE2B9C5ECD71AAECEDEB"
+      "sha256": "C8F80C16E6E9E062002D625A7328B59BF8F3C905CE58A6D1A55755C4F8F05421"
+    },
+    {
+      "path": ".gitignore",
+      "source": "source/project/repo-governance-hub/custom/.gitignore",
+      "sha256": "1401ADA0F85C5E6B901EE19998CFC317668583D277EB60EDEAF63AB5F5F1A29C"
     },
     {
       "path": ".governance/anti-bloat-policy.json",
@@ -82,7 +92,7 @@
     {
       "path": ".governance/external-baseline-policy.json",
       "source": "source/project/_common/custom/.governance/external-baseline-policy.json",
-      "sha256": "9FFFDCA473B05573B4A6A4B25C70AEB2F74B5E49086C0023AB8398E7BD262A9E"
+      "sha256": "F66FBE8200C64471E4934B18E094B1D2C708B930A18B51CB98D57E5D19E907A0"
     },
     {
       "path": ".governance/growth-pack/CHECKLIST.md",
@@ -132,7 +142,7 @@
     {
       "path": ".governance/practice-stack-policy.json",
       "source": "source/project/_common/custom/.governance/practice-stack-policy.json",
-      "sha256": "0E44384F566843EEAE5F52F914D701AA624CF91FB06613B294404E0E68379B10"
+      "sha256": "731A3AC94858D2D00B7D085ADA79286F32F3622DBB28AD7FC13291CAF5A537BB"
     },
     {
       "path": ".governance/proactive-suggestion-policy.json",
@@ -143,6 +153,21 @@
       "path": ".governance/release-profile.json",
       "source": "source/project/repo-governance-hub/custom/.governance/release-profile.json",
       "sha256": "4814104ACAC9CA9E26EC0153F3250DB207A038603D487D75797F21DCC68C0B0B"
+    },
+    {
+      "path": ".governance/repository-ruleset-config.json",
+      "source": "source/project/_common/custom/.governance/repository-ruleset-config.json",
+      "sha256": "2505C4473DA85789942BC65D6386124049AE98B9925C2FD76069E564A94ABA06"
+    },
+    {
+      "path": ".governance/repository-ruleset-policy.json",
+      "source": "source/project/_common/custom/.governance/repository-ruleset-policy.json",
+      "sha256": "5B320B6D1B2878E2CF4B5EF896B69F3C9ECB5479F62C86368B5B7988AD539B10"
+    },
+    {
+      "path": ".governance/session-compaction-trigger-policy.json",
+      "source": "source/project/repo-governance-hub/custom/.governance/session-compaction-trigger-policy.json",
+      "sha256": "F054DFA9178348BC9DF71C3C0EDBCF3B14B57490726D6A91830FE00E8AD08D05"
     },
     {
       "path": ".governance/skill-candidates/trigger-eval-runs.sample.jsonl",
@@ -212,17 +237,22 @@
     {
       "path": "AGENTS.md",
       "source": "source/project/repo-governance-hub/AGENTS.md",
-      "sha256": "33EB1FC219D21DC60A691926639532733CB580CF48D5B38998104F5F7539F5D7"
+      "sha256": "FDD1B9447EECF70887A3F299F4EE67E2E39AAE472B0F2D633987DD25216F0B9F"
     },
     {
       "path": "CLAUDE.md",
       "source": "source/project/repo-governance-hub/CLAUDE.md",
-      "sha256": "07476F36C31BED9EFE0D17E1B2ABD9958E73A97CF8335B2D27E41D395B9DBB9C"
+      "sha256": "B9A267E32C2B0468AA057B68B0F53459F81F949D29D5DEB7D9609E685E2A6752"
     },
     {
       "path": "config/clarification-policy.json",
       "source": "source/project/_common/custom/config/clarification-policy.json",
       "sha256": "D3C556822D71F40869C198BB26880ECFA8CE5840CF5D774AD763C7A0DC857C2F"
+    },
+    {
+      "path": "docs/governance/repository-ruleset-policy.md",
+      "source": "source/project/_common/custom/docs/governance/repository-ruleset-policy.md",
+      "sha256": "E2210B0E64FEA302CD8F26586EE5B2DCB523E839529ACBC0B37BC9DC0A8415D8"
     },
     {
       "path": "docs/governance/sbom-policy.md",
@@ -257,7 +287,7 @@
     {
       "path": "GEMINI.md",
       "source": "source/project/repo-governance-hub/GEMINI.md",
-      "sha256": "10C368CE4096213D284D3C631141C039A2886CBCF1AE8D1FC27671EFC03DF805"
+      "sha256": "59759E83E8ED062C5FD9ACDC79C01D967273375E40046D13BF4C390222ED7EFF"
     },
     {
       "path": "plugins/repo-governance-hub-internal/.codex-plugin/plugin.json",
@@ -297,7 +327,7 @@
     {
       "path": "scripts/governance/check-external-baselines.ps1",
       "source": "source/project/_common/custom/scripts/governance/check-external-baselines.ps1",
-      "sha256": "E3AA32A00F656DA0116BA57E9B5E21195B1F3BBA4C6121952C14A571BF9801CB"
+      "sha256": "D1C1A50FDD7B05BF58A9C021138607AD95565FB0FA11D3F9421152689AFBEAA9"
     },
     {
       "path": "scripts/governance/check-failure-replay-readiness.ps1",
@@ -307,12 +337,17 @@
     {
       "path": "scripts/governance/check-practice-stack.ps1",
       "source": "source/project/_common/custom/scripts/governance/check-practice-stack.ps1",
-      "sha256": "B1AFBCBE536C366D584E906EC5BC66D926B6C459C2F37FA082C06848F0855FAA"
+      "sha256": "03905D802F78CAB0135009584AAEA88FA4410C33F4515B14DB79ED4128000A14"
     },
     {
       "path": "scripts/governance/check-proactive-suggestion-balance.ps1",
       "source": "source/project/_common/custom/scripts/governance/check-proactive-suggestion-balance.ps1",
       "sha256": "E3D672D5438D969263313FCDF77958569C54D3684C12731A150AD91998F77DFC"
+    },
+    {
+      "path": "scripts/governance/check-repository-ruleset-config.ps1",
+      "source": "source/project/_common/custom/scripts/governance/check-repository-ruleset-config.ps1",
+      "sha256": "6ED77E4689695DB01311E18E367EADAE25E4F6E8E4EEFD23D12C078283A837F3"
     },
     {
       "path": "scripts/governance/check-risk-tier-approval.ps1",
@@ -323,6 +358,11 @@
       "path": "scripts/governance/check-rollout-promotion-readiness.ps1",
       "source": "source/project/repo-governance-hub/custom/scripts/governance/check-rollout-promotion-readiness.ps1",
       "sha256": "7AC75140525DE30FE9F85C308E8BBD867D198CB630389307EFD3D39C62E6AFE9"
+    },
+    {
+      "path": "scripts/governance/check-session-compaction-trigger.ps1",
+      "source": "source/project/repo-governance-hub/custom/scripts/governance/check-session-compaction-trigger.ps1",
+      "sha256": "06C398C66B8D3E79AADC052DE1D43E6D485FBA30E1F2239A5970A938F5BE865A"
     },
     {
       "path": "scripts/governance/check-skill-family-health.ps1",
@@ -362,12 +402,22 @@
     {
       "path": "scripts/governance/check-update-triggers.ps1",
       "source": "source/project/repo-governance-hub/custom/scripts/governance/check-update-triggers.ps1",
-      "sha256": "D3AFC8CBBC63DAFC049755E5D03416B483980BE77F8B6991A44E695E34CB3C68"
+      "sha256": "924EA4A6863E9885E21B0497C2D1AE86F64545E0095DFE75BBCC0945C84C0F8A"
+    },
+    {
+      "path": "scripts/governance/fast-check.ps1",
+      "source": "source/project/repo-governance-hub/custom/scripts/governance/fast-check.ps1",
+      "sha256": "58110EFB11A18880F0AACBE361FF31D6187B6BAAAA9D3D0B4B6E6BC6C4F58F65"
     },
     {
       "path": "scripts/governance/integrate-growth-suggestions.ps1",
       "source": "source/project/_common/custom/scripts/governance/integrate-growth-suggestions.ps1",
       "sha256": "F42536A22EDC898E1A8280C5732D2546FA2F808F483C1A0CC1B0412FDD7EEC28"
+    },
+    {
+      "path": "scripts/governance/invoke-output-filter-wrapper.ps1",
+      "source": "source/project/repo-governance-hub/custom/scripts/governance/invoke-output-filter-wrapper.ps1",
+      "sha256": "E83FF4C419E2158A70DC3EB40A8EAC6F95996D82659E97D99FB50421B9364000"
     },
     {
       "path": "scripts/governance/migrate-skill-registry-v2.ps1",
@@ -397,7 +447,7 @@
     {
       "path": "scripts/governance/run-monthly-policy-review.ps1",
       "source": "source/project/repo-governance-hub/custom/scripts/governance/run-monthly-policy-review.ps1",
-      "sha256": "EA5C3D37D3B9E51F547EFA1AF0283EA68CEC5896B82A508EAB13D3D781195992"
+      "sha256": "31E072F747909150DB4C1B5147087E01247EEDDA2ADE35EFCA4DAD9B5F0E557E"
     },
     {
       "path": "scripts/governance/run-project-governance-cycle.ps1",
@@ -407,7 +457,7 @@
     {
       "path": "scripts/governance/run-recurring-review.ps1",
       "source": "source/project/repo-governance-hub/custom/scripts/governance/run-recurring-review.ps1",
-      "sha256": "1A94E9AB72C6553177E014BBD6637A1BFD2689EE00995A0AC1A226F85AB33BD1"
+      "sha256": "E897C596ABF89DE55F513EB6F9460588D33D863D4E3D92869AEC63527C107A31"
     },
     {
       "path": "scripts/governance/run-rollback-drill.ps1",
@@ -437,7 +487,7 @@
     {
       "path": "scripts/verify.ps1",
       "source": "source/project/repo-governance-hub/custom/scripts/verify.ps1",
-      "sha256": "2E84332BD49258C0DC971E7DD55F700EF1E2ABA577627D40DE6F58541B99D896"
+      "sha256": "D4AA44C8DE6FEC5B5D079E0CAEBFCBC0E2AB93F826FD8175B08D13C376255FAF"
     },
     {
       "path": "tools/browser-session/README.md",

@@ -1,8 +1,8 @@
 {
   "schema_version": "1.0",
-  "generated_at": "2026-04-13T18:35:35.8609386+08:00",
-  "status": "ok",
+  "generated_at": "2026-04-14T08:38:18.3637338+08:00",
+  "status": "repo_failure_violation",
   "repo_count": 3,
-  "repo_failure_count": 0,
+  "repo_failure_count": 2,
   "missing_required_file_count": 0
 }

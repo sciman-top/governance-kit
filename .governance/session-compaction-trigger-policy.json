@@ -1,0 +1,12 @@
+{
+  "schema_version": "1.0",
+  "enabled": true,
+  "trigger_when_any": true,
+  "thresholds": {
+    "max_average_response_token": 1200,
+    "max_single_task_token": 8000,
+    "max_issue_attempt_count": 2,
+    "max_clarification_required_open_count": 1
+  }
+}
+

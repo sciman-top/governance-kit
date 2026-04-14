@@ -1,4 +1,4 @@
-﻿# CLAUDE.md — ClassroomToolkit（Claude 项目级）
+# CLAUDE.md — ClassroomToolkit（Claude 项目级）
 **项目**: ClassroomToolkit  
 **类型**: Windows WPF (.NET 10)  
 **适用范围**: 项目级（仓库根）  
@@ -135,6 +135,12 @@
 - E4/E5/E6：C.4 + C.7 + C.8（指标、供应链、结构变更配套校验）。
 - Global 输出字段 -> Repo 证据字段：`N/A 分类/判定标准 -> A.3/A.4`，`门禁语义 -> C.2/C.4`，`证据要求 -> C.5`。
 
+### C.10 Worktree 隔离目录约定
+- 默认归宿：`~/.config/superpowers/worktrees/ClassroomToolkit/`（项目外全局目录，避免仓内污染）。
+- 本仓无现成目录且无更高优先级指令时，外层 AI 代理应直接使用上述默认归宿，不再二次询问。
+- 若临时改用仓内 `.worktrees/` 或 `worktrees/`，必须先通过 `git check-ignore` 验证已忽略，未忽略先修复 `.gitignore` 再创建。
+- 安全约束：同一任务仅使用一种 worktree 根目录，避免跨目录混用导致证据与回滚路径分裂。
+
 ### C.11 Git 提交与推送边界（“全部”定义）
 - `整理提交全部` 的“全部”仅指：`本次任务相关 + 应被版本管理 + 通过 tracked-files-policy/.gitignore 的文件`。
 - 默认不纳入“全部”：IDE/agent 本地配置、临时文件、日志、备份、调试残留、缓存与本地运行态目录。
@@ -155,6 +161,8 @@
 - 平台诊断命令在非交互环境失败时，必须按 A.3/A.4 字段落证，不得静默跳过。
 - 规则升级后同步校验三文件版本、日期、承接映射与门禁命令一致性。
 - 平台差异仅在 B 段表达；A/C/D 不承载平台实现细节。
+
+
 
 
 

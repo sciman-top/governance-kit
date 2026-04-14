@@ -898,9 +898,21 @@ function Get-GrowthPackFilesForRepo([string]$KitRoot, [string]$RepoPath, [string
   }
   return @($files.ToArray())
 }
+function Resolve-AgentRuntimePolicyPath([string]$KitRoot) {
+  $preferred = Join-Path $KitRoot "config\agent-runtime-policy.json"
+  if (Test-Path -LiteralPath $preferred -PathType Leaf) {
+    return $preferred
+  }
+  $legacy = Join-Path $KitRoot "config\codex-runtime-policy.json"
+  if (Test-Path -LiteralPath $legacy -PathType Leaf) {
+    return $legacy
+  }
+  return $preferred
+}
 function Get-CodexRuntimeFilesForRepo([string]$KitRoot, [string]$RepoPath, [string]$RepoName) {
-  $policyPath = Join-Path $KitRoot "config\codex-runtime-policy.json"
-  $policy = Read-JsonFile -Path $policyPath -DefaultValue $null -UseCache -DisplayName "codex-runtime-policy.json"
+  $policyPath = Resolve-AgentRuntimePolicyPath -KitRoot $KitRoot
+  $policyLabel = Split-Path -Leaf $policyPath
+  $policy = Read-JsonFile -Path $policyPath -DefaultValue $null -UseCache -DisplayName $policyLabel
   if ($null -eq $policy) { return @() }
   $enabled = $false
   if ($null -ne $policy.PSObject.Properties['enabled_by_default']) {

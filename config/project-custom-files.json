@@ -178,7 +178,8 @@
         "scripts/validation/resolve-stable-profile.ps1",
         "scripts/validation/run-stable-tests.ps1",
         "scripts/validation/stable-test-filters.json",
-        "scripts/validation/validate-stable-test-config.ps1"
+        "scripts/validation/validate-stable-test-config.ps1",
+        ".gitignore"
       ]
     },
     {
@@ -196,7 +197,8 @@
         "overrides/custom-windows-encoding-guard/scripts/bootstrap.ps1",
         "overrides/governance-teaching-lite-output/SKILL.md",
         "scripts/install-githooks.ps1",
-        "scripts/prebuild-check.ps1"
+        "scripts/prebuild-check.ps1",
+        ".gitignore"
       ]
     },
     {
@@ -214,7 +216,8 @@
         "scripts/governance/fast-check.ps1",
         "scripts/governance/invoke-output-filter-wrapper.ps1",
         "scripts/governance/run-rollback-drill.ps1",
-        "scripts/verify.ps1"
+        "scripts/verify.ps1",
+        ".gitignore"
       ]
     }
   ]

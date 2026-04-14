@@ -1538,5 +1538,20 @@
     "source": "source/project/_common/custom/scripts/governance/fast-check.ps1",
     "target": "E:/CODE/skills-manager/scripts/governance/fast-check.ps1",
     "boundary_class": "shared-template"
+  },
+  {
+    "source": "source/project/ClassroomToolkit/custom/.gitignore",
+    "target": "E:/CODE/ClassroomToolkit/.gitignore",
+    "boundary_class": "project"
+  },
+  {
+    "source": "source/project/skills-manager/custom/.gitignore",
+    "target": "E:/CODE/skills-manager/.gitignore",
+    "boundary_class": "project"
+  },
+  {
+    "source": "source/project/repo-governance-hub/custom/.gitignore",
+    "target": "E:/CODE/repo-governance-hub/.gitignore",
+    "boundary_class": "project"
   }
 ]

@@ -31,7 +31,7 @@ $releaseDistributionPolicyPath = Join-Path $kitRoot "config\release-distribution
 $practiceStackPolicyPath = Join-Path $kitRoot "config\practice-stack-policy.json"
 $clarificationPolicyPath = Join-Path $kitRoot "config\clarification-policy.json"
 $codexProfileRegistryPath = Join-Path $kitRoot "config\codex-profile-registry.json"
-$codexRuntimePolicyPath = Join-Path $kitRoot "config\codex-runtime-policy.json"
+$codexRuntimePolicyPath = Resolve-AgentRuntimePolicyPath -KitRoot $kitRoot
 $growthPackPolicyPath = Join-Path $kitRoot "config\growth-pack-policy.json"
 if (!(Test-Path $reposPath)) { throw "repositories.json not found: $reposPath" }
 if (!(Test-Path $targetsPath)) { throw "targets.json not found: $targetsPath" }
@@ -805,7 +805,8 @@ if (Test-Path -LiteralPath $codexProfileRegistryPath -PathType Leaf) {
   }
 }
 if (Test-Path -LiteralPath $codexRuntimePolicyPath -PathType Leaf) {
-  $codexRuntimePolicy = Read-OptionalJsonConfig -Path $codexRuntimePolicyPath -InvalidNotice "[CFG] codex-runtime-policy.json invalid JSON"
+  $runtimePolicyName = Split-Path -Leaf $codexRuntimePolicyPath
+  $codexRuntimePolicy = Read-OptionalJsonConfig -Path $codexRuntimePolicyPath -InvalidNotice ("[CFG] {0} invalid JSON" -f $runtimePolicyName)
   if ($null -ne $codexRuntimePolicy) {
     [void](Validate-RequiredNonEmptyStringProperty -Object $codexRuntimePolicy -PropertyName "schema_version" -MissingMessage "[CFG] codex-runtime-policy.schema_version missing")
     [void](Validate-RequiredBooleanProperty -Object $codexRuntimePolicy -PropertyName "enabled_by_default" -Message "[CFG] codex-runtime-policy.enabled_by_default must be boolean")
