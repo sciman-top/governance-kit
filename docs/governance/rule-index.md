@@ -18,6 +18,7 @@
 - `governance noise budget`: [governance-noise-budget.md](./governance-noise-budget.md)
 - `control retirement candidates`: [control-retirement-candidates-2026Q2.md](./control-retirement-candidates-2026Q2.md)
 - `target rollout status matrix`: [target-rollout-status-matrix-2026Q2.md](./target-rollout-status-matrix-2026Q2.md)
+- `cross-repo feedback report`: [cross-repo-feedback-report-latest.md](./cross-repo-feedback-report-latest.md)
 - `teaching output protocol`: skill `governance-teaching-lite-output`
 - `clarification protocol`: skill `governance-clarification-protocol`
 - `skill creation gate`: [skill-creation-gate-checklist.md](./skill-creation-gate-checklist.md)

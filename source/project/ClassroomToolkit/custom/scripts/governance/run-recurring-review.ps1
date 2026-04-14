@@ -31,6 +31,7 @@ $rollbackDrillScript = Join-Path $kitRoot "scripts\governance\run-rollback-drill
 $skillFamilyHealthScript = Join-Path $kitRoot "scripts\governance\check-skill-family-health.ps1"
 $skillLifecycleHealthScript = Join-Path $kitRoot "scripts\governance\check-skill-lifecycle-health.ps1"
 $crossRepoCompatibilityScript = Join-Path $kitRoot "scripts\governance\check-cross-repo-compatibility.ps1"
+$crossRepoFeedbackScript = Join-Path $kitRoot "scripts\governance\check-cross-repo-feedback.ps1"
 $tokenEfficiencyTrendScript = Join-Path $kitRoot "scripts\governance\check-token-efficiency-trend.ps1"
 $sessionCompactionScript = Join-Path $kitRoot "scripts\governance\check-session-compaction-trigger.ps1"
 $tokenBalanceScript = Join-Path $kitRoot "scripts\governance\check-token-balance.ps1"
@@ -53,6 +54,7 @@ $hasRollbackDrillScript = (Test-Path -LiteralPath $rollbackDrillScript -PathType
 $hasSkillFamilyHealthScript = (Test-Path -LiteralPath $skillFamilyHealthScript -PathType Leaf)
 $hasSkillLifecycleHealthScript = (Test-Path -LiteralPath $skillLifecycleHealthScript -PathType Leaf)
 $hasCrossRepoCompatibilityScript = (Test-Path -LiteralPath $crossRepoCompatibilityScript -PathType Leaf)
+$hasCrossRepoFeedbackScript = (Test-Path -LiteralPath $crossRepoFeedbackScript -PathType Leaf)
 $hasTokenEfficiencyTrendScript = (Test-Path -LiteralPath $tokenEfficiencyTrendScript -PathType Leaf)
 $hasSessionCompactionScript = (Test-Path -LiteralPath $sessionCompactionScript -PathType Leaf)
 $hasProactiveSuggestionScript = (Test-Path -LiteralPath $proactiveSuggestionScript -PathType Leaf)
@@ -172,6 +174,11 @@ function Write-AlertSnapshot([object]$ReviewResult, [string]$RootPath) {
   [void]$lines.Add(("skill_lifecycle_quality_impact_delta={0}" -f $ReviewResult.summary.skill_lifecycle_quality_impact_delta))
   [void]$lines.Add(("cross_repo_compatibility_status={0}" -f $ReviewResult.summary.cross_repo_compatibility_status))
   [void]$lines.Add(("cross_repo_compatibility_repo_failure_count={0}" -f $ReviewResult.summary.cross_repo_compatibility_repo_failure_count))
+  [void]$lines.Add(("cross_repo_feedback_status={0}" -f $ReviewResult.summary.cross_repo_feedback_status))
+  [void]$lines.Add(("cross_repo_feedback_ingested_count={0}" -f $ReviewResult.summary.cross_repo_feedback_ingested_count))
+  [void]$lines.Add(("cross_repo_feedback_repo_failure_count={0}" -f $ReviewResult.summary.cross_repo_feedback_repo_failure_count))
+  [void]$lines.Add(("cross_repo_feedback_rollout_matrix_gap_count={0}" -f $ReviewResult.summary.cross_repo_feedback_rollout_matrix_gap_count))
+  [void]$lines.Add(("cross_repo_feedback_report_path={0}" -f $ReviewResult.summary.cross_repo_feedback_report_path))
   [void]$lines.Add(("token_efficiency_trend_status={0}" -f $ReviewResult.summary.token_efficiency_trend_status))
   [void]$lines.Add(("token_efficiency_trend_history_count={0}" -f $ReviewResult.summary.token_efficiency_trend_history_count))
   [void]$lines.Add(("token_efficiency_trend_latest_value={0}" -f $ReviewResult.summary.token_efficiency_trend_latest_value))
@@ -282,6 +289,16 @@ if ($hasCrossRepoCompatibilityScript) {
 } else {
   $crossRepoCompatibility = [pscustomobject]@{
     name = "check-cross-repo-compatibility"
+    exit_code = 0
+    output = ""
+    elapsed_ms = 0
+  }
+}
+if ($hasCrossRepoFeedbackScript) {
+  $crossRepoFeedback = Invoke-StepText -Name "check-cross-repo-feedback" -ScriptPath $crossRepoFeedbackScript -Args @("-RepoRoot", $repoPath, "-AsJson")
+} else {
+  $crossRepoFeedback = [pscustomobject]@{
+    name = "check-cross-repo-feedback"
     exit_code = 0
     output = ""
     elapsed_ms = 0
@@ -462,6 +479,11 @@ $skillLifecycleRetiredAvgLatencyDays = 0
 $skillLifecycleQualityImpactDelta = 0
 $crossRepoCompatibilityStatus = "UNAVAILABLE"
 $crossRepoCompatibilityRepoFailureCount = 0
+$crossRepoFeedbackStatus = "UNAVAILABLE"
+$crossRepoFeedbackIngestedCount = 0
+$crossRepoFeedbackRepoFailureCount = 0
+$crossRepoFeedbackRolloutMatrixGapCount = 0
+$crossRepoFeedbackReportPath = ""
 $tokenEfficiencyTrendStatus = "UNAVAILABLE"
 $tokenEfficiencyTrendHistoryCount = 0
 $tokenEfficiencyTrendLatestValue = 0
@@ -741,6 +763,43 @@ if ($hasCrossRepoCompatibilityScript) {
   }
   if ($crossRepoCompatibility.exit_code -ne 0 -or $crossRepoCompatibilityStatus -eq "PARSE_ERROR" -or $crossRepoCompatibilityRepoFailureCount -gt 0) {
     [void]$alerts.Add(("cross repo compatibility status={0} repo_failure_count={1}" -f $crossRepoCompatibilityStatus, $crossRepoCompatibilityRepoFailureCount))
+  }
+}
+
+if ($hasCrossRepoFeedbackScript) {
+  $crossRepoFeedbackStatus = "UNKNOWN"
+  if (-not [string]::IsNullOrWhiteSpace($crossRepoFeedback.output)) {
+    $crossRepoFeedbackObj = Parse-JsonLoose -RawText ([string]$crossRepoFeedback.output)
+    if ($null -ne $crossRepoFeedbackObj) {
+      if ($crossRepoFeedbackObj.PSObject.Properties.Name -contains "status") { $crossRepoFeedbackStatus = [string]$crossRepoFeedbackObj.status }
+      if ($crossRepoFeedbackObj.PSObject.Properties.Name -contains "feedback_ingested_count") { try { $crossRepoFeedbackIngestedCount = [int]$crossRepoFeedbackObj.feedback_ingested_count } catch { $crossRepoFeedbackIngestedCount = 0 } }
+      if ($crossRepoFeedbackObj.PSObject.Properties.Name -contains "repo_failure_count") { try { $crossRepoFeedbackRepoFailureCount = [int]$crossRepoFeedbackObj.repo_failure_count } catch { $crossRepoFeedbackRepoFailureCount = 0 } }
+      $rolloutMatrixMissingControlCount = 0
+      $rolloutMatrixMissingRepoStateCount = 0
+      if ($crossRepoFeedbackObj.PSObject.Properties.Name -contains "rollout_matrix_missing_control_count") { try { $rolloutMatrixMissingControlCount = [int]$crossRepoFeedbackObj.rollout_matrix_missing_control_count } catch { $rolloutMatrixMissingControlCount = 0 } }
+      if ($crossRepoFeedbackObj.PSObject.Properties.Name -contains "rollout_matrix_missing_repo_state_count") { try { $rolloutMatrixMissingRepoStateCount = [int]$crossRepoFeedbackObj.rollout_matrix_missing_repo_state_count } catch { $rolloutMatrixMissingRepoStateCount = 0 } }
+      $crossRepoFeedbackRolloutMatrixGapCount = [int]$rolloutMatrixMissingControlCount + [int]$rolloutMatrixMissingRepoStateCount
+      if ($crossRepoFeedbackObj.PSObject.Properties.Name -contains "report_path") { $crossRepoFeedbackReportPath = [string]$crossRepoFeedbackObj.report_path }
+    } else {
+      $retryRaw = & powershell -NoProfile -ExecutionPolicy Bypass -File $crossRepoFeedbackScript -RepoRoot $repoPath -AsJson 2>&1
+      $retryObj = Parse-JsonLoose -RawText ([string]($retryRaw | Out-String))
+      if ($null -ne $retryObj) {
+        if ($retryObj.PSObject.Properties.Name -contains "status") { $crossRepoFeedbackStatus = [string]$retryObj.status }
+        if ($retryObj.PSObject.Properties.Name -contains "feedback_ingested_count") { try { $crossRepoFeedbackIngestedCount = [int]$retryObj.feedback_ingested_count } catch { $crossRepoFeedbackIngestedCount = 0 } }
+        if ($retryObj.PSObject.Properties.Name -contains "repo_failure_count") { try { $crossRepoFeedbackRepoFailureCount = [int]$retryObj.repo_failure_count } catch { $crossRepoFeedbackRepoFailureCount = 0 } }
+        $rolloutMatrixMissingControlCount = 0
+        $rolloutMatrixMissingRepoStateCount = 0
+        if ($retryObj.PSObject.Properties.Name -contains "rollout_matrix_missing_control_count") { try { $rolloutMatrixMissingControlCount = [int]$retryObj.rollout_matrix_missing_control_count } catch { $rolloutMatrixMissingControlCount = 0 } }
+        if ($retryObj.PSObject.Properties.Name -contains "rollout_matrix_missing_repo_state_count") { try { $rolloutMatrixMissingRepoStateCount = [int]$retryObj.rollout_matrix_missing_repo_state_count } catch { $rolloutMatrixMissingRepoStateCount = 0 } }
+        $crossRepoFeedbackRolloutMatrixGapCount = [int]$rolloutMatrixMissingControlCount + [int]$rolloutMatrixMissingRepoStateCount
+        if ($retryObj.PSObject.Properties.Name -contains "report_path") { $crossRepoFeedbackReportPath = [string]$retryObj.report_path }
+      } else {
+        $crossRepoFeedbackStatus = "PARSE_ERROR"
+      }
+    }
+  }
+  if ($crossRepoFeedback.exit_code -ne 0 -or $crossRepoFeedbackStatus -eq "PARSE_ERROR" -or $crossRepoFeedbackStatus -eq "alert") {
+    [void]$alerts.Add(("cross repo feedback status={0} ingested_count={1} repo_failure_count={2}" -f $crossRepoFeedbackStatus, $crossRepoFeedbackIngestedCount, $crossRepoFeedbackRepoFailureCount))
   }
 }
 
@@ -1227,6 +1286,11 @@ $result = [pscustomobject]@{
     skill_lifecycle_quality_impact_delta = [Math]::Round([double]$skillLifecycleQualityImpactDelta, 6)
     cross_repo_compatibility_status = $crossRepoCompatibilityStatus
     cross_repo_compatibility_repo_failure_count = [int]$crossRepoCompatibilityRepoFailureCount
+    cross_repo_feedback_status = $crossRepoFeedbackStatus
+    cross_repo_feedback_ingested_count = [int]$crossRepoFeedbackIngestedCount
+    cross_repo_feedback_repo_failure_count = [int]$crossRepoFeedbackRepoFailureCount
+    cross_repo_feedback_rollout_matrix_gap_count = [int]$crossRepoFeedbackRolloutMatrixGapCount
+    cross_repo_feedback_report_path = $crossRepoFeedbackReportPath
     token_efficiency_trend_status = $tokenEfficiencyTrendStatus
     token_efficiency_trend_history_count = [int]$tokenEfficiencyTrendHistoryCount
     token_efficiency_trend_latest_value = [Math]::Round([double]$tokenEfficiencyTrendLatestValue, 6)
@@ -1256,6 +1320,7 @@ $result = [pscustomobject]@{
     skill_family_health_exit_code = [int]$skillFamilyHealth.exit_code
     skill_lifecycle_health_exit_code = [int]$skillLifecycleHealth.exit_code
     cross_repo_compatibility_exit_code = [int]$crossRepoCompatibility.exit_code
+    cross_repo_feedback_exit_code = [int]$crossRepoFeedback.exit_code
     token_efficiency_trend_exit_code = [int]$tokenEfficiencyTrend.exit_code
     session_compaction_exit_code = [int]$sessionCompaction.exit_code
     token_balance_exit_code = [int]$tokenBalance.exit_code
@@ -1276,6 +1341,7 @@ $result = [pscustomobject]@{
     [pscustomobject]@{ name = "check-skill-family-health"; exit_code = [int]$skillFamilyHealth.exit_code },
     [pscustomobject]@{ name = "check-skill-lifecycle-health"; exit_code = [int]$skillLifecycleHealth.exit_code },
     [pscustomobject]@{ name = "check-cross-repo-compatibility"; exit_code = [int]$crossRepoCompatibility.exit_code },
+    [pscustomobject]@{ name = "check-cross-repo-feedback"; exit_code = [int]$crossRepoFeedback.exit_code },
     [pscustomobject]@{ name = "check-token-efficiency-trend"; exit_code = [int]$tokenEfficiencyTrend.exit_code },
     [pscustomobject]@{ name = "check-session-compaction-trigger"; exit_code = [int]$sessionCompaction.exit_code },
     [pscustomobject]@{ name = "check-token-balance"; exit_code = [int]$tokenBalance.exit_code },
@@ -1352,6 +1418,11 @@ Write-Host ("skill_lifecycle_retired_avg_latency_days={0}" -f $result.summary.sk
 Write-Host ("skill_lifecycle_quality_impact_delta={0}" -f $result.summary.skill_lifecycle_quality_impact_delta)
 Write-Host ("cross_repo_compatibility_status={0}" -f $result.summary.cross_repo_compatibility_status)
 Write-Host ("cross_repo_compatibility_repo_failure_count={0}" -f $result.summary.cross_repo_compatibility_repo_failure_count)
+Write-Host ("cross_repo_feedback_status={0}" -f $result.summary.cross_repo_feedback_status)
+Write-Host ("cross_repo_feedback_ingested_count={0}" -f $result.summary.cross_repo_feedback_ingested_count)
+Write-Host ("cross_repo_feedback_repo_failure_count={0}" -f $result.summary.cross_repo_feedback_repo_failure_count)
+Write-Host ("cross_repo_feedback_rollout_matrix_gap_count={0}" -f $result.summary.cross_repo_feedback_rollout_matrix_gap_count)
+Write-Host ("cross_repo_feedback_report_path={0}" -f $result.summary.cross_repo_feedback_report_path)
 Write-Host ("token_efficiency_trend_status={0}" -f $result.summary.token_efficiency_trend_status)
 Write-Host ("token_efficiency_trend_history_count={0}" -f $result.summary.token_efficiency_trend_history_count)
 Write-Host ("token_efficiency_trend_latest_value={0}" -f $result.summary.token_efficiency_trend_latest_value)

@@ -347,6 +347,15 @@ Every control should be assigned one of these classes:
   - matrix validator landed: `scripts/governance/check-target-rollout-matrix.ps1`.
   - update trigger support for `target_rollout_matrix_gap`.
   - target matrix document landed: `docs/governance/target-rollout-status-matrix-2026Q2.md`.
+- completed (Phase 4 slice B)
+  - cross-repo feedback checker landed: `scripts/governance/check-cross-repo-feedback.ps1`.
+  - recurring review summary includes:
+    - `cross_repo_feedback_status`
+    - `cross_repo_feedback_ingested_count`
+    - `cross_repo_feedback_repo_failure_count`
+    - `cross_repo_feedback_rollout_matrix_gap_count`
+    - `cross_repo_feedback_report_path`
+  - latest feedback report output landed: `docs/governance/cross-repo-feedback-report-latest.md`.
 - next
-  - integrate cross-repo feedback counters into recurring review summary.
-  - add cross-repo feedback report and ingest counters into recurring review summary.
+  - integrate cross-repo feedback signal into monthly policy review trend section.
+  - add policy trigger for stale cross-repo feedback report snapshots.
