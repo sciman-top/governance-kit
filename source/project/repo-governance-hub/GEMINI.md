@@ -106,9 +106,9 @@
 - 数据结构变更需同步更新校验脚本与测试夹具，并提供回滚路径。
 
 ### C.7 目标仓直改回灌策略
-- source of truth：`E:/CODE/repo-governance-hub/source/project/repo-governance-hub/*`。
+- source of truth：`${WORKSPACE_ROOT}/repo-governance-hub/source/project/repo-governance-hub/*`。
 - 允许在目标仓根 `AGENTS/CLAUDE/GEMINI` 临时直改试验，但同日必须回灌到 source 并留证据。
-- 回灌后执行：`powershell -File E:/CODE/repo-governance-hub/scripts/install.ps1 -Mode safe`。
+- 回灌后执行：`powershell -File ${WORKSPACE_ROOT}/repo-governance-hub/scripts/install.ps1 -Mode safe`。
 - 未完成“回灌 + 复验”前，禁止再次 `sync/install` 覆盖未沉淀改动。
 
 ### C.8 CI 与仓内校验入口
@@ -154,7 +154,7 @@
 - 优化原则：按指标趋势迭代规则与提示词，优先降低返工与语义偏差。
 
 ### C.14 治理问题优先修复顺序
-- 发现与 repo-governance-hub 规则/脚本/配置相关的问题时，必须先在 `E:/CODE/repo-governance-hub` 修复 source of truth。
+- 发现与 repo-governance-hub 规则/脚本/配置相关的问题时，必须先在 `${WORKSPACE_ROOT}/repo-governance-hub` 修复 source of truth。
 - 修复后按固定顺序复验：`build -> test -> contract/invariant -> hotspot`，确认通过后再在目标仓执行相关命令。
 - 禁止带着已知治理问题继续分发、提交或推送。
 - 若为临时止血，需在证据中记录回收时点与最终归宿。
@@ -169,7 +169,7 @@
 - 证据字段：`spawn_parallel_subagents`、`max_parallel_agents`、`decision_score`、`reason_codes`、`hard_guard_hits`、`signals`、`policy_path`。
 - 执行边界：`scripts/governance/run-target-autopilot.ps1` 仅输出建议与 JSON 证据；并行子代理创建由外层 AI 会话执行。
 ### C.17 与 skills-manager 联合协作契约（强制）
-- 本仓与 `E:/CODE/skills-manager` 为联合协作关系：本仓负责治理语义与分发编排，skills-manager 负责 overrides 技能生命周期落地。
+- 本仓与 `${WORKSPACE_ROOT}/skills-manager` 为联合协作关系：本仓负责治理语义与分发编排，skills-manager 负责 overrides 技能生命周期落地。
 - 新增可复用技能的 canonical 落点必须是：`source/project/skills-manager/custom/overrides/<skill-name>/SKILL.md`。
 - 本仓根 `.agents/skills/*` 不作为新技能正式创建路径（本仓默认 `.gitignore` 忽略 `/.agents/`）。
 - 技能创建/晋升必须通过策略门槛：`ack + trigger-eval + family uniqueness + lifecycle policy`，不得绕过 `promote-skill-candidates` 约束。
@@ -177,7 +177,7 @@
 ### C.18 standalone 发布依赖边界（强制）
 - `skills-manager overrides` 属于跨仓协作能力，不得被视为本仓 standalone 发布运行时硬依赖。
 - standalone 发布判定由 `scripts/verify-release-profile.ps1` + `config/standalone-release-policy.json` 执行：`release_enabled=true` 命中外部绝对路径依赖即阻断，`release_enabled=false` 记 advisory。
-- 规则/文档中允许描述协作路径，但发布脚本与发布产物不得隐式要求 `E:/CODE/skills-manager` 存在。
+- 规则/文档中允许描述协作路径，但发布脚本与发布产物不得隐式要求 `${WORKSPACE_ROOT}/skills-manager` 存在。
 - 详情：`docs/governance/standalone-release-dependency-contract.md`。
 ### C.19 Worktree 隔离目录约定
 - 默认归宿：`~/.config/superpowers/worktrees/repo-governance-hub/`（项目外全局目录，避免仓内污染）。

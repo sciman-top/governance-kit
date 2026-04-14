@@ -6,7 +6,7 @@
   # Deprecated: kept for backward compatibility and ignored.
   [int]$MaxKitFixAttempts = 2,
   [switch]$RunTargetCycle,
-  [string]$TargetRepoPath = "E:/CODE/ClassroomToolkit",
+  [string]$TargetRepoPath = "",
   # Deprecated: kept for backward compatibility and ignored.
   [int]$MaxTargetFixAttempts = 1,
   [switch]$DryRun
@@ -23,6 +23,10 @@ if (-not (Test-Path -LiteralPath $commonPath)) {
 
 . $commonPath
 $psExe = Get-CurrentPowerShellPath
+$workspaceRoot = Split-Path -Parent $repoPath
+if ([string]::IsNullOrWhiteSpace($TargetRepoPath)) {
+  $TargetRepoPath = Join-Path $workspaceRoot "ClassroomToolkit"
+}
 
 $runId = [guid]::NewGuid().ToString("n")
 $timestamp = Get-Date -Format "yyyyMMdd-HHmmss"

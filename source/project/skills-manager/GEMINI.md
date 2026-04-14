@@ -95,9 +95,9 @@
 - 若 `skills.json.targets` 含 `.gemini/skills`，必须验证其与 `agent/` 同步状态。
 
 ### C.7 目标仓直改回灌策略
-- source of truth：`E:/CODE/repo-governance-hub/source/project/skills-manager/*`。
-- 允许在 `E:/CODE/skills-manager` 临时直改试验，但同日必须回灌并留证据。
-- 回灌后必须执行：`powershell -File E:/CODE/repo-governance-hub/scripts/install.ps1 -Mode safe`。
+- source of truth：`${WORKSPACE_ROOT}/repo-governance-hub/source/project/skills-manager/*`。
+- 允许在 `${WORKSPACE_ROOT}/skills-manager` 临时直改试验，但同日必须回灌并留证据。
+- 回灌后必须执行：`powershell -File ${WORKSPACE_ROOT}/repo-governance-hub/scripts/install.ps1 -Mode safe`。
 - 未完成“回灌 + 复验”前，禁止再次 `sync/install` 覆盖未沉淀改动。
 
 ### C.8 CI 与仓内校验入口
@@ -132,7 +132,7 @@
 - 执行 `git add -A` 前必须先隔离非本次改动，避免误纳入。
 
 ### C.12 治理问题优先修复顺序
-- 发现与 repo-governance-hub 规则/脚本/配置相关的问题时，必须先在 `E:/CODE/repo-governance-hub` 修复 source of truth。
+- 发现与 repo-governance-hub 规则/脚本/配置相关的问题时，必须先在 `${WORKSPACE_ROOT}/repo-governance-hub` 修复 source of truth。
 - 修复后按固定顺序复验：`build -> test -> contract/invariant -> hotspot`，确认通过后再在目标仓执行相关命令。
 - 禁止带着已知治理问题继续分发、提交或推送。
 - 若为临时止血，需在证据中记录回收时点与最终归宿。

@@ -5,7 +5,7 @@
   },
   "repos": [
     {
-      "repo": "E:/CODE/ClassroomToolkit",
+      "repo": "${WORKSPACE_ROOT}/ClassroomToolkit",
       "phase": "observe",
       "blockExpiredWaiver": false,
       "observe_started_at": "2026-04-01",

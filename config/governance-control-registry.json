@@ -1,7 +1,7 @@
 {
   "schema_version": "1.0",
   "inventory_date": "2026-04-14",
-  "source_repo": "E:/CODE/repo-governance-hub",
+  "source_repo": "${WORKSPACE_ROOT}/repo-governance-hub",
   "control_classes": [
     "hard",
     "progressive",

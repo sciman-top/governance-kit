@@ -1,8 +1,8 @@
-﻿{
+{
   "allowProjectRulesForRepos": [
-    "E:/CODE/ClassroomToolkit",
-    "E:/CODE/skills-manager",
-    "E:/CODE/repo-governance-hub"
+    "ClassroomToolkit",
+    "skills-manager",
+    "repo-governance-hub"
   ],
   "defaults": {
     "allow_auto_fix": true,

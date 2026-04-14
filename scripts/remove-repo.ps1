@@ -13,7 +13,7 @@ if (-not (Test-Path -LiteralPath $commonPath -PathType Leaf)) {
 }
 . $commonPath
 Write-ModeRisk -ScriptName "remove-repo.ps1" -Mode $Mode
-$repo = ([System.IO.Path]::GetFullPath(($RepoPath -replace '/', '\')) -replace '\\','/').TrimEnd('/')
+$repo = Normalize-Repo ([string]$RepoPath)
 
 $reposPath = Join-Path $kitRoot "config\repositories.json"
 $targetsPath = Join-Path $kitRoot "config\targets.json"

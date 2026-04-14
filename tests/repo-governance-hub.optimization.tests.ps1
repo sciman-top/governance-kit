@@ -13,6 +13,25 @@ if (-not $env:RGH_PESTER_SELF_INVOKED) {
 }
 $here = Split-Path -Parent $MyInvocation.MyCommand.Path
 $repoRoot = (Resolve-Path (Join-Path $here "..")).Path
+$workspaceRoot = Split-Path -Parent $repoRoot
+
+function Convert-ToForwardSlashPath {
+  param([Parameter(Mandatory = $true)][string]$Path)
+  return ($Path -replace '\\','/').TrimEnd('/')
+}
+
+function Get-WorkspaceRepoPath {
+  param([Parameter(Mandatory = $true)][string]$Name)
+  return Convert-ToForwardSlashPath (Join-Path $workspaceRoot $Name)
+}
+
+function Get-TestRepoPath {
+  param(
+    [Parameter(Mandatory = $true)][string]$TmpRoot,
+    [Parameter(Mandatory = $true)][string]$Name
+  )
+  return Convert-ToForwardSlashPath (Join-Path $TmpRoot $Name)
+}
 
 function Write-Utf8NoBomFile {
   param(
@@ -245,9 +264,9 @@ describe "repo-governance-hub optimization guardrails" {
     . (Join-Path $repoRoot "scripts\lib\common.ps1")
 
     $approved = @(
-      "C:/Users/sciman/.codex/AGENTS.md",
-      "C:/Users/sciman/.claude/CLAUDE.md",
-      "C:/Users/sciman/.gemini/GEMINI.md"
+      '${USERPROFILE}/.codex/AGENTS.md',
+      '${USERPROFILE}/.claude/CLAUDE.md',
+      '${USERPROFILE}/.gemini/GEMINI.md'
     )
 
     foreach ($target in $approved) {
@@ -259,8 +278,8 @@ describe "repo-governance-hub optimization guardrails" {
   it "rejects unexpected global user-level targets" {
     . (Join-Path $repoRoot "scripts\lib\common.ps1")
 
-    (Test-AllowedGlobalUserTarget -Target "C:/Users/sciman/.codex/README.md") | should be $false
-    $check = Get-BoundaryMappingCheck -Source "source/global/AGENTS.md" -Target "C:/Users/sciman/.codex/README.md" -RepoRoots @((Normalize-Repo $repoRoot))
+    (Test-AllowedGlobalUserTarget -Target '${USERPROFILE}/.codex/README.md') | should be $false
+    $check = Get-BoundaryMappingCheck -Source "source/global/AGENTS.md" -Target '${USERPROFILE}/.codex/README.md' -RepoRoots @((Normalize-Repo $repoRoot))
     $check.allowed | should be $false
     $check.source_layer | should be "global"
     $check.target_layer | should be "global-user"
@@ -483,13 +502,14 @@ exit 0
       New-Item -ItemType Directory -Path (Join-Path $tmp "scripts\lib") -Force | Out-Null
       New-Item -ItemType Directory -Path (Join-Path $tmp "scripts") -Force | Out-Null
       New-Item -ItemType Directory -Path (Join-Path $tmp "config") -Force | Out-Null
+      $fakeRepoPath = Get-TestRepoPath $tmp "FakeRepo"
 
       Copy-Item -Path (Join-Path $repoRoot "scripts\lib\common.ps1") -Destination (Join-Path $tmp "scripts\lib\common.ps1") -Force
       if (Test-Path (Join-Path $repoRoot "scripts\validate-config.ps1")) {
         Copy-Item -Path (Join-Path $repoRoot "scripts\validate-config.ps1") -Destination (Join-Path $tmp "scripts\validate-config.ps1") -Force
       }
 
-      @("E:/CODE/FakeRepo") | ConvertTo-Json -Depth 3 | Set-Content -Path (Join-Path $tmp "config\repositories.json") -Encoding UTF8
+      @($fakeRepoPath) | ConvertTo-Json -Depth 3 | Set-Content -Path (Join-Path $tmp "config\repositories.json") -Encoding UTF8
       @{
         default = @()
         repos = @(
@@ -499,15 +519,15 @@ exit 0
           }
         )
       } | ConvertTo-Json -Depth 6 | Set-Content -Path (Join-Path $tmp "config\project-custom-files.json") -Encoding UTF8
-      Set-MinProjectRulePolicy -ConfigDir (Join-Path $tmp "config") -RepoPath "E:/CODE/FakeRepo"
+      Set-MinProjectRulePolicy -ConfigDir (Join-Path $tmp "config") -RepoPath $fakeRepoPath
       Set-MinReleaseDistributionPolicy -ConfigDir (Join-Path $tmp "config")
       Set-MinPracticeStackPolicy -ConfigDir (Join-Path $tmp "config") -RepoName "FakeRepo"
-      @(@{ source = "source/global/AGENTS.md"; target = "C:/Users/sciman/.codex/AGENTS.md" }) | ConvertTo-Json -Depth 4 | Set-Content -Path (Join-Path $tmp "config\targets.json") -Encoding UTF8
+      @(@{ source = "source/global/AGENTS.md"; target = '${USERPROFILE}/.codex/AGENTS.md' }) | ConvertTo-Json -Depth 4 | Set-Content -Path (Join-Path $tmp "config\targets.json") -Encoding UTF8
       @{
         default = @{ phase = "observe"; blockExpiredWaiver = $false }
         repos = @(
           @{
-            repo = "E:/CODE/FakeRepo"
+            repo = $fakeRepoPath
             phase = "observe"
             planned_enforce_date = "2026/04/15"
           }
@@ -528,13 +548,14 @@ exit 0
       New-Item -ItemType Directory -Path (Join-Path $tmp "scripts\lib") -Force | Out-Null
       New-Item -ItemType Directory -Path (Join-Path $tmp "scripts") -Force | Out-Null
       New-Item -ItemType Directory -Path (Join-Path $tmp "config") -Force | Out-Null
+      $fakeRepoPath = Get-TestRepoPath $tmp "FakeRepo"
 
       Copy-Item -Path (Join-Path $repoRoot "scripts\lib\common.ps1") -Destination (Join-Path $tmp "scripts\lib\common.ps1") -Force
       if (Test-Path (Join-Path $repoRoot "scripts\validate-config.ps1")) {
         Copy-Item -Path (Join-Path $repoRoot "scripts\validate-config.ps1") -Destination (Join-Path $tmp "scripts\validate-config.ps1") -Force
       }
 
-      @("E:/CODE/FakeRepo") | ConvertTo-Json -Depth 3 | Set-Content -Path (Join-Path $tmp "config\repositories.json") -Encoding UTF8
+      @($fakeRepoPath) | ConvertTo-Json -Depth 3 | Set-Content -Path (Join-Path $tmp "config\repositories.json") -Encoding UTF8
       @{
         default = @()
         repos = @(
@@ -544,15 +565,15 @@ exit 0
           }
         )
       } | ConvertTo-Json -Depth 6 | Set-Content -Path (Join-Path $tmp "config\project-custom-files.json") -Encoding UTF8
-      Set-MinProjectRulePolicy -ConfigDir (Join-Path $tmp "config") -RepoPath "E:/CODE/FakeRepo"
+      Set-MinProjectRulePolicy -ConfigDir (Join-Path $tmp "config") -RepoPath $fakeRepoPath
       Set-MinReleaseDistributionPolicy -ConfigDir (Join-Path $tmp "config")
       Set-MinPracticeStackPolicy -ConfigDir (Join-Path $tmp "config") -RepoName "FakeRepo"
-      @(@{ source = "source/global/AGENTS.md"; target = "C:/Users/sciman/.codex/AGENTS.md" }) | ConvertTo-Json -Depth 4 | Set-Content -Path (Join-Path $tmp "config\targets.json") -Encoding UTF8
+      @(@{ source = "source/global/AGENTS.md"; target = '${USERPROFILE}/.codex/AGENTS.md' }) | ConvertTo-Json -Depth 4 | Set-Content -Path (Join-Path $tmp "config\targets.json") -Encoding UTF8
       @{
         default = @{ phase = "observe"; blockExpiredWaiver = $false }
         repos = @(
           @{
-            repo = "E:/CODE/FakeRepo"
+            repo = $fakeRepoPath
             phase = "observe"
             planned_enforce_date = "2026-04-15"
           }
@@ -574,6 +595,7 @@ exit 0
       New-Item -ItemType Directory -Path (Join-Path $tmp "scripts") -Force | Out-Null
       New-Item -ItemType Directory -Path (Join-Path $tmp "config") -Force | Out-Null
       New-Item -ItemType Directory -Path (Join-Path $tmp "source\project\_common\custom\.agents\skills\new-skill") -Force | Out-Null
+      $fakeRepoPath = Get-TestRepoPath $tmp "FakeRepo"
 
       Copy-Item -Path (Join-Path $repoRoot "scripts\lib\common.ps1") -Destination (Join-Path $tmp "scripts\lib\common.ps1") -Force
       Copy-Item -Path (Join-Path $repoRoot "scripts\validate-config.ps1") -Destination (Join-Path $tmp "scripts\validate-config.ps1") -Force
@@ -587,8 +609,8 @@ description: test fixture skill
 Fixture body.
 '@
 
-      @("E:/CODE/FakeRepo") | ConvertTo-Json -Depth 3 | Set-Content -Path (Join-Path $tmp "config\repositories.json") -Encoding UTF8
-      @(@{ source = "source/global/AGENTS.md"; target = "C:/Users/sciman/.codex/AGENTS.md" }) | ConvertTo-Json -Depth 4 | Set-Content -Path (Join-Path $tmp "config\targets.json") -Encoding UTF8
+      @($fakeRepoPath) | ConvertTo-Json -Depth 3 | Set-Content -Path (Join-Path $tmp "config\repositories.json") -Encoding UTF8
+      @(@{ source = "source/global/AGENTS.md"; target = '${USERPROFILE}/.codex/AGENTS.md' }) | ConvertTo-Json -Depth 4 | Set-Content -Path (Join-Path $tmp "config\targets.json") -Encoding UTF8
       @{
         default = @{ phase = "observe"; blockExpiredWaiver = $false }
         repos = @()
@@ -602,7 +624,7 @@ Fixture body.
           }
         )
       } | ConvertTo-Json -Depth 6 | Set-Content -Path (Join-Path $tmp "config\project-custom-files.json") -Encoding UTF8
-      Set-MinProjectRulePolicy -ConfigDir (Join-Path $tmp "config") -RepoPath "E:/CODE/FakeRepo"
+      Set-MinProjectRulePolicy -ConfigDir (Join-Path $tmp "config") -RepoPath $fakeRepoPath
       Set-MinReleaseDistributionPolicy -ConfigDir (Join-Path $tmp "config")
       Set-MinPracticeStackPolicy -ConfigDir (Join-Path $tmp "config") -RepoName "FakeRepo"
 
@@ -621,6 +643,7 @@ Fixture body.
       New-Item -ItemType Directory -Path (Join-Path $tmp "scripts") -Force | Out-Null
       New-Item -ItemType Directory -Path (Join-Path $tmp "config") -Force | Out-Null
       New-Item -ItemType Directory -Path (Join-Path $tmp "source\project\_common\custom\.agents\skills\new-skill") -Force | Out-Null
+      $fakeRepoPath = Get-TestRepoPath $tmp "FakeRepo"
 
       Copy-Item -Path (Join-Path $repoRoot "scripts\lib\common.ps1") -Destination (Join-Path $tmp "scripts\lib\common.ps1") -Force
       Copy-Item -Path (Join-Path $repoRoot "scripts\validate-config.ps1") -Destination (Join-Path $tmp "scripts\validate-config.ps1") -Force
@@ -634,8 +657,8 @@ description: test fixture skill
 Fixture body.
 '@
 
-      @("E:/CODE/FakeRepo") | ConvertTo-Json -Depth 3 | Set-Content -Path (Join-Path $tmp "config\repositories.json") -Encoding UTF8
-      @(@{ source = "source/global/AGENTS.md"; target = "C:/Users/sciman/.codex/AGENTS.md" }) | ConvertTo-Json -Depth 4 | Set-Content -Path (Join-Path $tmp "config\targets.json") -Encoding UTF8
+      @($fakeRepoPath) | ConvertTo-Json -Depth 3 | Set-Content -Path (Join-Path $tmp "config\repositories.json") -Encoding UTF8
+      @(@{ source = "source/global/AGENTS.md"; target = '${USERPROFILE}/.codex/AGENTS.md' }) | ConvertTo-Json -Depth 4 | Set-Content -Path (Join-Path $tmp "config\targets.json") -Encoding UTF8
       @{
         default = @{ phase = "observe"; blockExpiredWaiver = $false }
         repos = @()
@@ -649,7 +672,7 @@ Fixture body.
           }
         )
       } | ConvertTo-Json -Depth 6 | Set-Content -Path (Join-Path $tmp "config\project-custom-files.json") -Encoding UTF8
-      Set-MinProjectRulePolicy -ConfigDir (Join-Path $tmp "config") -RepoPath "E:/CODE/FakeRepo"
+      Set-MinProjectRulePolicy -ConfigDir (Join-Path $tmp "config") -RepoPath $fakeRepoPath
       Set-MinReleaseDistributionPolicy -ConfigDir (Join-Path $tmp "config")
       Set-MinPracticeStackPolicy -ConfigDir (Join-Path $tmp "config") -RepoName "FakeRepo"
 
@@ -667,18 +690,19 @@ Fixture body.
       New-Item -ItemType Directory -Path (Join-Path $tmp "scripts\lib") -Force | Out-Null
       New-Item -ItemType Directory -Path (Join-Path $tmp "scripts") -Force | Out-Null
       New-Item -ItemType Directory -Path (Join-Path $tmp "config") -Force | Out-Null
+      $fakeRepoPath = Get-TestRepoPath $tmp "FakeRepo"
 
       Copy-Item -Path (Join-Path $repoRoot "scripts\lib\common.ps1") -Destination (Join-Path $tmp "scripts\lib\common.ps1") -Force
       Copy-Item -Path (Join-Path $repoRoot "scripts\validate-config.ps1") -Destination (Join-Path $tmp "scripts\validate-config.ps1") -Force
 
-      @("E:/CODE/FakeRepo") | ConvertTo-Json -Depth 3 | Set-Content -Path (Join-Path $tmp "config\repositories.json") -Encoding UTF8
-      @(@{ source = "source/global/AGENTS.md"; target = "C:/Users/sciman/.codex/AGENTS.md" }) | ConvertTo-Json -Depth 4 | Set-Content -Path (Join-Path $tmp "config\targets.json") -Encoding UTF8
+      @($fakeRepoPath) | ConvertTo-Json -Depth 3 | Set-Content -Path (Join-Path $tmp "config\repositories.json") -Encoding UTF8
+      @(@{ source = "source/global/AGENTS.md"; target = '${USERPROFILE}/.codex/AGENTS.md' }) | ConvertTo-Json -Depth 4 | Set-Content -Path (Join-Path $tmp "config\targets.json") -Encoding UTF8
       @{
         default = @{ phase = "observe"; blockExpiredWaiver = $false }
         repos = @()
       } | ConvertTo-Json -Depth 6 | Set-Content -Path (Join-Path $tmp "config\rule-rollout.json") -Encoding UTF8
       @{
-        allowProjectRulesForRepos = @("E:/CODE/FakeRepo")
+        allowProjectRulesForRepos = @($fakeRepoPath)
         defaults = @{
           allow_auto_fix = $true
           allow_rule_optimization = $true
@@ -710,18 +734,19 @@ Fixture body.
       New-Item -ItemType Directory -Path (Join-Path $tmp "scripts\lib") -Force | Out-Null
       New-Item -ItemType Directory -Path (Join-Path $tmp "scripts") -Force | Out-Null
       New-Item -ItemType Directory -Path (Join-Path $tmp "config") -Force | Out-Null
+      $fakeRepoPath = Get-TestRepoPath $tmp "FakeRepo"
 
       Copy-Item -Path (Join-Path $repoRoot "scripts\lib\common.ps1") -Destination (Join-Path $tmp "scripts\lib\common.ps1") -Force
       Copy-Item -Path (Join-Path $repoRoot "scripts\validate-config.ps1") -Destination (Join-Path $tmp "scripts\validate-config.ps1") -Force
 
-      @("E:/CODE/FakeRepo") | ConvertTo-Json -Depth 3 | Set-Content -Path (Join-Path $tmp "config\repositories.json") -Encoding UTF8
-      @(@{ source = "source/global/AGENTS.md"; target = "C:/Users/sciman/.codex/AGENTS.md" }) | ConvertTo-Json -Depth 4 | Set-Content -Path (Join-Path $tmp "config\targets.json") -Encoding UTF8
+      @($fakeRepoPath) | ConvertTo-Json -Depth 3 | Set-Content -Path (Join-Path $tmp "config\repositories.json") -Encoding UTF8
+      @(@{ source = "source/global/AGENTS.md"; target = '${USERPROFILE}/.codex/AGENTS.md' }) | ConvertTo-Json -Depth 4 | Set-Content -Path (Join-Path $tmp "config\targets.json") -Encoding UTF8
       @{
         default = @{ phase = "observe"; blockExpiredWaiver = $false }
         repos = @()
       } | ConvertTo-Json -Depth 6 | Set-Content -Path (Join-Path $tmp "config\rule-rollout.json") -Encoding UTF8
       @{
-        allowProjectRulesForRepos = @("E:/CODE/FakeRepo")
+        allowProjectRulesForRepos = @($fakeRepoPath)
         defaults = @{
           allow_auto_fix = $true
           allow_rule_optimization = $true
@@ -759,6 +784,7 @@ Fixture body.
       New-Item -ItemType Directory -Path (Join-Path $tmp "config") -Force | Out-Null
       New-Item -ItemType Directory -Path (Join-Path $tmp "source") -Force | Out-Null
       New-Item -ItemType Directory -Path (Join-Path $tmp "target") -Force | Out-Null
+      $fakeRepoPath = Get-TestRepoPath $tmp "FakeRepo"
 
       Copy-Item -Path (Join-Path $repoRoot "scripts\verify.ps1") -Destination (Join-Path $tmp "scripts\verify.ps1") -Force
       Copy-Item -Path (Join-Path $repoRoot "scripts\validate-config.ps1") -Destination (Join-Path $tmp "scripts\validate-config.ps1") -Force
@@ -770,7 +796,7 @@ Fixture body.
       Set-Content -Path $dst -Value "same-content" -Encoding UTF8
 
       @(@{ source = "source/AGENTS.md"; target = $dst }) | ConvertTo-Json -Depth 4 | Set-Content -Path (Join-Path $tmp "config\targets.json") -Encoding UTF8
-      @("E:/CODE/FakeRepo") | ConvertTo-Json -Depth 3 | Set-Content -Path (Join-Path $tmp "config\repositories.json") -Encoding UTF8
+      @($fakeRepoPath) | ConvertTo-Json -Depth 3 | Set-Content -Path (Join-Path $tmp "config\repositories.json") -Encoding UTF8
       @{
         default = @()
         repos = @(
@@ -780,14 +806,14 @@ Fixture body.
           }
         )
       } | ConvertTo-Json -Depth 6 | Set-Content -Path (Join-Path $tmp "config\project-custom-files.json") -Encoding UTF8
-      Set-MinProjectRulePolicy -ConfigDir (Join-Path $tmp "config") -RepoPath "E:/CODE/FakeRepo"
+      Set-MinProjectRulePolicy -ConfigDir (Join-Path $tmp "config") -RepoPath $fakeRepoPath
       Set-MinReleaseDistributionPolicy -ConfigDir (Join-Path $tmp "config")
       Set-MinPracticeStackPolicy -ConfigDir (Join-Path $tmp "config") -RepoName "FakeRepo"
       @{
         default = @{ phase = "observe"; blockExpiredWaiver = $false }
         repos = @(
           @{
-            repo = "E:/CODE/FakeRepo"
+            repo = $fakeRepoPath
             phase = "observe"
             planned_enforce_date = "2026/04/15"
           }
@@ -1055,6 +1081,7 @@ Fixture body.
       New-Item -ItemType Directory -Path (Join-Path $tmp "scripts\lib") -Force | Out-Null
       New-Item -ItemType Directory -Path (Join-Path $tmp "config") -Force | Out-Null
       New-Item -ItemType Directory -Path (Join-Path $tmp "source\project\_common\custom\scripts\governance") -Force | Out-Null
+      $fakeRepoPath = Get-TestRepoPath $tmp "FakeRepo"
 
       Copy-Item -Path (Join-Path $repoRoot "scripts\governance\check-custom-governance-distribution.ps1") -Destination (Join-Path $tmp "scripts\governance\check-custom-governance-distribution.ps1") -Force
       Copy-Item -Path (Join-Path $repoRoot "scripts\lib\common.ps1") -Destination (Join-Path $tmp "scripts\lib\common.ps1") -Force
@@ -1071,7 +1098,7 @@ Fixture body.
       @(
         @{
           source = "source/project/_common/custom/scripts/governance/new-capability.ps1"
-          target = "E:/CODE/FakeRepo/scripts/governance/new-capability.ps1"
+          target = ($fakeRepoPath + "/scripts/governance/new-capability.ps1")
         }
       ) | ConvertTo-Json -Depth 6 | Set-Content -Path (Join-Path $tmp "config\targets.json") -Encoding UTF8
 
@@ -1347,12 +1374,20 @@ single_task_token=9000
       New-Item -ItemType Directory -Path (Join-Path $tmp "scripts\lib") -Force | Out-Null
       New-Item -ItemType Directory -Path (Join-Path $tmp "scripts") -Force | Out-Null
       New-Item -ItemType Directory -Path (Join-Path $tmp "config") -Force | Out-Null
+      $homeTarget = Convert-ToForwardSlashPath (Join-Path $env:USERPROFILE ".codex\AGENTS.md")
+      $homeTargetClaude = Convert-ToForwardSlashPath (Join-Path $env:USERPROFILE ".claude\CLAUDE.md")
+      $homeTargetGemini = Convert-ToForwardSlashPath (Join-Path $env:USERPROFILE ".gemini\GEMINI.md")
+      $fakeRepoPath = Get-TestRepoPath $tmp "FakeRepo"
 
       Copy-Item -Path (Join-Path $repoRoot "scripts\status.ps1") -Destination (Join-Path $tmp "scripts\status.ps1") -Force
       Copy-Item -Path (Join-Path $repoRoot "scripts\lib\common.ps1") -Destination (Join-Path $tmp "scripts\lib\common.ps1") -Force
 
-      @("E:/CODE/FakeRepo") | ConvertTo-Json -Depth 3 | Set-Content -Path (Join-Path $tmp "config\repositories.json") -Encoding UTF8
-      @(@{ source = "source/global/AGENTS.md"; target = "C:/Users/sciman/.codex/AGENTS.md" }) | ConvertTo-Json -Depth 4 | Set-Content -Path (Join-Path $tmp "config\targets.json") -Encoding UTF8
+      @($fakeRepoPath) | ConvertTo-Json -Depth 3 | Set-Content -Path (Join-Path $tmp "config\repositories.json") -Encoding UTF8
+      @(
+        @{ source = "source/global/AGENTS.md"; target = $homeTarget }
+        @{ source = "source/global/CLAUDE.md"; target = $homeTargetClaude }
+        @{ source = "source/global/GEMINI.md"; target = $homeTargetGemini }
+      ) | ConvertTo-Json -Depth 4 | Set-Content -Path (Join-Path $tmp "config\targets.json") -Encoding UTF8
       @'
 {
   "schema_version": "1.0",
@@ -1367,7 +1402,7 @@ single_task_token=9000
         default = @{ phase = "observe"; blockExpiredWaiver = $false }
         repos = @(
           @{
-            repo = "E:/CODE/FakeRepo"
+            repo = $fakeRepoPath
             phase = "observe"
             planned_enforce_date = "2026-04-15"
           }
@@ -1380,7 +1415,7 @@ single_task_token=9000
 
       $obj.schema_version | should be "1.0"
       $obj.repositories | should be 1
-      $obj.targets | should be 1
+      $obj.targets | should be 3
       $obj.rollout.default_phase | should be "observe"
       $obj.codex_runtime.policy_found | should be $true
       $obj.codex_runtime.enabled_repo_entries | should be 1
@@ -1401,16 +1436,17 @@ single_task_token=9000
       New-Item -ItemType Directory -Path (Join-Path $tmp "scripts\lib") -Force | Out-Null
       New-Item -ItemType Directory -Path (Join-Path $tmp "scripts") -Force | Out-Null
       New-Item -ItemType Directory -Path (Join-Path $tmp "config") -Force | Out-Null
+      $fakeRepoPath = Get-TestRepoPath $tmp "FakeRepo"
 
       Copy-Item -Path (Join-Path $repoRoot "scripts\rollout-status.ps1") -Destination (Join-Path $tmp "scripts\rollout-status.ps1") -Force
       Copy-Item -Path (Join-Path $repoRoot "scripts\lib\common.ps1") -Destination (Join-Path $tmp "scripts\lib\common.ps1") -Force
 
-      @("E:/CODE/FakeRepo") | ConvertTo-Json -Depth 3 | Set-Content -Path (Join-Path $tmp "config\repositories.json") -Encoding UTF8
+      @($fakeRepoPath) | ConvertTo-Json -Depth 3 | Set-Content -Path (Join-Path $tmp "config\repositories.json") -Encoding UTF8
       @{
         default = @{ phase = "observe"; blockExpiredWaiver = $false }
         repos = @(
           @{
-            repo = "E:/CODE/FakeRepo"
+            repo = $fakeRepoPath
             phase = "observe"
             planned_enforce_date = "2026-04-15"
           }
@@ -1437,17 +1473,18 @@ single_task_token=9000
       New-Item -ItemType Directory -Path (Join-Path $tmp "scripts\lib") -Force | Out-Null
       New-Item -ItemType Directory -Path (Join-Path $tmp "scripts") -Force | Out-Null
       New-Item -ItemType Directory -Path (Join-Path $tmp "config") -Force | Out-Null
+      $fakeRepoPath = Get-TestRepoPath $tmp "FakeRepo"
 
       Copy-Item -Path (Join-Path $repoRoot "scripts\status.ps1") -Destination (Join-Path $tmp "scripts\status.ps1") -Force
       Copy-Item -Path (Join-Path $repoRoot "scripts\lib\common.ps1") -Destination (Join-Path $tmp "scripts\lib\common.ps1") -Force
 
-      @("E:/CODE/FakeRepo") | ConvertTo-Json -Depth 3 | Set-Content -Path (Join-Path $tmp "config\repositories.json") -Encoding UTF8
-      @(@{ source = "source/global/AGENTS.md"; target = "C:/Users/sciman/.codex/AGENTS.md" }) | ConvertTo-Json -Depth 4 | Set-Content -Path (Join-Path $tmp "config\targets.json") -Encoding UTF8
+      @($fakeRepoPath) | ConvertTo-Json -Depth 3 | Set-Content -Path (Join-Path $tmp "config\repositories.json") -Encoding UTF8
+      @(@{ source = "source/global/AGENTS.md"; target = '${USERPROFILE}/.codex/AGENTS.md' }) | ConvertTo-Json -Depth 4 | Set-Content -Path (Join-Path $tmp "config\targets.json") -Encoding UTF8
       @{
         default = @{ phase = "observe"; blockExpiredWaiver = $false }
         repos = @(
           @{
-            repo = "E:/CODE/FakeRepo"
+            repo = $fakeRepoPath
             phase = "observe"
             planned_enforce_date = "2026/04/15"
           }
@@ -1470,16 +1507,17 @@ single_task_token=9000
       New-Item -ItemType Directory -Path (Join-Path $tmp "scripts\lib") -Force | Out-Null
       New-Item -ItemType Directory -Path (Join-Path $tmp "scripts") -Force | Out-Null
       New-Item -ItemType Directory -Path (Join-Path $tmp "config") -Force | Out-Null
+      $fakeRepoPath = Get-TestRepoPath $tmp "FakeRepo"
 
       Copy-Item -Path (Join-Path $repoRoot "scripts\rollout-status.ps1") -Destination (Join-Path $tmp "scripts\rollout-status.ps1") -Force
       Copy-Item -Path (Join-Path $repoRoot "scripts\lib\common.ps1") -Destination (Join-Path $tmp "scripts\lib\common.ps1") -Force
 
-      @("E:/CODE/FakeRepo") | ConvertTo-Json -Depth 3 | Set-Content -Path (Join-Path $tmp "config\repositories.json") -Encoding UTF8
+      @($fakeRepoPath) | ConvertTo-Json -Depth 3 | Set-Content -Path (Join-Path $tmp "config\repositories.json") -Encoding UTF8
       @{
         default = @{ phase = "observe"; blockExpiredWaiver = $false }
         repos = @(
           @{
-            repo = "E:/CODE/FakeRepo"
+            repo = $fakeRepoPath
             phase = "observe"
             planned_enforce_date = "2026/04/15"
           }
@@ -1813,7 +1851,8 @@ single_task_token=6094
 
       $targets = Get-Content -Raw (Join-Path $tmp "config\targets.json") | ConvertFrom-Json
       (@($targets | Where-Object { $_.source -eq "source/project/_common/custom/scripts/governance/run-target-autopilot.ps1" })).Count | should be 1
-      (@($targets | Where-Object { $_.target -eq "$(($repo -replace '\\','/'))/scripts/governance/run-target-autopilot.ps1" })).Count | should be 1
+      $expectedTarget = ('${WORKSPACE_ROOT}/' + (Split-Path -Leaf $tmp) + '/' + (Split-Path -Leaf $repo) + '/scripts/governance/run-target-autopilot.ps1')
+      (@($targets | Where-Object { ([string]$_.target -replace '\\','/') -eq $expectedTarget })).Count | should be 1
     } finally {
       if (Test-Path $tmp) { Remove-Item -LiteralPath $tmp -Recurse -Force }
     }
@@ -1853,9 +1892,12 @@ single_task_token=6094
       (@($targets | Where-Object { $_.source -eq "source/template/project/AGENTS.md" })).Count | should be 1
       (@($targets | Where-Object { $_.source -eq "source/template/project/CLAUDE.md" })).Count | should be 1
       (@($targets | Where-Object { $_.source -eq "source/template/project/GEMINI.md" })).Count | should be 1
-      (@($targets | Where-Object { $_.target -eq "$(($repo -replace '\\','/'))/AGENTS.md" })).Count | should be 1
-      (@($targets | Where-Object { $_.target -eq "$(($repo -replace '\\','/'))/CLAUDE.md" })).Count | should be 1
-      (@($targets | Where-Object { $_.target -eq "$(($repo -replace '\\','/'))/GEMINI.md" })).Count | should be 1
+      $expectedAgents = ('${WORKSPACE_ROOT}/' + (Split-Path -Leaf $tmp) + '/' + (Split-Path -Leaf $repo) + '/AGENTS.md')
+      $expectedClaude = ('${WORKSPACE_ROOT}/' + (Split-Path -Leaf $tmp) + '/' + (Split-Path -Leaf $repo) + '/CLAUDE.md')
+      $expectedGemini = ('${WORKSPACE_ROOT}/' + (Split-Path -Leaf $tmp) + '/' + (Split-Path -Leaf $repo) + '/GEMINI.md')
+      (@($targets | Where-Object { ([string]$_.target -replace '\\','/') -eq $expectedAgents })).Count | should be 1
+      (@($targets | Where-Object { ([string]$_.target -replace '\\','/') -eq $expectedClaude })).Count | should be 1
+      (@($targets | Where-Object { ([string]$_.target -replace '\\','/') -eq $expectedGemini })).Count | should be 1
     } finally {
       if (Test-Path $tmp) { Remove-Item -LiteralPath $tmp -Recurse -Force }
     }
@@ -2267,14 +2309,15 @@ exit 0
     $tmp = Join-Path $env:TEMP ("govkit-test-" + [guid]::NewGuid().ToString("N"))
     try {
       New-Item -ItemType Directory -Path (Join-Path $tmp "scripts") -Force | Out-Null
+      $repoPath = Get-TestRepoPath $tmp "repo"
       Copy-Item -Path (Join-Path $repoRoot "scripts\validate-failure-context.ps1") -Destination (Join-Path $tmp "scripts\validate-failure-context.ps1") -Force
 
       $json = @{
         failed_step = "contract.verify"
         command = "powershell -File scripts/run-project-governance-cycle.ps1"
         exit_code = 1
-        log_path = "E:/CODE/repo/.codex/logs/failure.log"
-        repo_path = "E:/CODE/repo"
+        log_path = ($repoPath + "/.codex/logs/failure.log")
+        repo_path = $repoPath
         gate_order = "build -> test -> contract/invariant -> hotspot"
         retry_command = "powershell -File scripts/run-project-governance-cycle.ps1"
         policy_snapshot = @{
@@ -2777,8 +2820,8 @@ Write-Host "ok"
 exit 0
 '@ | Set-Content -Path (Join-Path $tmp "scripts\verify.ps1") -Encoding UTF8
 
-      @("E:/CODE/FakeRepo") | ConvertTo-Json -Depth 3 | Set-Content -Path (Join-Path $tmp "config\repositories.json") -Encoding UTF8
-      @(@{ source = "source/global/AGENTS.md"; target = "C:/Users/sciman/.codex/AGENTS.md" }) | ConvertTo-Json -Depth 6 | Set-Content -Path (Join-Path $tmp "config\targets.json") -Encoding UTF8
+      @($fakeRepoPath) | ConvertTo-Json -Depth 3 | Set-Content -Path (Join-Path $tmp "config\repositories.json") -Encoding UTF8
+      @(@{ source = "source/global/AGENTS.md"; target = '${USERPROFILE}/.codex/AGENTS.md' }) | ConvertTo-Json -Depth 6 | Set-Content -Path (Join-Path $tmp "config\targets.json") -Encoding UTF8
       @{} | ConvertTo-Json -Depth 2 | Set-Content -Path (Join-Path $tmp "config\project-custom-files.json") -Encoding UTF8
       @{ version = "1.0.0"; frozen_at = "2026-03-30" } | ConvertTo-Json -Depth 3 | Set-Content -Path (Join-Path $tmp "config\governance-baseline.json") -Encoding UTF8
 
@@ -2805,6 +2848,7 @@ exit 0
       New-Item -ItemType Directory -Path (Join-Path $tmp "scripts") -Force | Out-Null
       New-Item -ItemType Directory -Path (Join-Path $tmp "config") -Force | Out-Null
       New-Item -ItemType Directory -Path (Join-Path $tmp "source\project\RepoX\custom\scripts") -Force | Out-Null
+      $repoXPath = Get-TestRepoPath $tmp "RepoX"
 
       Copy-Item -Path (Join-Path $repoRoot "scripts\check-orphan-custom-sources.ps1") -Destination (Join-Path $tmp "scripts\check-orphan-custom-sources.ps1") -Force
       Copy-Item -Path (Join-Path $repoRoot "scripts\lib\common.ps1") -Destination (Join-Path $tmp "scripts\lib\common.ps1") -Force
@@ -2813,7 +2857,7 @@ exit 0
       Set-Content -Path (Join-Path $tmp "source\project\RepoX\custom\scripts\orphan.ps1") -Value "orphan" -Encoding UTF8
 
       @(
-        @{ source = "source/project/RepoX/custom/scripts/kept.ps1"; target = "E:/CODE/RepoX/scripts/kept.ps1" }
+        @{ source = "source/project/RepoX/custom/scripts/kept.ps1"; target = ($repoXPath + "/scripts/kept.ps1") }
       ) | ConvertTo-Json -Depth 6 | Set-Content -Path (Join-Path $tmp "config\targets.json") -Encoding UTF8
 
       @{
@@ -2846,6 +2890,7 @@ exit 0
       New-Item -ItemType Directory -Path (Join-Path $tmp "scripts") -Force | Out-Null
       New-Item -ItemType Directory -Path (Join-Path $tmp "config") -Force | Out-Null
       New-Item -ItemType Directory -Path (Join-Path $tmp "source\project\RepoX\custom\scripts") -Force | Out-Null
+      $repoXPath = Get-TestRepoPath $tmp "RepoX"
 
       Copy-Item -Path (Join-Path $repoRoot "scripts\check-orphan-custom-sources.ps1") -Destination (Join-Path $tmp "scripts\check-orphan-custom-sources.ps1") -Force
       Copy-Item -Path (Join-Path $repoRoot "scripts\prune-orphan-custom-sources.ps1") -Destination (Join-Path $tmp "scripts\prune-orphan-custom-sources.ps1") -Force
@@ -2855,7 +2900,7 @@ exit 0
       Set-Content -Path (Join-Path $tmp "source\project\RepoX\custom\scripts\orphan.ps1") -Value "orphan" -Encoding UTF8
 
       @(
-        @{ source = "source/project/RepoX/custom/scripts/kept.ps1"; target = "E:/CODE/RepoX/scripts/kept.ps1" }
+        @{ source = "source/project/RepoX/custom/scripts/kept.ps1"; target = ($repoXPath + "/scripts/kept.ps1") }
       ) | ConvertTo-Json -Depth 6 | Set-Content -Path (Join-Path $tmp "config\targets.json") -Encoding UTF8
 
       @{
@@ -3627,7 +3672,7 @@ exit 0
 '@ | Set-Content -Path (Join-Path $tmp "scripts\rollout-status.ps1") -Encoding UTF8
 
       New-Item -ItemType Directory -Path (Join-Path $tmp "config") -Force | Out-Null
-      @('E:/CODE/repo-governance-hub') | ConvertTo-Json | Set-Content -Path (Join-Path $tmp "config\repositories.json") -Encoding UTF8
+      @(Get-WorkspaceRepoPath "repo-governance-hub") | ConvertTo-Json | Set-Content -Path (Join-Path $tmp "config\repositories.json") -Encoding UTF8
 
       $out = & powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $tmp "scripts\doctor.ps1") 2>&1 | Out-String
       $LASTEXITCODE | should be 0
@@ -4297,25 +4342,30 @@ text2
       New-Item -ItemType Directory -Path (Join-Path $tmp "scripts\governance") -Force | Out-Null
       New-Item -ItemType Directory -Path (Join-Path $tmp "scripts\lib") -Force | Out-Null
       New-Item -ItemType Directory -Path (Join-Path $tmp "config") -Force | Out-Null
+      $classroomToolkitPath = Get-WorkspaceRepoPath "ClassroomToolkit"
+      $skillsManagerPath = Get-WorkspaceRepoPath "skills-manager"
+      $repoGovernanceHubPath = Get-WorkspaceRepoPath "repo-governance-hub"
 
       Copy-Item -Path (Join-Path $repoRoot "scripts\governance\check-update-triggers.ps1") -Destination (Join-Path $tmp "scripts\governance\check-update-triggers.ps1") -Force
       Copy-Item -Path (Join-Path $repoRoot "scripts\governance\check-rollout-coverage.ps1") -Destination (Join-Path $tmp "scripts\governance\check-rollout-coverage.ps1") -Force
       Copy-Item -Path (Join-Path $repoRoot "scripts\lib\common.ps1") -Destination (Join-Path $tmp "scripts\lib\common.ps1") -Force
 
       @(
-        "E:/CODE/ClassroomToolkit",
-        "E:/CODE/skills-manager",
-        "E:/CODE/repo-governance-hub"
+        $classroomToolkitPath,
+        $skillsManagerPath,
+        $repoGovernanceHubPath
       ) | ConvertTo-Json | Set-Content -Path (Join-Path $tmp "config\repositories.json") -Encoding UTF8
 
-      @'
-{
-  "default": { "phase": "observe", "blockExpiredWaiver": false },
-  "repos": [
-    { "repo": "E:/CODE/ClassroomToolkit", "phase": "observe", "blockExpiredWaiver": false }
-  ]
-}
-'@ | Set-Content -Path (Join-Path $tmp "config\rule-rollout.json") -Encoding UTF8
+      @{
+        default = @{ phase = "observe"; blockExpiredWaiver = $false }
+        repos = @(
+          @{
+            repo = $classroomToolkitPath
+            phase = "observe"
+            blockExpiredWaiver = $false
+          }
+        )
+      } | ConvertTo-Json -Depth 6 | Set-Content -Path (Join-Path $tmp "config\rule-rollout.json") -Encoding UTF8
 
       @'
 {
@@ -4532,14 +4582,16 @@ jobs:
       New-Item -ItemType Directory -Path (Join-Path $tmp "scripts\governance") -Force | Out-Null
       New-Item -ItemType Directory -Path (Join-Path $tmp "scripts\lib") -Force | Out-Null
       New-Item -ItemType Directory -Path (Join-Path $tmp "config") -Force | Out-Null
+      $classroomToolkitPath = Get-WorkspaceRepoPath "ClassroomToolkit"
+      $skillsManagerPath = Get-WorkspaceRepoPath "skills-manager"
 
       Copy-Item -Path (Join-Path $repoRoot "scripts\governance\check-update-triggers.ps1") -Destination (Join-Path $tmp "scripts\governance\check-update-triggers.ps1") -Force
       Copy-Item -Path (Join-Path $repoRoot "scripts\governance\check-target-rollout-matrix.ps1") -Destination (Join-Path $tmp "scripts\governance\check-target-rollout-matrix.ps1") -Force
       Copy-Item -Path (Join-Path $repoRoot "scripts\lib\common.ps1") -Destination (Join-Path $tmp "scripts\lib\common.ps1") -Force
 
       @(
-        "E:/CODE/ClassroomToolkit",
-        "E:/CODE/skills-manager"
+        $classroomToolkitPath,
+        $skillsManagerPath
       ) | ConvertTo-Json | Set-Content -Path (Join-Path $tmp "config\repositories.json") -Encoding UTF8
 
       @'
@@ -4552,20 +4604,21 @@ jobs:
 }
 '@ | Set-Content -Path (Join-Path $tmp "config\governance-control-registry.json") -Encoding UTF8
 
-      @'
-{
-  "schema_version": "1.0",
-  "controls": [
-    {
-      "control_id": "runtime.clarification_upgrade",
-      "repo_scope": "common_distributable",
-      "repo_states": [
-        { "repo": "E:/CODE/ClassroomToolkit", "phase": "observe" }
-      ]
-    }
-  ]
-}
-'@ | Set-Content -Path (Join-Path $tmp "config\target-control-rollout-matrix.json") -Encoding UTF8
+      @{
+        schema_version = "1.0"
+        controls = @(
+          @{
+            control_id = "runtime.clarification_upgrade"
+            repo_scope = "common_distributable"
+            repo_states = @(
+              @{
+                repo = (Get-WorkspaceRepoPath "ClassroomToolkit")
+                phase = "observe"
+              }
+            )
+          }
+        )
+      } | ConvertTo-Json -Depth 6 | Set-Content -Path (Join-Path $tmp "config\target-control-rollout-matrix.json") -Encoding UTF8
 
       @'
 {
@@ -5117,29 +5170,28 @@ if ($AsJson) {
       New-Item -ItemType Directory -Path (Join-Path $tmp "config") -Force | Out-Null
       New-Item -ItemType Directory -Path (Join-Path $tmp "RepoA\.governance") -Force | Out-Null
       New-Item -ItemType Directory -Path (Join-Path $tmp "RepoA\scripts\release") -Force | Out-Null
+      $repoAPath = Get-TestRepoPath $tmp "RepoA"
+      $skillsManagerPath = Get-WorkspaceRepoPath "skills-manager"
 
       Copy-Item -Path (Join-Path $repoRoot "scripts\verify-release-profile.ps1") -Destination (Join-Path $tmp "scripts\verify-release-profile.ps1") -Force
       Copy-Item -Path (Join-Path $repoRoot "scripts\lib\common.ps1") -Destination (Join-Path $tmp "scripts\lib\common.ps1") -Force
 
-      @'
-{
-  "schema_version": "1.0",
-  "default": {
-    "enforce_when_release_enabled": true,
-    "advisory_when_release_disabled": true,
-    "forbidden_path_patterns_regex": ["(?i)\\b[A-Z]:/CODE/skills-manager\\b"],
-    "scan_paths": ["AGENTS.md"]
-  },
-  "repos": []
-}
-'@ | Set-Content -Path (Join-Path $tmp "config\standalone-release-policy.json") -Encoding UTF8
+      $skillsManagerPattern = '(?i)\b' + [regex]::Escape($skillsManagerPath) + '\b'
+      @{
+        schema_version = "1.0"
+        default = @{
+          enforce_when_release_enabled = $true
+          advisory_when_release_disabled = $true
+          forbidden_path_patterns_regex = @($skillsManagerPattern)
+          scan_paths = @("AGENTS.md")
+        }
+        repos = @()
+      } | ConvertTo-Json -Depth 6 | Set-Content -Path (Join-Path $tmp "config\standalone-release-policy.json") -Encoding UTF8
 
-      @'
-# AGENTS
-collaboration path: E:/CODE/skills-manager
-'@ | Set-Content -Path (Join-Path $tmp "RepoA\AGENTS.md") -Encoding UTF8
+      Set-Content -Path (Join-Path $repoAPath "AGENTS.md") -Value ("# AGENTS`r`ncollaboration path: {0}" -f $skillsManagerPath) -Encoding UTF8
 
-      Set-Content -Path (Join-Path $tmp "RepoA\scripts\release\prepare-distribution.ps1") -Value "param(); Write-Host ok" -Encoding UTF8
+      New-Item -ItemType Directory -Path (Join-Path $repoAPath "scripts\release") -Force | Out-Null
+      Set-Content -Path (Join-Path $repoAPath "scripts\release\prepare-distribution.ps1") -Value "param(); Write-Host ok" -Encoding UTF8
 
       @'
 {
@@ -5216,27 +5268,25 @@ collaboration path: E:/CODE/skills-manager
       New-Item -ItemType Directory -Path (Join-Path $tmp "scripts") -Force | Out-Null
       New-Item -ItemType Directory -Path (Join-Path $tmp "config") -Force | Out-Null
       New-Item -ItemType Directory -Path (Join-Path $tmp "RepoA\.governance") -Force | Out-Null
+      $repoAPath = Get-TestRepoPath $tmp "RepoA"
+      $skillsManagerPath = Get-WorkspaceRepoPath "skills-manager"
 
       Copy-Item -Path (Join-Path $repoRoot "scripts\verify-release-profile.ps1") -Destination (Join-Path $tmp "scripts\verify-release-profile.ps1") -Force
       Copy-Item -Path (Join-Path $repoRoot "scripts\lib\common.ps1") -Destination (Join-Path $tmp "scripts\lib\common.ps1") -Force
 
-      @'
-{
-  "schema_version": "1.0",
-  "default": {
-    "enforce_when_release_enabled": true,
-    "advisory_when_release_disabled": true,
-    "forbidden_path_patterns_regex": ["(?i)\\b[A-Z]:/CODE/skills-manager\\b"],
-    "scan_paths": ["AGENTS.md"]
-  },
-  "repos": []
-}
-'@ | Set-Content -Path (Join-Path $tmp "config\standalone-release-policy.json") -Encoding UTF8
+      $skillsManagerPattern = '(?i)\b' + [regex]::Escape($skillsManagerPath) + '\b'
+      @{
+        schema_version = "1.0"
+        default = @{
+          enforce_when_release_enabled = $true
+          advisory_when_release_disabled = $true
+          forbidden_path_patterns_regex = @($skillsManagerPattern)
+          scan_paths = @("AGENTS.md")
+        }
+        repos = @()
+      } | ConvertTo-Json -Depth 6 | Set-Content -Path (Join-Path $tmp "config\standalone-release-policy.json") -Encoding UTF8
 
-      @'
-# AGENTS
-collaboration path: E:/CODE/skills-manager
-'@ | Set-Content -Path (Join-Path $tmp "RepoA\AGENTS.md") -Encoding UTF8
+      Set-Content -Path (Join-Path $repoAPath "AGENTS.md") -Value ("# AGENTS`r`ncollaboration path: {0}" -f $skillsManagerPath) -Encoding UTF8
 
       @'
 {
@@ -5536,21 +5586,19 @@ param(
       New-Item -ItemType Directory -Path (Join-Path $tmp ".governance\skill-candidates") -Force | Out-Null
       Copy-Item -Path (Join-Path $repoRoot "scripts\governance\migrate-skill-registry-v2.ps1") -Destination (Join-Path $tmp "scripts\governance\migrate-skill-registry-v2.ps1") -Force
 
-      @'
-{
-  "schema_version": "1.0",
-  "promoted": [
-    {
-      "issue_signature": "pwsh-encoding-mojibake-loop-20260411-a",
-      "skill_name": "custom-auto-legacy-name",
-      "promoted_at": "2026-04-11T12:00:00+08:00",
-      "hit_count": 4,
-      "repos": ["E:/CODE/skills-manager"],
-      "signature_variants": ["pwsh-encoding-mojibake-loop-20260411-a"]
-    }
-  ]
-}
-'@ | Set-Content -Path (Join-Path $tmp ".governance\skill-candidates\promotion-registry.json") -Encoding UTF8
+      @{
+        schema_version = "1.0"
+        promoted = @(
+          @{
+            issue_signature = "pwsh-encoding-mojibake-loop-20260411-a"
+            skill_name = "custom-auto-legacy-name"
+            promoted_at = "2026-04-11T12:00:00+08:00"
+            hit_count = 4
+            repos = @(Get-WorkspaceRepoPath "skills-manager")
+            signature_variants = @("pwsh-encoding-mojibake-loop-20260411-a")
+          }
+        )
+      } | ConvertTo-Json -Depth 6 | Set-Content -Path (Join-Path $tmp ".governance\skill-candidates\promotion-registry.json") -Encoding UTF8
 
       $json = & powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $tmp "scripts\governance\migrate-skill-registry-v2.ps1") -RepoRoot $tmp -AsJson
       if ($LASTEXITCODE -ne 0) { throw "migrate-skill-registry-v2.ps1 failed with exit code $LASTEXITCODE" }
@@ -6412,30 +6460,26 @@ description: Auto-promoted from repeated issue signature 'pwsh-encoding-mojibake
       New-Item -ItemType Directory -Path (Join-Path $tmp "scripts\governance") -Force | Out-Null
       New-Item -ItemType Directory -Path (Join-Path $tmp ".governance") -Force | Out-Null
       New-Item -ItemType Directory -Path (Join-Path $tmp "config") -Force | Out-Null
+      $repoAPath = Get-TestRepoPath $tmp "RepoA"
       Copy-Item -Path (Join-Path $repoRoot "scripts\governance\check-rollout-promotion-readiness.ps1") -Destination (Join-Path $tmp "scripts\governance\check-rollout-promotion-readiness.ps1") -Force
+      @{
+        schema_version = "1.0"
+        minimum_observe_days_before_enforce = 14
+        require_observe_started_at = $true
+        require_planned_enforce_date_for_observe = $true
+      } | ConvertTo-Json -Depth 4 | Set-Content -Path (Join-Path $tmp ".governance\rollout-promotion-policy.json") -Encoding UTF8
 
-      @'
-{
-  "schema_version": "1.0",
-  "minimum_observe_days_before_enforce": 14,
-  "require_observe_started_at": true,
-  "require_planned_enforce_date_for_observe": true
-}
-'@ | Set-Content -Path (Join-Path $tmp ".governance\rollout-promotion-policy.json") -Encoding UTF8
-
-      @'
-{
-  "default": { "phase": "observe", "blockExpiredWaiver": false },
-  "repos": [
-    {
-      "repo": "E:/CODE/RepoA",
-      "phase": "observe",
-      "observe_started_at": "2026-04-01",
-      "planned_enforce_date": "2026-04-20"
-    }
-  ]
-}
-'@ | Set-Content -Path (Join-Path $tmp "config\rule-rollout.json") -Encoding UTF8
+      @{
+        default = @{ phase = "observe"; blockExpiredWaiver = $false }
+        repos = @(
+          @{
+            repo = $repoAPath
+            phase = "observe"
+            observe_started_at = "2026-04-01"
+            planned_enforce_date = "2026-04-20"
+          }
+        )
+      } | ConvertTo-Json -Depth 6 | Set-Content -Path (Join-Path $tmp "config\rule-rollout.json") -Encoding UTF8
 
       $json = & powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $tmp "scripts\governance\check-rollout-promotion-readiness.ps1") -RepoRoot $tmp -AsJson
       $LASTEXITCODE | should be 0
@@ -6453,30 +6497,26 @@ description: Auto-promoted from repeated issue signature 'pwsh-encoding-mojibake
       New-Item -ItemType Directory -Path (Join-Path $tmp "scripts\governance") -Force | Out-Null
       New-Item -ItemType Directory -Path (Join-Path $tmp ".governance") -Force | Out-Null
       New-Item -ItemType Directory -Path (Join-Path $tmp "config") -Force | Out-Null
+      $repoAPath = Get-TestRepoPath $tmp "RepoA"
       Copy-Item -Path (Join-Path $repoRoot "scripts\governance\check-rollout-promotion-readiness.ps1") -Destination (Join-Path $tmp "scripts\governance\check-rollout-promotion-readiness.ps1") -Force
+      @{
+        schema_version = "1.0"
+        minimum_observe_days_before_enforce = 14
+        require_observe_started_at = $true
+        require_planned_enforce_date_for_observe = $true
+      } | ConvertTo-Json -Depth 4 | Set-Content -Path (Join-Path $tmp ".governance\rollout-promotion-policy.json") -Encoding UTF8
 
-      @'
-{
-  "schema_version": "1.0",
-  "minimum_observe_days_before_enforce": 14,
-  "require_observe_started_at": true,
-  "require_planned_enforce_date_for_observe": true
-}
-'@ | Set-Content -Path (Join-Path $tmp ".governance\rollout-promotion-policy.json") -Encoding UTF8
-
-      @'
-{
-  "default": { "phase": "observe", "blockExpiredWaiver": false },
-  "repos": [
-    {
-      "repo": "E:/CODE/RepoA",
-      "phase": "observe",
-      "observe_started_at": "2026-04-10",
-      "planned_enforce_date": "2026-04-15"
-    }
-  ]
-}
-'@ | Set-Content -Path (Join-Path $tmp "config\rule-rollout.json") -Encoding UTF8
+      @{
+        default = @{ phase = "observe"; blockExpiredWaiver = $false }
+        repos = @(
+          @{
+            repo = $repoAPath
+            phase = "observe"
+            observe_started_at = "2026-04-10"
+            planned_enforce_date = "2026-04-15"
+          }
+        )
+      } | ConvertTo-Json -Depth 6 | Set-Content -Path (Join-Path $tmp "config\rule-rollout.json") -Encoding UTF8
 
       $json = & powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $tmp "scripts\governance\check-rollout-promotion-readiness.ps1") -RepoRoot $tmp -AsJson
       $LASTEXITCODE | should be 1

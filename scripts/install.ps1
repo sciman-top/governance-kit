@@ -29,6 +29,7 @@ if (-not (Test-Path -LiteralPath $commonPath -PathType Leaf)) {
 }
 . $commonPath
 $kitRoot = Split-Path -Parent $PSScriptRoot
+$workspaceRoot = Get-WorkspaceRoot
 $refreshScript = Join-Path $PSScriptRoot "refresh-targets.ps1"
 $targetsPath = Join-Path $kitRoot "config\targets.json"
 if (!(Test-Path $targetsPath)) {
@@ -67,7 +68,7 @@ function Get-FullCycleRepos {
       $repoItems = @(Read-JsonArray $repositoriesPath)
       foreach ($repoItem in $repoItems) {
         if ([string]::IsNullOrWhiteSpace([string]$repoItem)) { continue }
-        $full = [System.IO.Path]::GetFullPath(([string]$repoItem -replace '/', '\'))
+        $full = Normalize-Repo ([string]$repoItem) $workspaceRoot
         if ((Test-Path -LiteralPath $full -PathType Container) -and $seen.Add($full)) {
           $repos.Add($full)
         }
@@ -79,7 +80,7 @@ function Get-FullCycleRepos {
   if ($repos.Count -eq 0) {
     foreach ($item in $Targets) {
       if ($null -eq $item -or [string]::IsNullOrWhiteSpace([string]$item.target)) { continue }
-      $dst = [System.IO.Path]::GetFullPath(([string]$item.target -replace '/', '\'))
+      $dst = Normalize-Repo ([string]$item.target) $workspaceRoot
       $repoRoot = Split-Path -Parent (Split-Path -Parent $dst)
       if ([string]::IsNullOrWhiteSpace($repoRoot)) { continue }
       if ((Test-Path -LiteralPath $repoRoot -PathType Container) -and (Test-Path -LiteralPath (Join-Path $repoRoot ".git"))) {
@@ -157,7 +158,7 @@ if ($ShowScope) {
     Write-Host ("- " + $srcRel + " -> " + ($dstRaw -replace '/', '\'))
   }
 }
-$cfgFail = Test-TargetsConfigEntries -Targets $targets -RepoRoots $repoRoots -EnforceBoundary:$enforceBoundary -EnforceBoundaryClass:$enforceBoundaryClass
+$cfgFail = Test-TargetsConfigEntries -Targets $targets -RepoRoots $repoRoots -WorkspaceRoot $workspaceRoot -EnforceBoundary:$enforceBoundary -EnforceBoundaryClass:$enforceBoundaryClass
 if ($cfgFail -gt 0) {
   throw "targets.json validation failed: $cfgFail issue(s)"
 }
@@ -173,7 +174,7 @@ if ($Mode -eq "force") {
 }
 $repoProtectPrefix = $null
 if (-not [string]::IsNullOrWhiteSpace($NoOverwriteUnderRepo)) {
-  $repoProtectPrefix = ([System.IO.Path]::GetFullPath(($NoOverwriteUnderRepo -replace '/', '\'))).TrimEnd('\') + '\'
+  $repoProtectPrefix = (Normalize-Repo $NoOverwriteUnderRepo $workspaceRoot).TrimEnd('\') + '\'
 }
 $copied = 0
 $backedUp = 0
@@ -185,7 +186,7 @@ foreach ($item in $targets) {
   $srcRel = $item.source
   $dstRaw = $item.target
   $src = Join-Path $kitRoot $srcRel
-  $dst = [System.IO.Path]::GetFullPath(($dstRaw -replace '/', '\'))
+  $dst = Normalize-Repo ([string]$dstRaw) $workspaceRoot
   $isSkillMarkdown = ([System.IO.Path]::GetFileName($src)).Equals("SKILL.md", [System.StringComparison]::OrdinalIgnoreCase)
 
   if (!(Test-Path $src)) {

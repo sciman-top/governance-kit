@@ -8,8 +8,13 @@ Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
 
 function Resolve-NormalizedPath([string]$PathText) {
-  $resolved = Resolve-Path -LiteralPath $PathText -ErrorAction Stop
-  return ([System.IO.Path]::GetFullPath($resolved.Path) -replace '\\', '/').TrimEnd('/')
+  if ([string]::IsNullOrWhiteSpace($PathText)) { return "" }
+  try {
+    return (Resolve-WorkspacePath -PathText $PathText) -replace '\\', '/'
+  } catch {
+    $resolved = Resolve-Path -LiteralPath $PathText -ErrorAction Stop
+    return ([System.IO.Path]::GetFullPath($resolved.Path) -replace '\\', '/').TrimEnd('/')
+  }
 }
 
 function Ensure-ParentDirectory([string]$PathText) {
@@ -155,7 +160,7 @@ function New-DefaultPolicy {
     max_promotions_per_run = 3
     event_relative_path = ".governance/skill-candidates/events.jsonl"
     registry_relative_path = ".governance/skill-candidates/promotion-registry.json"
-    skills_root = "E:/CODE/skills-manager"
+    skills_root = '${WORKSPACE_ROOT}/skills-manager'
     overrides_relative_path = "overrides"
     auto_run_skills_manager_gates = $true
     collapse_suffix_pattern = "^(.*-\d{8})-[a-z]$"

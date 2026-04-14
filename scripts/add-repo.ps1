@@ -16,12 +16,12 @@ if (-not (Test-Path -LiteralPath $commonPath -PathType Leaf)) {
 . $commonPath
 Write-ModeRisk -ScriptName "add-repo.ps1" -Mode $Mode
 $scriptLock = New-ScriptLock -KitRoot $kitRoot -LockName "add-repo" -TimeoutSeconds $LockTimeoutSeconds
+$workspaceRoot = Get-WorkspaceRoot
 try {
-$repoResolved = Resolve-Path -LiteralPath $RepoPath -ErrorAction SilentlyContinue
-if ($null -eq $repoResolved -or -not (Test-Path -LiteralPath $repoResolved.Path -PathType Container)) {
+$repo = Normalize-Repo ([string]$RepoPath)
+if (-not (Test-Path -LiteralPath ($repo -replace '/', '\') -PathType Container)) {
   throw "Repo path not found: $RepoPath"
 }
-$repo = ([System.IO.Path]::GetFullPath($repoResolved.Path) -replace '\\','/').TrimEnd('/')
 
 $reposPath = Join-Path $kitRoot "config\repositories.json"
 $targetsPath = Join-Path $kitRoot "config\targets.json"
@@ -41,8 +41,13 @@ $allowProjectRules = Is-RepoAllowedForProjectRules -Repo $repo -AllowRepos $allo
 
 $targetsRaw = Read-JsonArray $targetsPath
 $targets = [System.Collections.Generic.List[object]]::new()
+$targetSeen = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::OrdinalIgnoreCase)
 foreach ($t in @($targetsRaw)) {
-  [void]$targets.Add($t)
+  if ($null -eq $t -or [string]::IsNullOrWhiteSpace([string]$t.target)) { continue }
+  $targetNorm = Normalize-Repo ([string]$t.target) $workspaceRoot
+  if ($targetSeen.Add($targetNorm)) {
+    [void]$targets.Add($t)
+  }
 }
 
 $customCfg = $null
@@ -120,7 +125,7 @@ foreach ($fileName in @("AGENTS.md", "CLAUDE.md", "GEMINI.md")) {
 
   [void]$desired.Add([pscustomobject]@{
     source = $projectSource
-    target = "$repo/$fileName"
+    target = Format-WorkspaceTokenPath (Join-Path $repo $fileName)
     boundary_class = Get-ExpectedBoundaryClass -Source $projectSource
   })
 }
@@ -138,7 +143,7 @@ foreach ($customRelRaw in $customFiles) {
 
   [void]$desired.Add([pscustomobject]@{
     source = $customSourceRel
-    target = "$repo/$customRel"
+    target = Format-WorkspaceTokenPath (Join-Path $repo $customRel)
     boundary_class = Get-ExpectedBoundaryClass -Source $customSourceRel
   })
 }
@@ -162,6 +167,12 @@ $added = 0
 $updated = 0
 foreach ($d in @($desired)) {
   $sameTarget = @($targets | Where-Object { $_.target -eq $d.target })
+  if ($sameTarget.Count -eq 0) {
+    $sameTarget = @($targets | Where-Object {
+      $existingTargetNorm = Normalize-Repo ([string]$_.target) $workspaceRoot
+      $existingTargetNorm.Equals((Normalize-Repo ([string]$d.target) $workspaceRoot), [System.StringComparison]::OrdinalIgnoreCase)
+    })
+  }
   if ($sameTarget.Count -gt 0) {
     $exact = @($sameTarget | Where-Object {
       $bcProp = $_.PSObject.Properties['boundary_class']

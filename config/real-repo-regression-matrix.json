@@ -1,9 +1,9 @@
-﻿{
+{
   "schema_version": "1.0",
   "repos": [
     {
       "repo_name": "ClassroomToolkit",
-      "repo": "E:/CODE/ClassroomToolkit",
+      "repo": "${WORKSPACE_ROOT}/ClassroomToolkit",
       "required_paths": [
         "AGENTS.md",
         "scripts/quality/check-hotspot-line-budgets.ps1",
@@ -15,7 +15,7 @@
     },
     {
       "repo_name": "skills-manager",
-      "repo": "E:/CODE/skills-manager",
+      "repo": "${WORKSPACE_ROOT}/skills-manager",
       "required_paths": [
         "AGENTS.md",
         "scripts/prebuild-check.ps1"
@@ -25,7 +25,7 @@
     },
     {
       "repo_name": "repo-governance-hub",
-      "repo": "E:/CODE/repo-governance-hub",
+      "repo": "${WORKSPACE_ROOT}/repo-governance-hub",
       "required_paths": [
         "AGENTS.md",
         "scripts/doctor.ps1",

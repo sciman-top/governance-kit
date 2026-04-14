@@ -6,7 +6,7 @@ param(
   [string]$Branch = "main",
   [ValidateSet("plan", "safe")]
   [string]$Mode = "safe",
-  [string]$WorktreeRoot = "E:/CODE/_tmp_push_worktrees",
+  [string]$WorktreeRoot = "",
   [switch]$KeepWorktreeOnSuccess,
   [switch]$KeepWorktreeOnError
 )
@@ -66,6 +66,11 @@ $repo = [System.IO.Path]::GetFullPath($resolved.Path)
 $repoName = Split-Path -Leaf $repo
 $commitSha = Resolve-HeadCommit -Repo $repo -Ref $Commit
 $stamp = Get-RunStamp
+$workspaceRoot = Split-Path -Parent $repo
+$defaultWorktreeRoot = Join-Path $env:USERPROFILE ".config\superpowers\worktrees"
+if ([string]::IsNullOrWhiteSpace($WorktreeRoot)) {
+  $WorktreeRoot = Join-Path $defaultWorktreeRoot $repoName
+}
 $worktreeBase = [System.IO.Path]::GetFullPath(($WorktreeRoot -replace '/', '\'))
 $worktreePath = Join-Path $worktreeBase ($repoName + "-" + $stamp)
 $remoteRef = "$Remote/$Branch"

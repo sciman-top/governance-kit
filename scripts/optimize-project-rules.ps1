@@ -1,4 +1,4 @@
-﻿param(
+param(
   [Parameter(Mandatory = $true)]
   [string]$RepoPath,
   [ValidateSet("plan", "safe")]
@@ -92,11 +92,11 @@ $installItems = @(
   ("- docs/governance/metrics-template.md exists: " + [bool]$templatesState.governance_metrics_template)
 )
 
-$c7Block = @"
+$c7Block = @'
 ### C.7 Target-repo direct edit backflow policy
-- source of truth: E:/CODE/repo-governance-hub/source/project/$repoName/*.
+- source of truth: $WORKSPACE_ROOT/repo-governance-hub/source/project/$repoName/*.
 - temporary direct edits in target repo are allowed for fast trial, but must backflow to source the same day with evidence.
-- after backflow, run powershell -File E:/CODE/repo-governance-hub/scripts/install.ps1 -Mode safe to re-sync source and target.
+- after backflow, run powershell -File $WORKSPACE_ROOT/repo-governance-hub/scripts/install.ps1 -Mode safe to re-sync source and target.
 - before backflow completion, do not run sync/install again to avoid overwriting unsaved target edits.
 
 ### C.8 CI entry differences
@@ -106,7 +106,7 @@ $c7Block = @"
 - quick gate script selected: {1}
 - hotspot script selected: {2}
 {3}
-"@ -f (
+'@ -f (
   $ciItems -join "`r`n"
 ), $(
   if ([string]::IsNullOrWhiteSpace($quickGateRel)) { "N/A" } else { $quickGateRel }

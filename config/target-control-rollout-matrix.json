@@ -10,19 +10,19 @@
       "target_mode": "observe",
       "repo_states": [
         {
-          "repo": "E:/CODE/ClassroomToolkit",
+          "repo": "${WORKSPACE_ROOT}/ClassroomToolkit",
           "phase": "observe",
           "observe_started_at": "2026-04-01",
           "planned_enforce_date": "2026-05-01"
         },
         {
-          "repo": "E:/CODE/skills-manager",
+          "repo": "${WORKSPACE_ROOT}/skills-manager",
           "phase": "observe",
           "observe_started_at": "2026-04-01",
           "planned_enforce_date": "2026-05-01"
         },
         {
-          "repo": "E:/CODE/repo-governance-hub",
+          "repo": "${WORKSPACE_ROOT}/repo-governance-hub",
           "phase": "observe",
           "observe_started_at": "2026-04-01",
           "planned_enforce_date": "2026-05-01"
@@ -35,15 +35,15 @@
       "target_mode": "advisory",
       "repo_states": [
         {
-          "repo": "E:/CODE/ClassroomToolkit",
+          "repo": "${WORKSPACE_ROOT}/ClassroomToolkit",
           "phase": "advisory"
         },
         {
-          "repo": "E:/CODE/skills-manager",
+          "repo": "${WORKSPACE_ROOT}/skills-manager",
           "phase": "advisory"
         },
         {
-          "repo": "E:/CODE/repo-governance-hub",
+          "repo": "${WORKSPACE_ROOT}/repo-governance-hub",
           "phase": "advisory"
         }
       ]
@@ -53,11 +53,11 @@
       "repo_scope": "repo_specific_distributable",
       "target_mode": "observe",
       "applies_to_repos": [
-        "E:/CODE/repo-governance-hub"
+        "${WORKSPACE_ROOT}/repo-governance-hub"
       ],
       "repo_states": [
         {
-          "repo": "E:/CODE/repo-governance-hub",
+          "repo": "${WORKSPACE_ROOT}/repo-governance-hub",
           "phase": "observe",
           "observe_started_at": "2026-04-10",
           "planned_enforce_date": "2026-05-10"
@@ -70,15 +70,15 @@
       "target_mode": "advisory",
       "repo_states": [
         {
-          "repo": "E:/CODE/ClassroomToolkit",
+          "repo": "${WORKSPACE_ROOT}/ClassroomToolkit",
           "phase": "advisory"
         },
         {
-          "repo": "E:/CODE/skills-manager",
+          "repo": "${WORKSPACE_ROOT}/skills-manager",
           "phase": "advisory"
         },
         {
-          "repo": "E:/CODE/repo-governance-hub",
+          "repo": "${WORKSPACE_ROOT}/repo-governance-hub",
           "phase": "advisory"
         }
       ]
@@ -89,19 +89,19 @@
       "target_mode": "observe",
       "repo_states": [
         {
-          "repo": "E:/CODE/ClassroomToolkit",
+          "repo": "${WORKSPACE_ROOT}/ClassroomToolkit",
           "phase": "observe",
           "observe_started_at": "2026-04-01",
           "planned_enforce_date": "2026-05-15"
         },
         {
-          "repo": "E:/CODE/skills-manager",
+          "repo": "${WORKSPACE_ROOT}/skills-manager",
           "phase": "observe",
           "observe_started_at": "2026-04-01",
           "planned_enforce_date": "2026-05-15"
         },
         {
-          "repo": "E:/CODE/repo-governance-hub",
+          "repo": "${WORKSPACE_ROOT}/repo-governance-hub",
           "phase": "observe",
           "observe_started_at": "2026-04-01",
           "planned_enforce_date": "2026-05-15"

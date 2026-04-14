@@ -315,8 +315,87 @@ function Test-FileContentEqual([string]$PathA, [string]$PathB) {
   $hashB = Get-FileSha256 -Path $b.FullName
   return $hashA -eq $hashB
 }
-function Normalize-Repo([string]$Path) {
-  return ([System.IO.Path]::GetFullPath(($Path -replace '/', '\')) -replace '\\','/').TrimEnd('/')
+function Get-KitRoot {
+  return [System.IO.Path]::GetFullPath((Join-Path $PSScriptRoot "..\.."))
+}
+function Test-WorkspaceRootCandidate([string]$Root) {
+  if ([string]::IsNullOrWhiteSpace($Root)) { return $false }
+  $repoNames = @("ClassroomToolkit", "skills-manager", "repo-governance-hub")
+  foreach ($repoName in $repoNames) {
+    if (-not (Test-Path -LiteralPath (Join-Path $Root $repoName) -PathType Container)) {
+      return $false
+    }
+  }
+  return $true
+}
+function Get-WorkspaceRoot {
+  $envRoots = @(
+    $env:WORKSPACE_ROOT,
+    $env:CODE_ROOT,
+    $env:REPO_WORKSPACE_ROOT
+  ) | Where-Object { -not [string]::IsNullOrWhiteSpace([string]$_) }
+  foreach ($candidate in @($envRoots)) {
+    $normalized = ([System.IO.Path]::GetFullPath(($candidate -replace '/', '\')) -replace '\\', '/').TrimEnd('/')
+    if (Test-WorkspaceRootCandidate $normalized) {
+      return $normalized
+    }
+  }
+
+  $kitParent = Split-Path -Parent (Get-KitRoot)
+  $kitParentNorm = ([System.IO.Path]::GetFullPath(($kitParent -replace '/', '\')) -replace '\\', '/').TrimEnd('/')
+  if (Test-WorkspaceRootCandidate $kitParentNorm) {
+    return $kitParentNorm
+  }
+
+  return $kitParentNorm
+}
+function Get-UserProfileRoot {
+  $envRoots = @(
+    $env:USERPROFILE,
+    [System.Environment]::GetFolderPath([System.Environment+SpecialFolder]::UserProfile)
+  ) | Where-Object { -not [string]::IsNullOrWhiteSpace([string]$_) }
+  foreach ($candidate in @($envRoots)) {
+    try {
+      return ([System.IO.Path]::GetFullPath(($candidate -replace '/', '\')) -replace '\\', '/').TrimEnd('/')
+    } catch {
+    }
+  }
+  return ""
+}
+function Resolve-WorkspacePath([string]$PathText, [string]$WorkspaceRoot = "") {
+  if ([string]::IsNullOrWhiteSpace($PathText)) { return "" }
+  $root = if ([string]::IsNullOrWhiteSpace($WorkspaceRoot)) { Get-WorkspaceRoot } else { $WorkspaceRoot }
+  $normalized = [string]$PathText
+  if (-not [string]::IsNullOrWhiteSpace($root)) {
+    $normalized = $normalized.Replace('${WORKSPACE_ROOT}', $root).Replace('$WORKSPACE_ROOT', $root).Replace('%WORKSPACE_ROOT%', $root)
+  }
+  $userProfileRoot = Get-UserProfileRoot
+  if (-not [string]::IsNullOrWhiteSpace($userProfileRoot)) {
+    $normalized = $normalized.Replace('${USERPROFILE}', $userProfileRoot).Replace('$USERPROFILE', $userProfileRoot).Replace('%USERPROFILE%', $userProfileRoot)
+  }
+  $candidate = $normalized -replace '/', '\'
+  if ([System.IO.Path]::IsPathRooted($candidate)) {
+    return ([System.IO.Path]::GetFullPath($candidate) -replace '\\','/').TrimEnd('/')
+  }
+  return ([System.IO.Path]::GetFullPath((Join-Path $root $candidate)) -replace '\\','/').TrimEnd('/')
+}
+function Normalize-Repo([string]$Path, [string]$WorkspaceRoot = "") {
+  return Resolve-WorkspacePath -PathText $Path -WorkspaceRoot $WorkspaceRoot
+}
+function Format-WorkspaceTokenPath([string]$PathText, [string]$WorkspaceRoot = "") {
+  if ([string]::IsNullOrWhiteSpace($PathText)) { return "" }
+  $root = if ([string]::IsNullOrWhiteSpace($WorkspaceRoot)) { Get-WorkspaceRoot } else { $WorkspaceRoot }
+  $resolved = Resolve-WorkspacePath -PathText $PathText -WorkspaceRoot $root
+  if ([string]::IsNullOrWhiteSpace($root)) {
+    return $resolved
+  }
+  $rootNorm = ($root -replace '\\', '/').TrimEnd('/')
+  $resolvedNorm = ($resolved -replace '\\', '/').TrimEnd('/')
+  if ($resolvedNorm.StartsWith($rootNorm + "/", [System.StringComparison]::OrdinalIgnoreCase)) {
+    $relative = $resolvedNorm.Substring($rootNorm.Length + 1)
+    return ('${WORKSPACE_ROOT}/' + $relative)
+  }
+  return $resolvedNorm
 }
 function Get-RelativePathSafe([string]$BasePath, [string]$TargetPath) {
   $base = [System.IO.Path]::GetFullPath($BasePath).TrimEnd('\')
@@ -365,7 +444,15 @@ function Test-BoundaryClassValue([string]$BoundaryClass) {
   return ($v -eq "global-user" -or $v -eq "project" -or $v -eq "shared-template")
 }
 function Get-BoundaryTargetLayer([string]$Target, [string[]]$RepoRoots) {
-  $t = ([string]$Target -replace '\\', '/')
+  $t = Resolve-WorkspacePath -PathText ([string]$Target)
+  $t = ([string]$t -replace '\\', '/')
+  $userProfileRoot = Get-UserProfileRoot
+  if (-not [string]::IsNullOrWhiteSpace($userProfileRoot)) {
+    $userProfileRootNorm = ($userProfileRoot -replace '\\', '/').TrimEnd('/')
+    if ($t.Equals($userProfileRootNorm, [System.StringComparison]::OrdinalIgnoreCase) -or $t.StartsWith($userProfileRootNorm + "/.", [System.StringComparison]::OrdinalIgnoreCase)) {
+      return "global-user"
+    }
+  }
   if ($t -match '^C:/Users/[^/]+/\.(codex|claude|gemini)/') {
     return "global-user"
   }
@@ -379,8 +466,14 @@ function Get-BoundaryTargetLayer([string]$Target, [string[]]$RepoRoots) {
   return "external"
 }
 function Test-AllowedGlobalUserTarget([string]$Target) {
-  $t = ([string]$Target -replace '\\', '/')
-  return ($t -match '^C:/Users/[^/]+/\.(codex|claude|gemini)/(AGENTS|CLAUDE|GEMINI)\.md$')
+  $t = Resolve-WorkspacePath -PathText ([string]$Target)
+  $t = ([string]$t -replace '\\', '/')
+  $userProfileRoot = Get-UserProfileRoot
+  if ([string]::IsNullOrWhiteSpace($userProfileRoot)) {
+    return ($t -match '^C:/Users/[^/]+/\.(codex|claude|gemini)/(AGENTS|CLAUDE|GEMINI)\.md$')
+  }
+  $userProfileRootNorm = ($userProfileRoot -replace '\\', '/').TrimEnd('/')
+  return ($t -match ('^{0}/\.(codex|claude|gemini)/(AGENTS|CLAUDE|GEMINI)\.md$' -f [regex]::Escape($userProfileRootNorm)))
 }
 function Read-TargetRepoRoots([string]$KitRoot) {
   $reposPath = Join-Path $KitRoot "config\repositories.json"
@@ -449,6 +542,7 @@ function Test-TargetsConfigEntries {
   param(
     [Parameter(Mandatory = $true)][array]$Targets,
     [Parameter(Mandatory = $true)][AllowEmptyCollection()][string[]]$RepoRoots,
+    [string]$WorkspaceRoot = "",
     [bool]$EnforceBoundary = $true,
     [bool]$EnforceBoundaryClass = $false
   )
@@ -465,12 +559,13 @@ function Test-TargetsConfigEntries {
       $cfgFail++
       continue
     }
-    if (-not [System.IO.Path]::IsPathRooted(([string]$item.target -replace '/', '\'))) {
+    $resolvedTarget = Normalize-Repo ([string]$item.target) $WorkspaceRoot
+    if (-not [System.IO.Path]::IsPathRooted(($resolvedTarget -replace '/', '\'))) {
       Write-Host "[CFG] target must be absolute path: $($item.target)"
       $cfgFail++
       continue
     }
-    $normTarget = [System.IO.Path]::GetFullPath(([string]$item.target -replace '/', '\'))
+    $normTarget = [System.IO.Path]::GetFullPath(($resolvedTarget -replace '/', '\'))
     if (-not $seenTargets.Add($normTarget)) {
       Write-Host "[CFG] duplicate target path: $normTarget"
       $cfgFail++
@@ -494,9 +589,9 @@ function Test-TargetsConfigEntries {
       }
     }
     if ($EnforceBoundary) {
-      $boundaryCheck = Get-BoundaryMappingCheck -Source ([string]$item.source) -Target ([string]$item.target) -RepoRoots $RepoRoots
+      $boundaryCheck = Get-BoundaryMappingCheck -Source ([string]$item.source) -Target $resolvedTarget -RepoRoots $RepoRoots
       if (-not $boundaryCheck.allowed) {
-        Write-Host ("[CFG] boundary violation: source={0} target={1} reason={2} source_layer={3} target_layer={4}" -f $item.source, $item.target, $boundaryCheck.reason, $boundaryCheck.source_layer, $boundaryCheck.target_layer)
+        Write-Host ("[CFG] boundary violation: source={0} target={1} reason={2} source_layer={3} target_layer={4}" -f $item.source, $resolvedTarget, $boundaryCheck.reason, $boundaryCheck.source_layer, $boundaryCheck.target_layer)
         $cfgFail++
       }
     }

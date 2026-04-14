@@ -524,13 +524,12 @@ foreach ($ar in $allowProjectRuleRepos) {
     $fail++
     continue
   }
-  $arWin = ($arText -replace '/', '\')
-  if (-not [System.IO.Path]::IsPathRooted($arWin)) {
-    Write-Host "[CFG] project-rule allow repo must be absolute: $arText"
+  $arNorm = Normalize-Repo $arText
+  if (-not [System.IO.Path]::IsPathRooted(($arNorm -replace '/', '\'))) {
+    Write-Host "[CFG] project-rule allow repo must resolve to an absolute path: $arText"
     $fail++
     continue
   }
-  $arNorm = Normalize-Repo $arText
   if (-not $seenProjectAllowRepo.Add($arNorm)) {
     Write-Host "[CFG] duplicate project-rule allow repo: $arNorm"
     $fail++
@@ -621,12 +620,12 @@ foreach ($t in $targets) {
     Write-Host "[CFG] source must be relative: $($t.source)"
     $fail++
   }
-  $target = ([string]$t.target -replace '/', '\')
-  if (-not [System.IO.Path]::IsPathRooted($target)) {
-    Write-Host "[CFG] target must be absolute: $($t.target)"
+  $target = Normalize-Repo ([string]$t.target)
+  if (-not [System.IO.Path]::IsPathRooted(($target -replace '/', '\'))) {
+    Write-Host "[CFG] target must resolve to an absolute path: $($t.target)"
     $fail++
   } else {
-    $targetNorm = [System.IO.Path]::GetFullPath($target)
+    $targetNorm = [System.IO.Path]::GetFullPath(($target -replace '/', '\'))
     if (-not $seenTarget.Add($targetNorm)) {
       Write-Host "[CFG] duplicate target path: $targetNorm"
       $fail++
