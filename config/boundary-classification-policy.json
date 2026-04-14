@@ -21,6 +21,9 @@
     "shared-template"
   ],
   "global_user_allowed_targets": [
+    "^\\$\\{USERPROFILE\\}/\\.codex/AGENTS\\.md$",
+    "^\\$\\{USERPROFILE\\}/\\.claude/CLAUDE\\.md$",
+    "^\\$\\{USERPROFILE\\}/\\.gemini/GEMINI\\.md$",
     "^C:/Users/[^/]+/\\.codex/AGENTS\\.md$",
     "^C:/Users/[^/]+/\\.claude/CLAUDE\\.md$",
     "^C:/Users/[^/]+/\\.gemini/GEMINI\\.md$"

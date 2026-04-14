@@ -2,7 +2,7 @@
 
 ## Canonical Path
 - New skill source of truth must be created under:
-  - `source/project/skills-manager/custom/overrides/<skill-name>/SKILL.md`
+  - `source/project/repo-governance-hub/custom/overrides/<skill-name>/SKILL.md`
 - Do not treat repository-root `.agents/skills/*` as canonical creation path in this repo.
 
 ## Hard Gates for `create` Action

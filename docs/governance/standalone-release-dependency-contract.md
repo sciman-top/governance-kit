@@ -5,7 +5,7 @@
 - Prevent `repo-governance-hub` standalone release from hard depending on local absolute paths like `E:/CODE/skills-manager`.
 
 ## Decision
-- `skills-manager/overrides` remains the canonical runtime host for custom reusable skills.
+- `source/project/repo-governance-hub/custom/overrides` is the canonical authoring source for custom reusable skills.
 - In this repo, any `E:/CODE/skills-manager` reference is treated as collaboration context, not standalone release runtime requirement.
 - If a repo is published in standalone mode (`release_enabled=true`), unresolved external absolute repo dependencies must fail release-profile verification.
 
@@ -18,7 +18,7 @@
 
 ## Practical Guidance
 - Keep skill implementation source in:
-  - `source/project/skills-manager/custom/overrides/<skill-name>/SKILL.md`
+  - `source/project/repo-governance-hub/custom/overrides/<skill-name>/SKILL.md`
 - When preparing standalone release:
   - keep collaboration rules as optional docs/contracts
   - avoid making release/preflight scripts require external local path repos

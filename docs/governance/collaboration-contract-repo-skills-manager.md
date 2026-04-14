@@ -9,12 +9,12 @@
   - Governance source of truth and distribution orchestrator.
   - Defines policies, gate semantics, rollout, evidence, and rollback standards.
 - `skills-manager`
-  - Canonical host for override skill evolution and lifecycle operations.
-  - Executes candidate -> eval -> promote workflow for new/updated skills.
+  - Distribution host for override skills used by multi-CLI environments.
+  - Receives synced overrides and continues candidate -> eval -> promote workflow.
 
 ## Hard Collaboration Rules
 1. New reusable skill definitions must originate from:
-   - `source/project/skills-manager/custom/overrides/<skill-name>/SKILL.md`
+   - `source/project/repo-governance-hub/custom/overrides/<skill-name>/SKILL.md`
 2. Repository-root `.agents/skills/*` in this repo is not a canonical creation path.
 3. Skill creation must satisfy lifecycle/promotion gates:
    - user ack policy
@@ -31,12 +31,14 @@
 ## Change Routing
 - Governance semantics changes:
   - primary in `repo-governance-hub` project/global rules and governance scripts.
-- Skill lifecycle and override skill implementation:
-  - primary in `skills-manager` override path, then distributed by governed flow.
+- Skill lifecycle and override skill distribution:
+  - primary in `repo-governance-hub` source override path, then synced to `skills-manager/overrides` for governed distribution.
 
 ## UTF-8 Guard Ownership (Windows PowerShell)
 - Canonical preventive skill:
-  - `E:/CODE/skills-manager/overrides/custom-windows-encoding-guard`
+  - `source/project/repo-governance-hub/custom/overrides/custom-windows-encoding-guard`
+- Synced distribution target:
+  - `${WORKSPACE_ROOT}/skills-manager/overrides/custom-windows-encoding-guard`
 - Governance rule:
   - `pwsh-encoding-mojibake-loop-*` signatures are treated as known family.
   - Promotion policy must block duplicate `create` and converge to canonical guard.

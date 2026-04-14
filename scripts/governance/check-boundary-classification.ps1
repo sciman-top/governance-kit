@@ -183,8 +183,9 @@ if ($AsJson) {
   foreach ($it in $items) {
     if (-not $ShowPassItems.IsPresent -and $it.allowed) { continue }
     $codes = if (@($it.reason_codes).Count -gt 0) { (@($it.reason_codes) -join ",") } else { "none" }
+    $statusText = if ($it.allowed) { "PASS" } else { "FAIL" }
     Write-Host ("[{0}] source={1} target={2} expected={3} actual={4} source_layer={5} target_layer={6} reason_codes={7} recommended_boundary_class={8} fallback_class={9} rationale={10}" -f `
-      (if ($it.allowed) { "PASS" } else { "FAIL" }),
+      $statusText,
       $it.source,
       $it.target,
       $it.expected_boundary_class,

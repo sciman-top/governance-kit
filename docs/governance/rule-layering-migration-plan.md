@@ -24,7 +24,7 @@
 - Repo 层（本仓落地）：
   - `docs/governance/`（WHERE/HOW：命令、路径、模板、runbook）
 - Skill 层（按需执行）：
-  - source of truth：`source/project/skills-manager/custom/overrides/<skill-name>/SKILL.md`
+  - source of truth：`source/project/repo-governance-hub/custom/overrides/<skill-name>/SKILL.md`
   - 分发目标：`E:/CODE/skills-manager/overrides/<skill-name>/SKILL.md`（再由 skills-manager 生态同步）
   - 说明：仓内根 `.agents/` 在本仓默认被 `.gitignore` 忽略，不作为新增技能的正式落点
 
@@ -54,7 +54,7 @@
    - 推荐首批：
      - `governance-clarification-protocol`
      - `governance-teaching-lite-output`
-   - 产出：`source/project/skills-manager/custom/overrides/*/SKILL.md`
+   - 产出：`source/project/repo-governance-hub/custom/overrides/*/SKILL.md`
    - 门槛：满足技能创建门槛（ack、trigger eval、唯一 family、生命周期策略）
    - 验收：触发条件清晰、可独立执行、可回退
 2. 任务：主规则改为“触发说明 + skill 入口”，避免重复正文。
@@ -124,8 +124,8 @@
   - 主规则瘦身与索引分流已完成。
   - `verification-entrypoints / global-repo-mapping / evidence-and-rollback-runbook / backflow-runbook / git-scope-and-tracked-files` 已落地。
 - Phase 2：`已完成（试点范围）`
-  - 已新增 `source/project/skills-manager/custom/overrides/governance-teaching-lite-output/SKILL.md` 草案。
-  - 已新增 `source/project/skills-manager/custom/overrides/governance-clarification-protocol/SKILL.md` 试点草案。
+  - 已新增 `source/project/repo-governance-hub/custom/overrides/governance-teaching-lite-output/SKILL.md` 草案。
+  - 已新增 `source/project/repo-governance-hub/custom/overrides/governance-clarification-protocol/SKILL.md` 试点草案。
   - 已解除跨仓数据阻断：`skills-manager` 侧 `trigger-eval summary` 已由 `no_data` 修复为 `ok`。
   - 当前 `create/promote` 返回健康空结果（`eligible_signature_count=0`），原因为无新增可晋升增量，不属于流程阻断。
   - 证据：`docs/change-evidence/20260413-phase2-trigger-eval-gate-checkpoint.md`、`docs/change-evidence/20260413-phase2-cross-repo-trigger-eval-unblocked.md`、`docs/change-evidence/20260413-phase2-skills-trial-closeout.md`。

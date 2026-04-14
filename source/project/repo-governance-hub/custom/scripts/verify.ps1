@@ -61,13 +61,15 @@ foreach ($item in $targets) {
     continue
   }
 
-  if (-not [System.IO.Path]::IsPathRooted(([string]$item.target -replace '/', '\'))) {
+  $targetText = [string]$item.target
+  $isTemplateRooted = $targetText -match '^\$\{(WORKSPACE_ROOT|USERPROFILE)\}[\\/].+'
+  if (-not $isTemplateRooted -and -not [System.IO.Path]::IsPathRooted(($targetText -replace '/', '\'))) {
     Write-Host "[CFG] target must be absolute path: $($item.target)"
     $cfgFail++
     continue
   }
 
-  $normTarget = [System.IO.Path]::GetFullPath(([string]$item.target -replace '/', '\'))
+  $normTarget = Resolve-WorkspacePath -PathText ([string]$item.target)
   $expectedBoundaryClass = Get-ExpectedBoundaryClass -Source ([string]$item.source)
   $boundaryClassProp = $item.PSObject.Properties['boundary_class']
   $boundaryClassText = if ($null -eq $boundaryClassProp) { "" } else { ([string]$boundaryClassProp.Value).Trim().ToLowerInvariant() }
@@ -125,7 +127,7 @@ $ok = 0
 $fail = 0
 foreach ($item in $targets) {
   $src = Join-Path $kitRoot $item.source
-  $dst = [System.IO.Path]::GetFullPath(($item.target -replace '/', '\'))
+  $dst = (Resolve-WorkspacePath -PathText ([string]$item.target) -replace '/', '\')
 
   if (!(Test-Path $src) -or !(Test-Path $dst)) {
     Write-Host "[MISS] $($item.source) -> $dst"

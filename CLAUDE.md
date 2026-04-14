@@ -168,8 +168,8 @@
 - 证据字段：`spawn_parallel_subagents`、`max_parallel_agents`、`decision_score`、`reason_codes`、`hard_guard_hits`、`signals`、`policy_path`。
 - 执行边界：`scripts/governance/run-target-autopilot.ps1` 仅输出建议与 JSON 证据；并行子代理创建由外层 AI 会话执行。
 ### C.17 与 skills-manager 联合协作契约（强制）
-- 本仓与 `${WORKSPACE_ROOT}/skills-manager` 为联合协作关系：本仓负责治理语义与分发编排，skills-manager 负责 overrides 技能生命周期落地。
-- 新增可复用技能的 canonical 落点必须是：`source/project/skills-manager/custom/overrides/<skill-name>/SKILL.md`。
+- 本仓与 `${WORKSPACE_ROOT}/skills-manager` 为联合协作关系：本仓负责治理语义与自定义技能定义维护，skills-manager 负责 overrides 分发与 CLI 汇聚。
+- 新增可复用技能的 canonical 落点必须是：`source/project/repo-governance-hub/custom/overrides/<skill-name>/SKILL.md`。
 - 本仓根 `.agents/skills/*` 不作为新技能正式创建路径（本仓默认 `.gitignore` 忽略 `/.agents/`）。
 - 技能创建/晋升必须通过策略门槛：`ack + trigger-eval + family uniqueness + lifecycle policy`，不得绕过 `promote-skill-candidates` 约束。
 - 协作细则文档：`docs/governance/collaboration-contract-repo-skills-manager.md`。

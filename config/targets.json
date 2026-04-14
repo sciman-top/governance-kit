@@ -325,6 +325,11 @@
     "boundary_class": "project"
   },
   {
+    "source": "source/project/ClassroomToolkit/custom/scripts/governance/check-rollout-coverage.ps1",
+    "target": "${WORKSPACE_ROOT}/ClassroomToolkit/scripts/governance/check-rollout-coverage.ps1",
+    "boundary_class": "project"
+  },
+  {
     "source": "source/project/ClassroomToolkit/custom/scripts/governance/run-recurring-review.ps1",
     "target": "${WORKSPACE_ROOT}/ClassroomToolkit/scripts/governance/run-recurring-review.ps1",
     "boundary_class": "project"
@@ -352,6 +357,11 @@
   {
     "source": "source/project/repo-governance-hub/custom/scripts/governance/check-update-triggers.ps1",
     "target": "${WORKSPACE_ROOT}/repo-governance-hub/scripts/governance/check-update-triggers.ps1",
+    "boundary_class": "project"
+  },
+  {
+    "source": "source/project/repo-governance-hub/custom/scripts/governance/check-rollout-coverage.ps1",
+    "target": "${WORKSPACE_ROOT}/repo-governance-hub/scripts/governance/check-rollout-coverage.ps1",
     "boundary_class": "project"
   },
   {
@@ -895,12 +905,12 @@
     "boundary_class": "shared-template"
   },
   {
-    "source": "source/project/skills-manager/custom/overrides/custom-windows-encoding-guard/SKILL.md",
+    "source": "source/project/repo-governance-hub/custom/overrides/custom-windows-encoding-guard/SKILL.md",
     "target": "${WORKSPACE_ROOT}/skills-manager/overrides/custom-windows-encoding-guard/SKILL.md",
     "boundary_class": "project"
   },
   {
-    "source": "source/project/skills-manager/custom/overrides/custom-windows-encoding-guard/scripts/bootstrap.ps1",
+    "source": "source/project/repo-governance-hub/custom/overrides/custom-windows-encoding-guard/scripts/bootstrap.ps1",
     "target": "${WORKSPACE_ROOT}/skills-manager/overrides/custom-windows-encoding-guard/scripts/bootstrap.ps1",
     "boundary_class": "project"
   },
@@ -1355,12 +1365,12 @@
     "boundary_class": "shared-template"
   },
   {
-    "source": "source/project/skills-manager/custom/overrides/governance-teaching-lite-output/SKILL.md",
+    "source": "source/project/repo-governance-hub/custom/overrides/governance-teaching-lite-output/SKILL.md",
     "target": "${WORKSPACE_ROOT}/skills-manager/overrides/governance-teaching-lite-output/SKILL.md",
     "boundary_class": "project"
   },
   {
-    "source": "source/project/skills-manager/custom/overrides/governance-clarification-protocol/SKILL.md",
+    "source": "source/project/repo-governance-hub/custom/overrides/governance-clarification-protocol/SKILL.md",
     "target": "${WORKSPACE_ROOT}/skills-manager/overrides/governance-clarification-protocol/SKILL.md",
     "boundary_class": "project"
   },
@@ -1603,5 +1613,10 @@
     "source": "source/project/repo-governance-hub/custom/scripts/governance/check-cross-repo-feedback.ps1",
     "target": "${WORKSPACE_ROOT}/repo-governance-hub/scripts/governance/check-cross-repo-feedback.ps1",
     "boundary_class": "project"
+  },
+  {
+    "source": "source/project/_common/custom/scripts/governance/check-rollout-coverage.ps1",
+    "target": "${WORKSPACE_ROOT}/skills-manager/scripts/governance/check-rollout-coverage.ps1",
+    "boundary_class": "shared-template"
   }
 ]

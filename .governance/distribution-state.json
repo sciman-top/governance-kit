@@ -1,9 +1,24 @@
 {
   "version": 1,
   "tool": "repo-governance-hub",
-  "updated_at": "2026-04-14T18:52:11",
-  "managed_count": 312,
+  "updated_at": "2026-04-14T21:21:27",
+  "managed_count": 324,
   "managed_files": [
+    {
+      "path": "${USERPROFILE}/.claude/CLAUDE.md",
+      "source": "source/global/CLAUDE.md",
+      "sha256": ""
+    },
+    {
+      "path": "${USERPROFILE}/.codex/AGENTS.md",
+      "source": "source/global/AGENTS.md",
+      "sha256": ""
+    },
+    {
+      "path": "${USERPROFILE}/.gemini/GEMINI.md",
+      "source": "source/global/GEMINI.md",
+      "sha256": ""
+    },
     {
       "path": "${WORKSPACE_ROOT}/ClassroomToolkit/.agents/plugins/marketplace.json",
       "source": "source/project/ClassroomToolkit/custom/.agents/plugins/marketplace.json",
@@ -340,8 +355,18 @@
       "sha256": ""
     },
     {
+      "path": "${WORKSPACE_ROOT}/ClassroomToolkit/scripts/governance/check-control-retirement-candidates.ps1",
+      "source": "source/project/ClassroomToolkit/custom/scripts/governance/check-control-retirement-candidates.ps1",
+      "sha256": ""
+    },
+    {
       "path": "${WORKSPACE_ROOT}/ClassroomToolkit/scripts/governance/check-evidence-completeness.ps1",
       "source": "source/project/ClassroomToolkit/custom/scripts/governance/check-evidence-completeness.ps1",
+      "sha256": ""
+    },
+    {
+      "path": "${WORKSPACE_ROOT}/ClassroomToolkit/scripts/governance/check-evidence-template-fields.ps1",
+      "source": "source/project/ClassroomToolkit/custom/scripts/governance/check-evidence-template-fields.ps1",
       "sha256": ""
     },
     {
@@ -365,8 +390,18 @@
       "sha256": ""
     },
     {
+      "path": "${WORKSPACE_ROOT}/ClassroomToolkit/scripts/governance/check-rollout-coverage.ps1",
+      "source": "source/project/ClassroomToolkit/custom/scripts/governance/check-rollout-coverage.ps1",
+      "sha256": ""
+    },
+    {
       "path": "${WORKSPACE_ROOT}/ClassroomToolkit/scripts/governance/check-skill-trigger-evals.ps1",
       "source": "source/project/_common/custom/scripts/governance/check-skill-trigger-evals.ps1",
+      "sha256": ""
+    },
+    {
+      "path": "${WORKSPACE_ROOT}/ClassroomToolkit/scripts/governance/check-target-rollout-matrix.ps1",
+      "source": "source/project/ClassroomToolkit/custom/scripts/governance/check-target-rollout-matrix.ps1",
       "sha256": ""
     },
     {
@@ -890,8 +925,23 @@
       "sha256": ""
     },
     {
+      "path": "${WORKSPACE_ROOT}/repo-governance-hub/scripts/governance/check-control-retirement-candidates.ps1",
+      "source": "source/project/repo-governance-hub/custom/scripts/governance/check-control-retirement-candidates.ps1",
+      "sha256": ""
+    },
+    {
       "path": "${WORKSPACE_ROOT}/repo-governance-hub/scripts/governance/check-cross-repo-compatibility.ps1",
       "source": "source/project/repo-governance-hub/custom/scripts/governance/check-cross-repo-compatibility.ps1",
+      "sha256": ""
+    },
+    {
+      "path": "${WORKSPACE_ROOT}/repo-governance-hub/scripts/governance/check-cross-repo-feedback.ps1",
+      "source": "source/project/repo-governance-hub/custom/scripts/governance/check-cross-repo-feedback.ps1",
+      "sha256": ""
+    },
+    {
+      "path": "${WORKSPACE_ROOT}/repo-governance-hub/scripts/governance/check-evidence-template-fields.ps1",
+      "source": "source/project/repo-governance-hub/custom/scripts/governance/check-evidence-template-fields.ps1",
       "sha256": ""
     },
     {
@@ -925,6 +975,11 @@
       "sha256": ""
     },
     {
+      "path": "${WORKSPACE_ROOT}/repo-governance-hub/scripts/governance/check-rollout-coverage.ps1",
+      "source": "source/project/repo-governance-hub/custom/scripts/governance/check-rollout-coverage.ps1",
+      "sha256": ""
+    },
+    {
       "path": "${WORKSPACE_ROOT}/repo-governance-hub/scripts/governance/check-rollout-promotion-readiness.ps1",
       "source": "source/project/repo-governance-hub/custom/scripts/governance/check-rollout-promotion-readiness.ps1",
       "sha256": ""
@@ -947,6 +1002,11 @@
     {
       "path": "${WORKSPACE_ROOT}/repo-governance-hub/scripts/governance/check-skill-trigger-evals.ps1",
       "source": "source/project/_common/custom/scripts/governance/check-skill-trigger-evals.ps1",
+      "sha256": ""
+    },
+    {
+      "path": "${WORKSPACE_ROOT}/repo-governance-hub/scripts/governance/check-target-rollout-matrix.ps1",
+      "source": "source/project/repo-governance-hub/custom/scripts/governance/check-target-rollout-matrix.ps1",
       "sha256": ""
     },
     {
@@ -1351,22 +1411,22 @@
     },
     {
       "path": "${WORKSPACE_ROOT}/skills-manager/overrides/custom-windows-encoding-guard/scripts/bootstrap.ps1",
-      "source": "source/project/skills-manager/custom/overrides/custom-windows-encoding-guard/scripts/bootstrap.ps1",
+      "source": "source/project/repo-governance-hub/custom/overrides/custom-windows-encoding-guard/scripts/bootstrap.ps1",
       "sha256": ""
     },
     {
       "path": "${WORKSPACE_ROOT}/skills-manager/overrides/custom-windows-encoding-guard/SKILL.md",
-      "source": "source/project/skills-manager/custom/overrides/custom-windows-encoding-guard/SKILL.md",
+      "source": "source/project/repo-governance-hub/custom/overrides/custom-windows-encoding-guard/SKILL.md",
       "sha256": ""
     },
     {
       "path": "${WORKSPACE_ROOT}/skills-manager/overrides/governance-clarification-protocol/SKILL.md",
-      "source": "source/project/skills-manager/custom/overrides/governance-clarification-protocol/SKILL.md",
+      "source": "source/project/repo-governance-hub/custom/overrides/governance-clarification-protocol/SKILL.md",
       "sha256": ""
     },
     {
       "path": "${WORKSPACE_ROOT}/skills-manager/overrides/governance-teaching-lite-output/SKILL.md",
-      "source": "source/project/skills-manager/custom/overrides/governance-teaching-lite-output/SKILL.md",
+      "source": "source/project/repo-governance-hub/custom/overrides/governance-teaching-lite-output/SKILL.md",
       "sha256": ""
     },
     {
@@ -1400,6 +1460,16 @@
       "sha256": ""
     },
     {
+      "path": "${WORKSPACE_ROOT}/skills-manager/scripts/governance/check-control-retirement-candidates.ps1",
+      "source": "source/project/_common/custom/scripts/governance/check-control-retirement-candidates.ps1",
+      "sha256": ""
+    },
+    {
+      "path": "${WORKSPACE_ROOT}/skills-manager/scripts/governance/check-evidence-template-fields.ps1",
+      "source": "source/project/_common/custom/scripts/governance/check-evidence-template-fields.ps1",
+      "sha256": ""
+    },
+    {
       "path": "${WORKSPACE_ROOT}/skills-manager/scripts/governance/check-external-baselines.ps1",
       "source": "source/project/_common/custom/scripts/governance/check-external-baselines.ps1",
       "sha256": ""
@@ -1420,8 +1490,18 @@
       "sha256": ""
     },
     {
+      "path": "${WORKSPACE_ROOT}/skills-manager/scripts/governance/check-rollout-coverage.ps1",
+      "source": "source/project/_common/custom/scripts/governance/check-rollout-coverage.ps1",
+      "sha256": ""
+    },
+    {
       "path": "${WORKSPACE_ROOT}/skills-manager/scripts/governance/check-skill-trigger-evals.ps1",
       "source": "source/project/_common/custom/scripts/governance/check-skill-trigger-evals.ps1",
+      "sha256": ""
+    },
+    {
+      "path": "${WORKSPACE_ROOT}/skills-manager/scripts/governance/check-target-rollout-matrix.ps1",
+      "source": "source/project/_common/custom/scripts/governance/check-target-rollout-matrix.ps1",
       "sha256": ""
     },
     {
@@ -1543,26 +1623,6 @@
       "path": "${WORKSPACE_ROOT}/skills-manager/tools/browser-session/start-browser-session.ps1",
       "source": "source/project/skills-manager/custom/tools/browser-session/start-browser-session.ps1",
       "sha256": ""
-    },
-    {
-      "path": "scripts/governance/check-control-retirement-candidates.ps1",
-      "source": "source/project/repo-governance-hub/custom/scripts/governance/check-control-retirement-candidates.ps1",
-      "sha256": "A902A7036BF346CCEF121C3A84264D0A6C7319D3E98244D197437B8060D1531B"
-    },
-    {
-      "path": "scripts/governance/check-cross-repo-feedback.ps1",
-      "source": "source/project/repo-governance-hub/custom/scripts/governance/check-cross-repo-feedback.ps1",
-      "sha256": "F1D7D0A561BE70A98A45C481A1E9EBE00750404F392C6764FECCC6A0A0520EDF"
-    },
-    {
-      "path": "scripts/governance/check-evidence-template-fields.ps1",
-      "source": "source/project/repo-governance-hub/custom/scripts/governance/check-evidence-template-fields.ps1",
-      "sha256": "F64FB17363A6288F31C7FD50E5E23FFC5EF1C90D14C457AFB2260D1E8A6A6C27"
-    },
-    {
-      "path": "scripts/governance/check-target-rollout-matrix.ps1",
-      "source": "source/project/repo-governance-hub/custom/scripts/governance/check-target-rollout-matrix.ps1",
-      "sha256": "39E43C9CD7E6CE400DE2358A7C08AF8E018679F5C202D8B1449A06684C77FFB2"
     }
   ]
 }
