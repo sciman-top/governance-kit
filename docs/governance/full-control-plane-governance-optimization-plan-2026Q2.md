@@ -365,6 +365,10 @@ Every control should be assigned one of these classes:
     - `cross_repo_feedback_repo_failure_count`
     - `cross_repo_feedback_rollout_matrix_gap_count`
     - `cross_repo_feedback_report_path`
+- completed (Phase 4 slice D)
+  - monthly review now includes cross-repo feedback trend fields:
+    - `cross_repo_feedback_mom_delta`
+    - `cross_repo_feedback_instability_score`
+  - escalation decision for `cross_repo_feedback_snapshot_stale` remains `medium`; current evidence is too sparse to justify a higher block level.
 - next
-  - add monthly trend delta for cross-repo feedback (MoM change and instability score).
-  - evaluate whether `cross_repo_feedback_snapshot_stale` should escalate from medium to high for release windows.
+  - accumulate at least one more monthly sample before revisiting the escalation threshold.

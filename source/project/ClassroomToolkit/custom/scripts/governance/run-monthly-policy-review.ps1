@@ -22,6 +22,32 @@ if (-not [regex]::IsMatch($periodValue, "^[0-9]{4}-[0-9]{2}$")) {
   throw "Invalid -Period value: $periodValue (expected yyyy-MM)"
 }
 
+function Get-PreviousPeriod([string]$PeriodText) {
+  $parsed = [datetime]::MinValue
+  if (-not [datetime]::TryParseExact($PeriodText, "yyyy-MM", $null, [System.Globalization.DateTimeStyles]::None, [ref]$parsed)) {
+    return $null
+  }
+  return $parsed.AddMonths(-1).ToString("yyyy-MM")
+}
+
+function Read-KeyValueMap([string]$Path) {
+  $map = @{}
+  if (-not (Test-Path -LiteralPath $Path -PathType Leaf)) { return $map }
+  foreach ($line in @(Get-Content -LiteralPath $Path)) {
+    $text = [string]$line
+    if ([string]::IsNullOrWhiteSpace($text)) { continue }
+    if ($text.TrimStart().StartsWith("#")) { continue }
+    $idx = $text.IndexOf("=")
+    if ($idx -lt 1) { continue }
+    $key = $text.Substring(0, $idx).Trim()
+    $value = $text.Substring($idx + 1).Trim()
+    if (-not [string]::IsNullOrWhiteSpace($key)) {
+      $map[$key] = $value
+    }
+  }
+  return $map
+}
+
 if (Test-Path -LiteralPath $commonPath -PathType Leaf) {
   . $commonPath
   Assert-Command -Name powershell
@@ -51,6 +77,37 @@ if ($null -eq $review) {
 $reviewsDir = Join-Path $repoPath "docs\governance\reviews"
 if (-not (Test-Path -LiteralPath $reviewsDir -PathType Container)) {
   New-Item -ItemType Directory -Path $reviewsDir -Force | Out-Null
+}
+
+$previousPeriod = Get-PreviousPeriod -PeriodText $periodValue
+$previousReviewPath = ""
+if (-not [string]::IsNullOrWhiteSpace($previousPeriod)) {
+  $previousReviewPath = Join-Path $reviewsDir ($previousPeriod + "-monthly-review.md")
+}
+$previousReview = Read-KeyValueMap -Path $previousReviewPath
+$currentFeedbackCount = [int]$review.summary.cross_repo_feedback_ingested_count
+$previousFeedbackCount = -1
+if ($previousReview.ContainsKey("cross_repo_feedback_ingested_count")) {
+  [void][int]::TryParse([string]$previousReview["cross_repo_feedback_ingested_count"], [ref]$previousFeedbackCount)
+}
+$previousFeedbackStatus = ""
+if ($previousReview.ContainsKey("cross_repo_feedback_status")) {
+  $previousFeedbackStatus = [string]$previousReview["cross_repo_feedback_status"]
+}
+$crossRepoFeedbackMomDelta = "N/A"
+if ($previousFeedbackCount -ge 0) {
+  $crossRepoFeedbackMomDelta = ($currentFeedbackCount - $previousFeedbackCount).ToString()
+}
+$crossRepoFeedbackInstabilityScore = "N/A"
+if ($previousFeedbackCount -ge 0) {
+  $instability = [Math]::Abs($currentFeedbackCount - $previousFeedbackCount)
+  if (-not [string]::IsNullOrWhiteSpace($previousFeedbackStatus) -and -not [string]::Equals($previousFeedbackStatus, [string]$review.summary.cross_repo_feedback_status, [System.StringComparison]::OrdinalIgnoreCase)) {
+    $instability += 1
+  }
+  if ([string]::Equals([string]$review.summary.cross_repo_feedback_status, "alert", [System.StringComparison]::OrdinalIgnoreCase)) {
+    $instability += 1
+  }
+  $crossRepoFeedbackInstabilityScore = [string]$instability
 }
 
 $reviewPath = Join-Path $reviewsDir ($periodValue + "-monthly-review.md")
@@ -90,6 +147,8 @@ $lines = [System.Collections.Generic.List[string]]::new()
 [void]$lines.Add(("cross_repo_feedback_repo_failure_count={0}" -f [int]$review.summary.cross_repo_feedback_repo_failure_count))
 [void]$lines.Add(("cross_repo_feedback_rollout_matrix_gap_count={0}" -f [int]$review.summary.cross_repo_feedback_rollout_matrix_gap_count))
 [void]$lines.Add(("cross_repo_feedback_report_path={0}" -f [string]$review.summary.cross_repo_feedback_report_path))
+[void]$lines.Add(("cross_repo_feedback_mom_delta={0}" -f [string]$crossRepoFeedbackMomDelta))
+[void]$lines.Add(("cross_repo_feedback_instability_score={0}" -f [string]$crossRepoFeedbackInstabilityScore))
 [void]$lines.Add(("alert_snapshot_path={0}" -f [string]$review.alert_snapshot_path))
 [void]$lines.Add("")
 [void]$lines.Add("## Alerts")
@@ -123,6 +182,8 @@ $result = [pscustomobject]@{
   recurring_review_exit_code = [int]$reviewExit
   output_path = ($reviewPath -replace '\\', '/')
   alert_snapshot_path = [string]$review.alert_snapshot_path
+  cross_repo_feedback_mom_delta = [string]$crossRepoFeedbackMomDelta
+  cross_repo_feedback_instability_score = [string]$crossRepoFeedbackInstabilityScore
   alerts = @($review.alerts)
 }
 
