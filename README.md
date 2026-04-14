@@ -71,3 +71,45 @@ If a gate is objectively not applicable for a documentation-only change, record 
 
 ## License
 MIT
+
+## Why this project
+- Pain: Inconsistent repo setup and repeated manual checks.
+- Result: Predictable setup and faster quality verification.
+- Differentiator: Uses governance templates plus scripted validation.
+
+## Who it is for
+- Repository maintainers
+- Standardizing project governance and docs
+- Use this when manual governance work starts to drift
+
+## Quick Start (5 Minutes)
+### Prerequisites
+- PowerShell 7+
+- Git working copy
+
+### Run
+```bash
+powershell -File scripts/doctor.ps1
+```
+
+### Expected Output
+- HEALTH=GREEN in doctor output
+- Verification gates report PASS
+
+## What you can try first
+- Verify current state
+- Run install and re-check
+- Track evidence and rollback path
+
+## FAQ
+- Q: Validation fails
+- A: Fix the first failed gate from verify output and rerun doctor
+
+## Limitations
+- Requires governance scripts to be present
+- Policy files must stay in sync with targets
+
+## Next steps
+- docs/
+- RELEASE_TEMPLATE.md
+- issues/

@@ -22,7 +22,11 @@ $projectCustomPath = Join-Path $kitRoot "config\project-custom-files.json"
 $repoName = Split-Path -Leaf $repo
 
 $repos = Read-JsonArray $reposPath
-$newRepos = @($repos | Where-Object { -not ([string]$_).Equals($repo, [System.StringComparison]::OrdinalIgnoreCase) })
+$newRepos = @(
+  $repos |
+  ForEach-Object { Get-RepoName ([string]$_) } |
+  Where-Object { -not ([string]$_).Equals($repoName, [System.StringComparison]::OrdinalIgnoreCase) }
+)
 $repoRemoved = $repos.Count - $newRepos.Count
 
 $targets = Read-JsonArray $targetsPath
@@ -101,7 +105,7 @@ if ($Mode -eq "plan") {
 }
 
 Write-JsonArray $reposPath $newRepos 4
-Write-Host "[UPDATED] repositories removed: $repo"
+Write-Host "[UPDATED] repositories removed: $repoName"
 Write-JsonArray $targetsPath $filtered 6
 if ($projectRuleAllowUpdated) {
   $policy.allowProjectRulesForRepos = @($policyFilteredAllow)

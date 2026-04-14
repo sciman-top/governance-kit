@@ -32,9 +32,12 @@ $boundaryReviewTemplate = "docs/governance/boundary-review-template.zh-CN.md"
 $reposRaw = Read-JsonArray $reposPath
 $repos = [System.Collections.Generic.List[string]]::new()
 foreach ($r in @($reposRaw)) {
-  [void]$repos.Add([string]$r)
+  $repoKey = Get-RepoName ([string]$r)
+  if (-not [string]::IsNullOrWhiteSpace($repoKey)) {
+    [void]$repos.Add($repoKey)
+  }
 }
-$repoExists = @($repos | Where-Object { ([string]$_).Equals($repo, [System.StringComparison]::OrdinalIgnoreCase) }).Count -gt 0
+$repoExists = @($repos | Where-Object { ([string]$_).Equals($repoName, [System.StringComparison]::OrdinalIgnoreCase) }).Count -gt 0
 
 $allowProjectRuleRepos = Read-ProjectRuleAllowRepos $kitRoot
 $allowProjectRules = Is-RepoAllowedForProjectRules -Repo $repo -AllowRepos $allowProjectRuleRepos
@@ -223,11 +226,11 @@ if ($Mode -eq "plan") {
 }
 
 if (-not $repoExists) {
-  [void]$repos.Add($repo)
+  [void]$repos.Add($repoName)
   Write-JsonArray $reposPath @($repos) 4
-  Write-Host "[ADDED] repositories: $repo"
+  Write-Host "[ADDED] repositories: $repoName"
 } else {
-  Write-Host "[SKIP] repositories already has: $repo"
+  Write-Host "[SKIP] repositories already has: $repoName"
 }
 
 Write-JsonArray $targetsPath @($targets) 6

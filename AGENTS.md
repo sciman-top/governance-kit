@@ -2,7 +2,7 @@
 **项目**: repo-governance-hub  
 **适用范围**: 项目级（仓库根）  
 **版本**: 3.85  
-**最后更新**: 2026-04-10
+**最后更新**: 2026-04-14
 
 ## 1. 阅读指引（必读）
 - 本文件承接 `GlobalUser/AGENTS.md`，仅定义 repo-governance-hub 的仓库落地动作（WHERE/HOW）。
@@ -190,12 +190,18 @@
 - `skills-manager overrides` 属于跨仓协作能力，不得被视为本仓 standalone 发布运行时硬依赖。
 - standalone 发布判定由 `scripts/verify-release-profile.ps1` + `config/standalone-release-policy.json` 执行：`release_enabled=true` 命中外部绝对路径依赖即阻断，`release_enabled=false` 记 advisory。
 - 规则/文档中允许描述协作路径，但发布脚本与发布产物不得隐式要求 `${WORKSPACE_ROOT}/skills-manager` 存在。
+- `config/repositories.json` 只保存仓名级注册项（例如 `ClassroomToolkit`），脚本运行时再通过 `${WORKSPACE_ROOT}` 解析回实际根路径。
 - 详情：`docs/governance/standalone-release-dependency-contract.md`。
 ### C.19 Worktree 隔离目录约定
 - 默认归宿：`~/.config/superpowers/worktrees/repo-governance-hub/`（项目外全局目录，避免仓内污染）。
 - 本仓无现成目录且无更高优先级指令时，外层 AI 代理应直接使用上述默认归宿，不再二次询问。
 - 若临时改用仓内 `.worktrees/` 或 `worktrees/`，必须先通过 `git check-ignore` 验证已忽略，未忽略先修复 `.gitignore` 再创建。
 - 安全约束：同一任务仅使用一种 worktree 根目录，避免跨目录混用导致证据与回滚路径分裂。
+### C.20 目标仓路径策略（相对路径优先）
+- 目标仓日常 AI 编码（读写文件、运行脚本、给出命令示例）默认使用“相对仓库根路径”，避免绑定开发机绝对路径。
+- 跨仓定位统一使用 `${WORKSPACE_ROOT}` 等锚点变量；禁止写死 `D:/...`、`C:/...`、`/home/...`、`/Users/...`。
+- 脚本实现要求：优先以脚本自身位置与仓库根推导路径，不依赖调用时 `cwd`。
+- 仅在平台能力或安全策略明确要求绝对路径时允许例外；必须在证据中记录 `reason + alternative_verification + rollback_point`。
 ## D. 维护校验清单（项目级）
 - 仅落地本仓事实，不复述全局规则正文。
 - 与全局职责互补，不重叠、不缺失。

@@ -6,14 +6,72 @@ param(
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
+$commonPath = [System.IO.Path]::GetFullPath((Join-Path $PSScriptRoot "..\lib\common.ps1"))
+if (Test-Path -LiteralPath $commonPath -PathType Leaf) {
+  . $commonPath
+}
 
 function Resolve-NormalizedPath([string]$PathText) {
   if ([string]::IsNullOrWhiteSpace($PathText)) { return "" }
+  $raw = [string]$PathText
+  $hasTemplateToken = $raw -match '\$\{(WORKSPACE_ROOT|USERPROFILE)\}|\$WORKSPACE_ROOT|\$USERPROFILE|%WORKSPACE_ROOT%|%USERPROFILE%'
+  function Get-FallbackWorkspaceRoot {
+    $envRoots = @(
+      $env:WORKSPACE_ROOT,
+      $env:CODE_ROOT,
+      $env:REPO_WORKSPACE_ROOT
+    ) | Where-Object { -not [string]::IsNullOrWhiteSpace([string]$_) }
+    foreach ($candidate in @($envRoots)) {
+      try {
+        return ([System.IO.Path]::GetFullPath(($candidate -replace '/', '\')) -replace '\\', '/').TrimEnd('/')
+      } catch {}
+    }
+    try {
+      $governanceResolved = [System.IO.Path]::GetFullPath(([string]$GovernanceRoot -replace '/', '\'))
+      $governanceParent = Split-Path -Parent $governanceResolved
+      if (-not [string]::IsNullOrWhiteSpace($governanceParent)) {
+        return ([System.IO.Path]::GetFullPath($governanceParent) -replace '\\', '/').TrimEnd('/')
+      }
+    } catch {}
+    try {
+      $kitRoot = [System.IO.Path]::GetFullPath((Join-Path $PSScriptRoot "..\.."))
+      $kitParent = Split-Path -Parent $kitRoot
+      if (-not [string]::IsNullOrWhiteSpace($kitParent)) {
+        return ([System.IO.Path]::GetFullPath($kitParent) -replace '\\', '/').TrimEnd('/')
+      }
+    } catch {}
+    return ""
+  }
+  function Resolve-WithoutWorkspaceHelper([string]$InputPath) {
+    $expanded = [string]$InputPath
+    $workspaceRoot = Get-FallbackWorkspaceRoot
+    if (-not [string]::IsNullOrWhiteSpace($workspaceRoot)) {
+      $expanded = $expanded.Replace('${WORKSPACE_ROOT}', $workspaceRoot).Replace('$WORKSPACE_ROOT', $workspaceRoot).Replace('%WORKSPACE_ROOT%', $workspaceRoot)
+    }
+    $userProfileRoot = @(
+      $env:USERPROFILE,
+      [System.Environment]::GetFolderPath([System.Environment+SpecialFolder]::UserProfile)
+    ) | Where-Object { -not [string]::IsNullOrWhiteSpace([string]$_) } | Select-Object -First 1
+    if (-not [string]::IsNullOrWhiteSpace([string]$userProfileRoot)) {
+      $userProfileNorm = ([System.IO.Path]::GetFullPath(([string]$userProfileRoot -replace '/', '\')) -replace '\\', '/').TrimEnd('/')
+      $expanded = $expanded.Replace('${USERPROFILE}', $userProfileNorm).Replace('$USERPROFILE', $userProfileNorm).Replace('%USERPROFILE%', $userProfileNorm)
+    }
+    $candidate = $expanded -replace '/', '\'
+    if ([System.IO.Path]::IsPathRooted($candidate)) {
+      return ([System.IO.Path]::GetFullPath($candidate) -replace '\\', '/').TrimEnd('/')
+    }
+    return ([System.IO.Path]::GetFullPath((Join-Path (Get-Location).Path $candidate)) -replace '\\', '/').TrimEnd('/')
+  }
   try {
-    return (Resolve-WorkspacePath -PathText $PathText) -replace '\\', '/'
+    if ($hasTemplateToken -and (Get-Command -Name Resolve-WorkspacePath -ErrorAction SilentlyContinue)) {
+      return (Resolve-WorkspacePath -PathText $raw) -replace '\\', '/'
+    }
+    return (Resolve-WithoutWorkspaceHelper -InputPath $raw)
   } catch {
-    $resolved = Resolve-Path -LiteralPath $PathText -ErrorAction Stop
-    return ([System.IO.Path]::GetFullPath($resolved.Path) -replace '\\', '/').TrimEnd('/')
+    if (Get-Command -Name Resolve-WorkspacePath -ErrorAction SilentlyContinue) {
+      return (Resolve-WorkspacePath -PathText $raw) -replace '\\', '/'
+    }
+    return (Resolve-WithoutWorkspaceHelper -InputPath $raw)
   }
 }
 
@@ -161,7 +219,10 @@ function New-DefaultPolicy {
     event_relative_path = ".governance/skill-candidates/events.jsonl"
     registry_relative_path = ".governance/skill-candidates/promotion-registry.json"
     skills_root = '${WORKSPACE_ROOT}/skills-manager'
+    skills_manager_root = ""
     overrides_relative_path = "overrides"
+    overrides_source_root = ""
+    overrides_source_relative_path = ""
     auto_run_skills_manager_gates = $true
     collapse_suffix_pattern = "^(.*-\d{8})-[a-z]$"
     exclude_signature_patterns = @(
@@ -660,7 +721,11 @@ $reposPath = Join-Path ($kitRoot -replace '/', '\') "config\repositories.json"
 if (-not (Test-Path -LiteralPath $reposPath -PathType Leaf)) {
   throw "repositories.json not found: $reposPath"
 }
-$repos = Normalize-RepoList (Get-Content -LiteralPath $reposPath -Raw | ConvertFrom-Json)
+$repos = @(
+  (Normalize-RepoList (Get-Content -LiteralPath $reposPath -Raw | ConvertFrom-Json)) |
+  ForEach-Object { Resolve-NormalizedPath ([string]$_) } |
+  Where-Object { -not [string]::IsNullOrWhiteSpace([string]$_) }
+)
 if ($Diagnostics) {
   Write-Host ("skill_promotion.repos_count={0}" -f $repos.Count)
   Write-Host ("skill_promotion.repos_type={0}" -f $repos.GetType().FullName)
@@ -691,8 +756,9 @@ $eventCount = 0
 foreach ($repoEntry in @($repos)) {
   $repoText = [string]$repoEntry
   if ([string]::IsNullOrWhiteSpace($repoText)) { continue }
-  if (-not (Test-Path -LiteralPath ($repoText -replace '/', '\') -PathType Container)) { continue }
-  $eventPath = Join-Path (($repoText -replace '/', '\')) (($policy.event_relative_path -replace '/', '\'))
+  $repoWin = $repoText -replace '/', '\'
+  if (-not (Test-Path -LiteralPath $repoWin -PathType Container)) { continue }
+  $eventPath = Join-Path $repoWin (($policy.event_relative_path -replace '/', '\'))
   if ($Diagnostics) {
     Write-Host ("skill_promotion.scan repo={0} event_path={1} exists={2}" -f ($repoText -replace '\\', '/'), ($eventPath -replace '\\', '/'), (Test-Path -LiteralPath $eventPath -PathType Leaf))
   }
@@ -739,6 +805,27 @@ if ($null -ne $policy.PSObject.Properties['optimize_existing_without_ack']) {
 $createMinUniqueRepos = [Math]::Max(1, [int]$policy.create_min_unique_repos)
 $optimizeMinNewVariants = [Math]::Max(1, [int]$policy.optimize_min_new_variants)
 $skillsRoot = Resolve-NormalizedPath $policy.skills_root
+$skillsManagerRoot = $skillsRoot
+if ($null -ne $policy.PSObject.Properties['skills_manager_root']) {
+  $candidateSkillsManagerRoot = [string]$policy.skills_manager_root
+  if (-not [string]::IsNullOrWhiteSpace($candidateSkillsManagerRoot)) {
+    $skillsManagerRoot = Resolve-NormalizedPath $candidateSkillsManagerRoot
+  }
+}
+$overridesSourceRoot = $skillsRoot
+if ($null -ne $policy.PSObject.Properties['overrides_source_root']) {
+  $candidateOverridesSourceRoot = [string]$policy.overrides_source_root
+  if (-not [string]::IsNullOrWhiteSpace($candidateOverridesSourceRoot)) {
+    $overridesSourceRoot = Resolve-NormalizedPath $candidateOverridesSourceRoot
+  }
+}
+$overridesRelativePath = [string]$policy.overrides_relative_path
+if ($null -ne $policy.PSObject.Properties['overrides_source_relative_path']) {
+  $candidateOverridesRelativePath = [string]$policy.overrides_source_relative_path
+  if (-not [string]::IsNullOrWhiteSpace($candidateOverridesRelativePath)) {
+    $overridesRelativePath = $candidateOverridesRelativePath
+  }
+}
 $triggerEvalSummaryRelativePath = [string]$policy.trigger_eval_summary_relative_path
 if ([string]::IsNullOrWhiteSpace($triggerEvalSummaryRelativePath)) {
   $triggerEvalSummaryRelativePath = ".governance/skill-candidates/trigger-eval-summary.json"
@@ -757,10 +844,10 @@ if ($null -ne $policy.PSObject.Properties['require_trigger_eval_for_create']) {
   $requireEvalForCreate = [bool]$policy.require_trigger_eval_for_create
 }
 if ($requireEvalForCreate) {
-  $triggerEvalRefreshState = Try-RefreshTriggerEvalSummary -KitRoot $kitRoot -TargetRepoRoot $skillsRoot -OutputRelativePath $triggerEvalSummaryRelativePath
+  $triggerEvalRefreshState = Try-RefreshTriggerEvalSummary -KitRoot $kitRoot -TargetRepoRoot $skillsManagerRoot -OutputRelativePath $triggerEvalSummaryRelativePath
 }
-$triggerEvalState = Get-TriggerEvalGateState -KitRoot $skillsRoot -Policy $policy
-$overridesRoot = Join-Path ($skillsRoot -replace '/', '\') (($policy.overrides_relative_path -replace '/', '\'))
+$triggerEvalState = Get-TriggerEvalGateState -KitRoot $skillsManagerRoot -Policy $policy
+$overridesRoot = Join-Path ($overridesSourceRoot -replace '/', '\') (($overridesRelativePath -replace '/', '\'))
 $overridesFamilyLookup = Get-ExistingFamilyMapFromOverrides -OverridesRoot $overridesRoot -CollapsePattern $collapsePattern -ExcludePatterns $excludePatterns
 $knownExistingFamilies = @{}
 foreach ($k in @($promotedLookup.Keys)) {
@@ -903,7 +990,7 @@ foreach ($key in $groupMap.Keys) {
 }
 
 $selected = @($actionable | Sort-Object -Property @{Expression="count";Descending=$true}, @{Expression="latest_event";Descending=$true} | Select-Object -First $maxPromotions)
-$summaryPath = Join-Path ($skillsRoot -replace '/', '\') (($policy.summary_relative_path -replace '/', '\'))
+$summaryPath = Join-Path ($skillsManagerRoot -replace '/', '\') (($policy.summary_relative_path -replace '/', '\'))
 if (-not (Test-Path -LiteralPath $overridesRoot -PathType Container)) {
   New-Item -ItemType Directory -Force -Path $overridesRoot | Out-Null
 }
@@ -1060,7 +1147,7 @@ Save-Registry -PathText $registryPath -Registry $registry
 
 $gatesRan = $false
 if ($promotedItems.Count -gt 0 -and [bool]$policy.auto_run_skills_manager_gates) {
-  Invoke-SkillsManagerGates -SkillsRoot $skillsRoot
+  Invoke-SkillsManagerGates -SkillsRoot $skillsManagerRoot
   $gatesRan = $true
 }
 
@@ -1127,6 +1214,9 @@ $result = [ordered]@{
   trigger_eval_summary_refresh_error = [string]$triggerEvalRefreshState.error
   trigger_eval_summary_refresh_script_path = [string]$triggerEvalRefreshState.script_path
   skills_root = [string]$skillsRoot
+  skills_manager_root = [string]$skillsManagerRoot
+  overrides_source_root = [string]$overridesSourceRoot
+  overrides_source_relative_path = [string]$overridesRelativePath
   overrides_root = ($overridesRoot -replace '\\', '/')
   decision_audit = @($decisionAudit.ToArray())
   planned_promotions = $plannedPromotions

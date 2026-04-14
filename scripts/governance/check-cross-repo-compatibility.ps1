@@ -12,6 +12,15 @@ function Resolve-NormalizedPath([string]$PathText) {
   return ([System.IO.Path]::GetFullPath($resolved.Path) -replace '\\', '/').TrimEnd('/')
 }
 
+function Resolve-RepoEntry([string]$WorkspaceRoot, [string]$PathText) {
+  if ([string]::IsNullOrWhiteSpace($PathText)) { return "" }
+  $candidate = [string]$PathText
+  if (-not [System.IO.Path]::IsPathRooted(($candidate -replace '/', '\'))) {
+    $candidate = Join-Path $WorkspaceRoot $candidate
+  }
+  return Resolve-NormalizedPath $candidate
+}
+
 function Read-Json([string]$PathText, [object]$DefaultValue) {
   if (-not (Test-Path -LiteralPath $PathText -PathType Leaf)) { return $DefaultValue }
   try {
@@ -23,6 +32,7 @@ function Read-Json([string]$PathText, [object]$DefaultValue) {
 
 $repoPath = Resolve-NormalizedPath $RepoRoot
 $repoWin = $repoPath -replace '/', '\'
+$workspaceRoot = Split-Path -Parent $repoPath
 $policyPath = Join-Path $repoWin ($PolicyRelativePath -replace '/', '\')
 $repositoriesPath = Join-Path $repoWin "config\repositories.json"
 $verifyReleaseProfileScript = Join-Path $repoWin "scripts\verify-release-profile.ps1"
@@ -57,7 +67,7 @@ if (-not $enabled) {
 
 $reposRaw = Read-Json -PathText $repositoriesPath -DefaultValue @()
 if ($null -eq $reposRaw) { $reposRaw = @() }
-$repoList = @($reposRaw | ForEach-Object { [string]$_ } | Where-Object { -not [string]::IsNullOrWhiteSpace([string]$_) })
+$repoList = @($reposRaw | ForEach-Object { Resolve-RepoEntry $workspaceRoot ([string]$_) } | Where-Object { -not [string]::IsNullOrWhiteSpace([string]$_) })
 $result.repo_count = $repoList.Count
 
 $requiredFiles = @()

@@ -88,10 +88,10 @@ function Test-QuickStartInReadme([string]$Path) {
 
 $repos = @()
 if (-not [string]::IsNullOrWhiteSpace($RepoPath)) {
-  $repos = @([System.IO.Path]::GetFullPath(($RepoPath -replace '/', '\')))
+  $repos = @(Normalize-Repo ([string]$RepoPath))
 } else {
   $reposPath = Join-Path $kitRoot "config\repositories.json"
-  $repos = @((Read-JsonArray $reposPath) | ForEach-Object { [System.IO.Path]::GetFullPath(([string]$_ -replace '/', '\')) })
+  $repos = @((Read-JsonArray $reposPath) | ForEach-Object { Normalize-Repo ([string]$_) })
 }
 
 $policyPath = Join-Path $kitRoot "config\growth-pack-policy.json"

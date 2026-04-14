@@ -28,8 +28,8 @@ $decisionSummary = [System.Collections.Generic.List[object]]::new()
 foreach ($repo in $repos) {
   $repoText = [string]$repo
   if ([string]::IsNullOrWhiteSpace($repoText)) { continue }
-  $repoResolved = Resolve-Path -LiteralPath $repoText -ErrorAction SilentlyContinue
-  if ($null -eq $repoResolved) {
+  $repoResolvedPath = Normalize-Repo $repoText
+  if (-not (Test-Path -LiteralPath ($repoResolvedPath -replace '/', '\') -PathType Container)) {
     $entry = [pscustomobject]@{
       repo = ($repoText -replace '\\', '/')
       status = "FAIL"
@@ -40,7 +40,7 @@ foreach ($repo in $repos) {
     continue
   }
 
-  $jsonRaw = Invoke-ChildScriptCapture -ScriptPath $verifyScript -ScriptArgs @("-RepoPath", $repoResolved.Path, "-AsJson")
+  $jsonRaw = Invoke-ChildScriptCapture -ScriptPath $verifyScript -ScriptArgs @("-RepoPath", $repoResolvedPath, "-AsJson")
   $obj = $jsonRaw | ConvertFrom-Json
   [void]$results.Add($obj)
   [void]$decisionSummary.Add([pscustomobject]@{
