@@ -4286,6 +4286,65 @@ text2
     }
   }
 
+  it "check-update-triggers reports rollout metadata coverage gap" {
+    $tmp = Join-Path $env:TEMP ("govkit-test-" + [guid]::NewGuid().ToString("N"))
+    try {
+      New-Item -ItemType Directory -Path (Join-Path $tmp "scripts\governance") -Force | Out-Null
+      New-Item -ItemType Directory -Path (Join-Path $tmp "scripts\lib") -Force | Out-Null
+      New-Item -ItemType Directory -Path (Join-Path $tmp "config") -Force | Out-Null
+
+      Copy-Item -Path (Join-Path $repoRoot "scripts\governance\check-update-triggers.ps1") -Destination (Join-Path $tmp "scripts\governance\check-update-triggers.ps1") -Force
+      Copy-Item -Path (Join-Path $repoRoot "scripts\governance\check-rollout-coverage.ps1") -Destination (Join-Path $tmp "scripts\governance\check-rollout-coverage.ps1") -Force
+      Copy-Item -Path (Join-Path $repoRoot "scripts\lib\common.ps1") -Destination (Join-Path $tmp "scripts\lib\common.ps1") -Force
+
+      @(
+        "E:/CODE/ClassroomToolkit",
+        "E:/CODE/skills-manager",
+        "E:/CODE/repo-governance-hub"
+      ) | ConvertTo-Json | Set-Content -Path (Join-Path $tmp "config\repositories.json") -Encoding UTF8
+
+      @'
+{
+  "default": { "phase": "observe", "blockExpiredWaiver": false },
+  "repos": [
+    { "repo": "E:/CODE/ClassroomToolkit", "phase": "observe", "blockExpiredWaiver": false }
+  ]
+}
+'@ | Set-Content -Path (Join-Path $tmp "config\rule-rollout.json") -Encoding UTF8
+
+      @'
+{
+  "schema_version": "1.0",
+  "cadence": { "recurring_review_days": 7, "monthly_review_day": 1 },
+  "triggers": {
+    "cli_version_drift": { "enabled": false, "severity": "high" },
+    "rollout_observe_overdue": { "enabled": false, "severity": "medium" },
+    "rollout_metadata_coverage_gap": { "enabled": true, "severity": "medium", "max_allowed_gap_count": 0, "max_allowed_orphan_count": 0 },
+    "metrics_snapshot_stale": { "enabled": false, "severity": "medium", "max_age_days": 8 },
+    "waiver_expired_unrecovered": { "enabled": false, "severity": "high" },
+    "platform_na_expired": { "enabled": false, "severity": "medium" },
+    "release_distribution_policy_drift": { "enabled": false, "severity": "high" },
+    "skill_trigger_eval_summary_stale": { "enabled": false, "severity": "medium", "max_age_days": 8 },
+    "low_value_orphan_custom_sources": { "enabled": false, "severity": "medium" },
+    "gate_noise_budget_breach": { "enabled": false, "severity": "medium", "max_false_positive_rate": 0.05, "max_gate_latency_delta_ms": 5000, "alert_on_data_gap": false },
+    "stale_progressive_controls_present": { "enabled": false, "severity": "medium", "max_allowed_count": 0 },
+    "not_observable_controls_present": { "enabled": false, "severity": "medium", "max_allowed_count": 0 },
+    "rule_duplication_detected": { "enabled": false, "severity": "medium" }
+  }
+}
+'@ | Set-Content -Path (Join-Path $tmp "config\update-trigger-policy.json") -Encoding UTF8
+
+      $json = & powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $tmp "scripts\governance\check-update-triggers.ps1") -RepoRoot $tmp -AsJson
+      $LASTEXITCODE | should be 1
+      $obj = $json | ConvertFrom-Json
+      [int]$obj.rollout_metadata_coverage_gap_count | should be 2
+      [int]$obj.rollout_metadata_orphan_count | should be 0
+      @($obj.alerts | Where-Object { $_.id -eq "rollout_metadata_coverage_gap" }).Count | should be 1
+    } finally {
+      if (Test-Path $tmp) { Remove-Item -LiteralPath $tmp -Recurse -Force }
+    }
+  }
+
   it "check-update-triggers reports dependency-review policy drift" {
     $tmp = Join-Path $env:TEMP ("govkit-test-" + [guid]::NewGuid().ToString("N"))
     try {

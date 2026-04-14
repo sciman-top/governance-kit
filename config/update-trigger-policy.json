@@ -13,6 +13,12 @@
       "enabled": true,
       "severity": "medium"
     },
+    "rollout_metadata_coverage_gap": {
+      "enabled": true,
+      "severity": "medium",
+      "max_allowed_gap_count": 0,
+      "max_allowed_orphan_count": 0
+    },
     "metrics_snapshot_stale": {
       "enabled": true,
       "severity": "medium",

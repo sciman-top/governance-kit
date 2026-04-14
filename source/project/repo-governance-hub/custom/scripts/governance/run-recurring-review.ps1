@@ -139,6 +139,8 @@ function Write-AlertSnapshot([object]$ReviewResult, [string]$RootPath) {
   [void]$lines.Add(("stale_progressive_control_count={0}" -f $ReviewResult.summary.stale_progressive_control_count))
   [void]$lines.Add(("not_observable_control_count={0}" -f $ReviewResult.summary.not_observable_control_count))
   [void]$lines.Add(("rule_duplication_count={0}" -f $ReviewResult.summary.rule_duplication_count))
+  [void]$lines.Add(("rollout_metadata_coverage_gap_count={0}" -f $ReviewResult.summary.rollout_metadata_coverage_gap_count))
+  [void]$lines.Add(("rollout_metadata_orphan_count={0}" -f $ReviewResult.summary.rollout_metadata_orphan_count))
   [void]$lines.Add(("release_distribution_policy_drift_count={0}" -f $ReviewResult.summary.release_distribution_policy_drift_count))
   [void]$lines.Add(("skill_trigger_eval_status={0}" -f $ReviewResult.summary.skill_trigger_eval_status))
   [void]$lines.Add(("skill_trigger_eval_grouped_query_count={0}" -f $ReviewResult.summary.skill_trigger_eval_grouped_query_count))
@@ -812,6 +814,8 @@ $orphanCustomSourceCount = 0
 $staleProgressiveControlCount = 0
 $notObservableControlCount = 0
 $ruleDuplicationCount = 0
+$rolloutMetadataCoverageGapCount = 0
+$rolloutMetadataOrphanCount = 0
 $releaseDistributionPolicyDriftCount = 0
 $tokenBalanceStatus = "UNKNOWN"
 $tokenBalanceWarningCount = 0
@@ -851,6 +855,12 @@ if ($trigger.exit_code -ne 0) {
   if ($null -ne $triggerObj -and $triggerObj.PSObject.Properties.Name -contains "rule_duplication_count") {
     $ruleDuplicationCount = [int]$triggerObj.rule_duplication_count
   }
+  if ($null -ne $triggerObj -and $triggerObj.PSObject.Properties.Name -contains "rollout_metadata_coverage_gap_count") {
+    $rolloutMetadataCoverageGapCount = [int]$triggerObj.rollout_metadata_coverage_gap_count
+  }
+  if ($null -ne $triggerObj -and $triggerObj.PSObject.Properties.Name -contains "rollout_metadata_orphan_count") {
+    $rolloutMetadataOrphanCount = [int]$triggerObj.rollout_metadata_orphan_count
+  }
   if ($null -ne $triggerObj -and $triggerObj.PSObject.Properties.Name -contains "release_distribution_policy_drift_count") {
     $releaseDistributionPolicyDriftCount = [int]$triggerObj.release_distribution_policy_drift_count
   }
@@ -860,6 +870,8 @@ if ($trigger.exit_code -ne 0) {
     $staleProgressiveCountMatch = [regex]::Match($rawTriggerText, "(?m)^stale_progressive_control_count=([0-9]+)\s*$")
     $notObservableCountMatch = [regex]::Match($rawTriggerText, "(?m)^not_observable_control_count=([0-9]+)\s*$")
     $ruleDupCountMatch = [regex]::Match($rawTriggerText, "(?m)^rule_duplication_count=([0-9]+)\s*$")
+    $rolloutMetadataCoverageGapMatch = [regex]::Match($rawTriggerText, "(?m)^rollout_metadata_coverage_gap_count=([0-9]+)\s*$")
+    $rolloutMetadataOrphanMatch = [regex]::Match($rawTriggerText, "(?m)^rollout_metadata_orphan_count=([0-9]+)\s*$")
     $driftCountMatch = [regex]::Match($rawTriggerText, "(?m)^release_distribution_policy_drift_count=([0-9]+)\s*$")
     if ($alertCountMatch.Success) {
       $updateTriggerAlertCount = [int]$alertCountMatch.Groups[1].Value
@@ -875,6 +887,12 @@ if ($trigger.exit_code -ne 0) {
     }
     if ($ruleDupCountMatch.Success) {
       $ruleDuplicationCount = [int]$ruleDupCountMatch.Groups[1].Value
+    }
+    if ($rolloutMetadataCoverageGapMatch.Success) {
+      $rolloutMetadataCoverageGapCount = [int]$rolloutMetadataCoverageGapMatch.Groups[1].Value
+    }
+    if ($rolloutMetadataOrphanMatch.Success) {
+      $rolloutMetadataOrphanCount = [int]$rolloutMetadataOrphanMatch.Groups[1].Value
     }
     if ($driftCountMatch.Success) {
       $releaseDistributionPolicyDriftCount = [int]$driftCountMatch.Groups[1].Value
@@ -1109,6 +1127,8 @@ $result = [pscustomobject]@{
     stale_progressive_control_count = [int]$staleProgressiveControlCount
     not_observable_control_count = [int]$notObservableControlCount
     rule_duplication_count = [int]$ruleDuplicationCount
+    rollout_metadata_coverage_gap_count = [int]$rolloutMetadataCoverageGapCount
+    rollout_metadata_orphan_count = [int]$rolloutMetadataOrphanCount
     release_distribution_policy_drift_count = [int]$releaseDistributionPolicyDriftCount
     token_balance_status = $tokenBalanceStatus
     token_balance_warning_count = [int]$tokenBalanceWarningCount
@@ -1225,6 +1245,8 @@ Write-Host ("orphan_custom_source_count={0}" -f $result.summary.orphan_custom_so
 Write-Host ("stale_progressive_control_count={0}" -f $result.summary.stale_progressive_control_count)
 Write-Host ("not_observable_control_count={0}" -f $result.summary.not_observable_control_count)
 Write-Host ("rule_duplication_count={0}" -f $result.summary.rule_duplication_count)
+Write-Host ("rollout_metadata_coverage_gap_count={0}" -f $result.summary.rollout_metadata_coverage_gap_count)
+Write-Host ("rollout_metadata_orphan_count={0}" -f $result.summary.rollout_metadata_orphan_count)
 Write-Host ("release_distribution_policy_drift_count={0}" -f $result.summary.release_distribution_policy_drift_count)
 Write-Host ("token_balance_status={0}" -f $result.summary.token_balance_status)
 Write-Host ("token_balance_warning_count={0}" -f $result.summary.token_balance_warning_count)

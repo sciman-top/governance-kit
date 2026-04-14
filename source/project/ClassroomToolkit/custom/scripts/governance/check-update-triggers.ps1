@@ -110,6 +110,12 @@ if ($null -eq $policy) {
     triggers = [pscustomobject]@{
       cli_version_drift = [pscustomobject]@{ enabled = $true; severity = "high" }
       rollout_observe_overdue = [pscustomobject]@{ enabled = $true; severity = "medium" }
+      rollout_metadata_coverage_gap = [pscustomobject]@{
+        enabled = $true
+        severity = "medium"
+        max_allowed_gap_count = 0
+        max_allowed_orphan_count = 0
+      }
       metrics_snapshot_stale = [pscustomobject]@{ enabled = $true; severity = "medium"; max_age_days = 8 }
       waiver_expired_unrecovered = [pscustomobject]@{ enabled = $true; severity = "high" }
       platform_na_expired = [pscustomobject]@{ enabled = $true; severity = "medium" }
@@ -192,6 +198,47 @@ if ([bool]$policy.triggers.rollout_observe_overdue.enabled -and (Test-Path -Lite
       -Reason ("observe_overdue={0}" -f $overdue) `
       -RecommendedAction "Review rollout policy and move overdue observe repos to enforce/waiver decision." `
       -Evidence "scripts/rollout-status.ps1"
+  }
+}
+
+# 2.1) rollout metadata coverage gap
+$rolloutCoverageGapCount = 0
+$rolloutCoverageOrphanCount = 0
+if ($null -ne $policy.triggers.PSObject.Properties['rollout_metadata_coverage_gap'] -and [bool]$policy.triggers.rollout_metadata_coverage_gap.enabled) {
+  $rolloutCoverageScript = Join-Path $kitRoot "scripts\governance\check-rollout-coverage.ps1"
+  if (Test-Path -LiteralPath $rolloutCoverageScript -PathType Leaf) {
+    $coverageOut = & $psExe -NoProfile -ExecutionPolicy Bypass -File $rolloutCoverageScript -RepoRoot $repoPath -AsJson 2>&1
+    $coverageExit = $LASTEXITCODE
+    $coverageText = [string]::Join([Environment]::NewLine, @($coverageOut))
+    $coverageObj = $null
+    if (-not [string]::IsNullOrWhiteSpace($coverageText)) {
+      try { $coverageObj = $coverageText | ConvertFrom-Json } catch { $coverageObj = $null }
+    }
+    $steps.Add([pscustomobject]@{ name = "rollout-coverage-gap"; exit_code = [int]$coverageExit }) | Out-Null
+    if ($null -ne $coverageObj) {
+      if ($coverageObj.PSObject.Properties.Name -contains "coverage_gap_count") {
+        $rolloutCoverageGapCount = [int]$coverageObj.coverage_gap_count
+      }
+      if ($coverageObj.PSObject.Properties.Name -contains "orphan_rollout_count") {
+        $rolloutCoverageOrphanCount = [int]$coverageObj.orphan_rollout_count
+      }
+    }
+    $maxAllowedGapCount = 0
+    $maxAllowedOrphanCount = 0
+    if ($null -ne $policy.triggers.rollout_metadata_coverage_gap.PSObject.Properties['max_allowed_gap_count']) {
+      $maxAllowedGapCount = [int]$policy.triggers.rollout_metadata_coverage_gap.max_allowed_gap_count
+    }
+    if ($null -ne $policy.triggers.rollout_metadata_coverage_gap.PSObject.Properties['max_allowed_orphan_count']) {
+      $maxAllowedOrphanCount = [int]$policy.triggers.rollout_metadata_coverage_gap.max_allowed_orphan_count
+    }
+    if ($rolloutCoverageGapCount -gt $maxAllowedGapCount -or $rolloutCoverageOrphanCount -gt $maxAllowedOrphanCount) {
+      Add-Alert -List $alerts `
+        -Id "rollout_metadata_coverage_gap" `
+        -Severity ([string]$policy.triggers.rollout_metadata_coverage_gap.severity) `
+        -Reason ("coverage_gap_count={0} > {1} or orphan_rollout_count={2} > {3}" -f $rolloutCoverageGapCount, $maxAllowedGapCount, $rolloutCoverageOrphanCount, $maxAllowedOrphanCount) `
+        -RecommendedAction "Align config/rule-rollout.json repos with config/repositories.json and keep observe/enforce metadata complete." `
+        -Evidence "scripts/governance/check-rollout-coverage.ps1"
+    }
   }
 }
 
@@ -729,6 +776,8 @@ $result = [pscustomobject]@{
   stale_progressive_control_count = [int]$staleProgressiveControlCount
   not_observable_control_count = [int]$notObservableControlCount
   rule_duplication_count = [int]$ruleDuplicationCount
+  rollout_metadata_coverage_gap_count = [int]$rolloutCoverageGapCount
+  rollout_metadata_orphan_count = [int]$rolloutCoverageOrphanCount
   orphan_custom_source_count = [int]$orphanCustomCount
   release_distribution_policy_drift_count = [int]$releasePolicyDriftCount
   dependency_review_policy_drift_count = [int]$dependencyReviewPolicyDriftCount
