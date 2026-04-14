@@ -159,6 +159,12 @@ if ($null -eq $policy) {
         max_allowed_missing_control_count = 0
         max_allowed_missing_repo_state_count = 0
       }
+      cross_repo_feedback_snapshot_stale = [pscustomobject]@{
+        enabled = $false
+        severity = "medium"
+        max_age_days = 8
+        min_feedback_ingested_count = 1
+      }
       dependency_review_policy_drift = [pscustomobject]@{
         enabled = $false
         severity = "high"
@@ -544,6 +550,7 @@ if ($null -ne $policy.triggers.PSObject.Properties['evidence_template_fields_mis
 # 3.10) target rollout matrix gap
 $targetRolloutMatrixMissingControlCount = 0
 $targetRolloutMatrixMissingRepoStateCount = 0
+$crossRepoFeedbackSnapshotStaleCount = 0
 if ($null -ne $policy.triggers.PSObject.Properties['target_rollout_matrix_gap'] -and [bool]$policy.triggers.target_rollout_matrix_gap.enabled) {
   $targetRolloutScript = Join-Path $kitRoot "scripts\governance\check-target-rollout-matrix.ps1"
   if (Test-Path -LiteralPath $targetRolloutScript -PathType Leaf) {
@@ -580,6 +587,56 @@ if ($null -ne $policy.triggers.PSObject.Properties['target_rollout_matrix_gap'] 
         -RecommendedAction "Backfill config/target-control-rollout-matrix.json for all distributable progressive controls and target repos." `
         -Evidence "scripts/governance/check-target-rollout-matrix.ps1"
     }
+  }
+}
+
+# 3.11) cross-repo feedback snapshot stale
+if ($null -ne $policy.triggers.PSObject.Properties['cross_repo_feedback_snapshot_stale'] -and [bool]$policy.triggers.cross_repo_feedback_snapshot_stale.enabled) {
+  $steps.Add([pscustomobject]@{ name = "cross-repo-feedback-snapshot-stale"; exit_code = 0 }) | Out-Null
+  $cfg = $policy.triggers.cross_repo_feedback_snapshot_stale
+  $maxAgeDays = 8
+  $minFeedbackIngestedCount = 1
+  if ($null -ne $cfg.PSObject.Properties['max_age_days']) { $maxAgeDays = [int]$cfg.max_age_days }
+  if ($null -ne $cfg.PSObject.Properties['min_feedback_ingested_count']) { $minFeedbackIngestedCount = [int]$cfg.min_feedback_ingested_count }
+
+  $feedbackReportPath = Join-Path $kitRoot "docs\governance\cross-repo-feedback-report-latest.md"
+  $feedbackReasons = [System.Collections.Generic.List[string]]::new()
+  if (-not (Test-Path -LiteralPath $feedbackReportPath -PathType Leaf)) {
+    $feedbackReasons.Add("feedback report missing") | Out-Null
+  } else {
+    $feedbackKv = Parse-KeyValueMap -Path $feedbackReportPath
+    $generatedAtText = ""
+    if ($feedbackKv.ContainsKey("generated_at")) { $generatedAtText = [string]$feedbackKv["generated_at"] }
+    $generatedAt = [datetime]::MinValue
+    $hasGeneratedAt = [datetime]::TryParse($generatedAtText, [ref]$generatedAt)
+    if (-not $hasGeneratedAt) {
+      $feedbackReasons.Add("generated_at missing_or_invalid") | Out-Null
+    } else {
+      $ageDays = [int](New-TimeSpan -Start $generatedAt -End (Get-Date)).TotalDays
+      if ($ageDays -gt $maxAgeDays) {
+        $feedbackReasons.Add(("snapshot age={0} days > {1}" -f $ageDays, $maxAgeDays)) | Out-Null
+      }
+    }
+    $ingestedCount = 0
+    $hasIngested = $false
+    if ($feedbackKv.ContainsKey("feedback_ingested_count")) {
+      $hasIngested = [int]::TryParse([string]$feedbackKv["feedback_ingested_count"], [ref]$ingestedCount)
+    }
+    if (-not $hasIngested) {
+      $feedbackReasons.Add("feedback_ingested_count missing_or_invalid") | Out-Null
+    } elseif ($ingestedCount -lt $minFeedbackIngestedCount) {
+      $feedbackReasons.Add(("feedback_ingested_count={0} < {1}" -f $ingestedCount, $minFeedbackIngestedCount)) | Out-Null
+    }
+  }
+
+  if ($feedbackReasons.Count -gt 0) {
+    $crossRepoFeedbackSnapshotStaleCount = 1
+    Add-Alert -List $alerts `
+      -Id "cross_repo_feedback_snapshot_stale" `
+      -Severity ([string]$policy.triggers.cross_repo_feedback_snapshot_stale.severity) `
+      -Reason ([string]::Join("; ", @($feedbackReasons))) `
+      -RecommendedAction "Regenerate cross-repo feedback report and verify cross-repo compatibility inputs." `
+      -Evidence "docs/governance/cross-repo-feedback-report-latest.md"
   }
 }
 
@@ -908,6 +965,7 @@ $result = [pscustomobject]@{
   evidence_template_missing_field_count = [int]$evidenceTemplateMissingFieldCount
   target_rollout_matrix_missing_control_count = [int]$targetRolloutMatrixMissingControlCount
   target_rollout_matrix_missing_repo_state_count = [int]$targetRolloutMatrixMissingRepoStateCount
+  cross_repo_feedback_snapshot_stale_count = [int]$crossRepoFeedbackSnapshotStaleCount
   rollout_metadata_coverage_gap_count = [int]$rolloutCoverageGapCount
   rollout_metadata_orphan_count = [int]$rolloutCoverageOrphanCount
   orphan_custom_source_count = [int]$orphanCustomCount

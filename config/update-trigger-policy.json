@@ -82,6 +82,12 @@
       "max_allowed_missing_control_count": 0,
       "max_allowed_missing_repo_state_count": 0
     },
+    "cross_repo_feedback_snapshot_stale": {
+      "enabled": true,
+      "severity": "medium",
+      "max_age_days": 8,
+      "min_feedback_ingested_count": 1
+    },
     "dependency_review_policy_drift": {
       "enabled": true,
       "severity": "high",

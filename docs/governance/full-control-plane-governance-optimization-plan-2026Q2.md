@@ -356,6 +356,15 @@ Every control should be assigned one of these classes:
     - `cross_repo_feedback_rollout_matrix_gap_count`
     - `cross_repo_feedback_report_path`
   - latest feedback report output landed: `docs/governance/cross-repo-feedback-report-latest.md`.
+- completed (Phase 4 slice C)
+  - update trigger added: `cross_repo_feedback_snapshot_stale`.
+  - update trigger engine checks report age + `feedback_ingested_count` floor.
+  - monthly review now includes:
+    - `cross_repo_feedback_status`
+    - `cross_repo_feedback_ingested_count`
+    - `cross_repo_feedback_repo_failure_count`
+    - `cross_repo_feedback_rollout_matrix_gap_count`
+    - `cross_repo_feedback_report_path`
 - next
-  - integrate cross-repo feedback signal into monthly policy review trend section.
-  - add policy trigger for stale cross-repo feedback report snapshots.
+  - add monthly trend delta for cross-repo feedback (MoM change and instability score).
+  - evaluate whether `cross_repo_feedback_snapshot_stale` should escalate from medium to high for release windows.
