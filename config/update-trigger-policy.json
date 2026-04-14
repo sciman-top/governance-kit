@@ -46,6 +46,20 @@
       "max_gate_latency_delta_ms": 5000,
       "alert_on_data_gap": false
     },
+    "stale_progressive_controls_present": {
+      "enabled": true,
+      "severity": "medium",
+      "max_allowed_count": 0
+    },
+    "not_observable_controls_present": {
+      "enabled": true,
+      "severity": "medium",
+      "max_allowed_count": 0
+    },
+    "rule_duplication_detected": {
+      "enabled": true,
+      "severity": "medium"
+    },
     "dependency_review_policy_drift": {
       "enabled": true,
       "severity": "high",

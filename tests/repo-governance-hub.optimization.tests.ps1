@@ -1,4 +1,17 @@
-﻿$here = Split-Path -Parent $MyInvocation.MyCommand.Path
+if (-not $env:RGH_PESTER_SELF_INVOKED) {
+  Import-Module Pester -ErrorAction Stop
+  $env:RGH_PESTER_SELF_INVOKED = "1"
+  try {
+    $result = Invoke-Pester -Path $PSCommandPath -PassThru
+  } finally {
+    Remove-Item Env:RGH_PESTER_SELF_INVOKED -ErrorAction SilentlyContinue
+  }
+  if ($null -ne $result -and $result.FailedCount -gt 0) {
+    exit 1
+  }
+  exit 0
+}
+$here = Split-Path -Parent $MyInvocation.MyCommand.Path
 $repoRoot = (Resolve-Path (Join-Path $here "..")).Path
 
 function Write-Utf8NoBomFile {
@@ -1023,7 +1036,7 @@ Fixture body.
   "repos": []
 }
 '@ | Set-Content -Path (Join-Path $tmp "config\project-custom-files.json") -Encoding UTF8
-      @() | ConvertTo-Json -Depth 4 | Set-Content -Path (Join-Path $tmp "config\targets.json") -Encoding UTF8
+      "[]" | Set-Content -Path (Join-Path $tmp "config\targets.json") -Encoding UTF8
 
       $output = & powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $tmp "scripts\governance\check-custom-governance-distribution.ps1") -FailOnViolation 2>&1 | Out-String
       $LASTEXITCODE | should be 1
@@ -3679,6 +3692,8 @@ exit 0
       ($snapshot -match "status=ALERT") | should be $true
       ($snapshot -match "doctor_elapsed_ms=[0-9]+") | should be $true
       ($snapshot -match "gate_latency_delta_ms=N/A") | should be $true
+      ($snapshot -match "stale_progressive_control_count=0") | should be $true
+      ($snapshot -match "not_observable_control_count=0") | should be $true
       ($snapshot -match "skill_trigger_eval_status=UNAVAILABLE") | should be $true
       ($snapshot -match "skill_trigger_eval_grouped_query_count=0") | should be $true
       ($snapshot -match "risk_tier_approval_status=UNAVAILABLE") | should be $true
@@ -4115,6 +4130,162 @@ skill_trigger_eval_validation_false_trigger_rate=0.12
     }
   }
 
+  it "check-update-triggers reports stale progressive controls from registry" {
+    $tmp = Join-Path $env:TEMP ("govkit-test-" + [guid]::NewGuid().ToString("N"))
+    try {
+      New-Item -ItemType Directory -Path (Join-Path $tmp "scripts\governance") -Force | Out-Null
+      New-Item -ItemType Directory -Path (Join-Path $tmp "scripts\lib") -Force | Out-Null
+      New-Item -ItemType Directory -Path (Join-Path $tmp "config") -Force | Out-Null
+
+      Copy-Item -Path (Join-Path $repoRoot "scripts\governance\check-update-triggers.ps1") -Destination (Join-Path $tmp "scripts\governance\check-update-triggers.ps1") -Force
+      Copy-Item -Path (Join-Path $repoRoot "scripts\lib\common.ps1") -Destination (Join-Path $tmp "scripts\lib\common.ps1") -Force
+
+      @'
+{
+  "schema_version": "1.0",
+  "controls": [
+    {
+      "control_id": "distribution.rollout_phase",
+      "class": "progressive",
+      "inventory_status": "too_loose_candidate"
+    }
+  ]
+}
+'@ | Set-Content -Path (Join-Path $tmp "config\governance-control-registry.json") -Encoding UTF8
+
+      @'
+{
+  "schema_version": "1.0",
+  "cadence": { "recurring_review_days": 7, "monthly_review_day": 1 },
+  "triggers": {
+    "cli_version_drift": { "enabled": false, "severity": "high" },
+    "rollout_observe_overdue": { "enabled": false, "severity": "medium" },
+    "metrics_snapshot_stale": { "enabled": false, "severity": "medium", "max_age_days": 8 },
+    "waiver_expired_unrecovered": { "enabled": false, "severity": "high" },
+    "platform_na_expired": { "enabled": false, "severity": "medium" },
+    "release_distribution_policy_drift": { "enabled": false, "severity": "high" },
+    "skill_trigger_eval_summary_stale": { "enabled": false, "severity": "medium", "max_age_days": 8 },
+    "low_value_orphan_custom_sources": { "enabled": false, "severity": "medium" },
+    "gate_noise_budget_breach": { "enabled": false, "severity": "medium", "max_false_positive_rate": 0.05, "max_gate_latency_delta_ms": 5000, "alert_on_data_gap": false },
+    "stale_progressive_controls_present": { "enabled": true, "severity": "medium", "max_allowed_count": 0 },
+    "not_observable_controls_present": { "enabled": false, "severity": "medium", "max_allowed_count": 0 }
+  }
+}
+'@ | Set-Content -Path (Join-Path $tmp "config\update-trigger-policy.json") -Encoding UTF8
+
+      $json = & powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $tmp "scripts\governance\check-update-triggers.ps1") -RepoRoot $tmp -AsJson
+      $LASTEXITCODE | should be 1
+      $obj = $json | ConvertFrom-Json
+      [int]$obj.stale_progressive_control_count | should be 1
+      @($obj.alerts | Where-Object { $_.id -eq "stale_progressive_controls_present" }).Count | should be 1
+    } finally {
+      if (Test-Path $tmp) { Remove-Item -LiteralPath $tmp -Recurse -Force }
+    }
+  }
+
+  it "check-update-triggers reports not observable controls from registry" {
+    $tmp = Join-Path $env:TEMP ("govkit-test-" + [guid]::NewGuid().ToString("N"))
+    try {
+      New-Item -ItemType Directory -Path (Join-Path $tmp "scripts\governance") -Force | Out-Null
+      New-Item -ItemType Directory -Path (Join-Path $tmp "scripts\lib") -Force | Out-Null
+      New-Item -ItemType Directory -Path (Join-Path $tmp "config") -Force | Out-Null
+
+      Copy-Item -Path (Join-Path $repoRoot "scripts\governance\check-update-triggers.ps1") -Destination (Join-Path $tmp "scripts\governance\check-update-triggers.ps1") -Force
+      Copy-Item -Path (Join-Path $repoRoot "scripts\lib\common.ps1") -Destination (Join-Path $tmp "scripts\lib\common.ps1") -Force
+
+      @'
+{
+  "schema_version": "1.0",
+  "controls": [
+    {
+      "control_id": "runtime.agent_runtime_profile",
+      "class": "progressive",
+      "inventory_status": "not_observable_candidate"
+    }
+  ]
+}
+'@ | Set-Content -Path (Join-Path $tmp "config\governance-control-registry.json") -Encoding UTF8
+
+      @'
+{
+  "schema_version": "1.0",
+  "cadence": { "recurring_review_days": 7, "monthly_review_day": 1 },
+  "triggers": {
+    "cli_version_drift": { "enabled": false, "severity": "high" },
+    "rollout_observe_overdue": { "enabled": false, "severity": "medium" },
+    "metrics_snapshot_stale": { "enabled": false, "severity": "medium", "max_age_days": 8 },
+    "waiver_expired_unrecovered": { "enabled": false, "severity": "high" },
+    "platform_na_expired": { "enabled": false, "severity": "medium" },
+    "release_distribution_policy_drift": { "enabled": false, "severity": "high" },
+    "skill_trigger_eval_summary_stale": { "enabled": false, "severity": "medium", "max_age_days": 8 },
+    "low_value_orphan_custom_sources": { "enabled": false, "severity": "medium" },
+    "gate_noise_budget_breach": { "enabled": false, "severity": "medium", "max_false_positive_rate": 0.05, "max_gate_latency_delta_ms": 5000, "alert_on_data_gap": false },
+    "stale_progressive_controls_present": { "enabled": false, "severity": "medium", "max_allowed_count": 0 },
+    "not_observable_controls_present": { "enabled": true, "severity": "medium", "max_allowed_count": 0 }
+  }
+}
+'@ | Set-Content -Path (Join-Path $tmp "config\update-trigger-policy.json") -Encoding UTF8
+
+      $json = & powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $tmp "scripts\governance\check-update-triggers.ps1") -RepoRoot $tmp -AsJson
+      $LASTEXITCODE | should be 1
+      $obj = $json | ConvertFrom-Json
+      [int]$obj.not_observable_control_count | should be 1
+      @($obj.alerts | Where-Object { $_.id -eq "not_observable_controls_present" }).Count | should be 1
+    } finally {
+      if (Test-Path $tmp) { Remove-Item -LiteralPath $tmp -Recurse -Force }
+    }
+  }
+
+  it "check-update-triggers reports rule duplication detected" {
+    $tmp = Join-Path $env:TEMP ("govkit-test-" + [guid]::NewGuid().ToString("N"))
+    try {
+      New-Item -ItemType Directory -Path (Join-Path $tmp "scripts\governance") -Force | Out-Null
+      New-Item -ItemType Directory -Path (Join-Path $tmp "scripts\lib") -Force | Out-Null
+      New-Item -ItemType Directory -Path (Join-Path $tmp "config") -Force | Out-Null
+      New-Item -ItemType Directory -Path (Join-Path $tmp "source\global") -Force | Out-Null
+
+      Copy-Item -Path (Join-Path $repoRoot "scripts\governance\check-update-triggers.ps1") -Destination (Join-Path $tmp "scripts\governance\check-update-triggers.ps1") -Force
+      Copy-Item -Path (Join-Path $repoRoot "scripts\governance\check-rule-duplication.ps1") -Destination (Join-Path $tmp "scripts\governance\check-rule-duplication.ps1") -Force
+      Copy-Item -Path (Join-Path $repoRoot "scripts\lib\common.ps1") -Destination (Join-Path $tmp "scripts\lib\common.ps1") -Force
+
+      @'
+## A
+text
+## A
+text2
+'@ | Set-Content -Path (Join-Path $tmp "source\global\AGENTS.md") -Encoding UTF8
+
+      @'
+{
+  "schema_version": "1.0",
+  "cadence": { "recurring_review_days": 7, "monthly_review_day": 1 },
+  "triggers": {
+    "cli_version_drift": { "enabled": false, "severity": "high" },
+    "rollout_observe_overdue": { "enabled": false, "severity": "medium" },
+    "metrics_snapshot_stale": { "enabled": false, "severity": "medium", "max_age_days": 8 },
+    "waiver_expired_unrecovered": { "enabled": false, "severity": "high" },
+    "platform_na_expired": { "enabled": false, "severity": "medium" },
+    "release_distribution_policy_drift": { "enabled": false, "severity": "high" },
+    "skill_trigger_eval_summary_stale": { "enabled": false, "severity": "medium", "max_age_days": 8 },
+    "low_value_orphan_custom_sources": { "enabled": false, "severity": "medium" },
+    "gate_noise_budget_breach": { "enabled": false, "severity": "medium", "max_false_positive_rate": 0.05, "max_gate_latency_delta_ms": 5000, "alert_on_data_gap": false },
+    "stale_progressive_controls_present": { "enabled": false, "severity": "medium", "max_allowed_count": 0 },
+    "not_observable_controls_present": { "enabled": false, "severity": "medium", "max_allowed_count": 0 },
+    "rule_duplication_detected": { "enabled": true, "severity": "medium" }
+  }
+}
+'@ | Set-Content -Path (Join-Path $tmp "config\update-trigger-policy.json") -Encoding UTF8
+
+      $json = & powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $tmp "scripts\governance\check-update-triggers.ps1") -RepoRoot $tmp -AsJson
+      $LASTEXITCODE | should be 1
+      $obj = $json | ConvertFrom-Json
+      [int]$obj.rule_duplication_count | should be 1
+      @($obj.alerts | Where-Object { $_.id -eq "rule_duplication_detected" }).Count | should be 1
+    } finally {
+      if (Test-Path $tmp) { Remove-Item -LiteralPath $tmp -Recurse -Force }
+    }
+  }
+
   it "check-update-triggers reports dependency-review policy drift" {
     $tmp = Join-Path $env:TEMP ("govkit-test-" + [guid]::NewGuid().ToString("N"))
     try {
@@ -4270,6 +4441,42 @@ jobs:
     }
   }
 
+  it "common Resolve-AgentRuntimePolicyPath prefers agent policy and falls back to codex policy" {
+    $tmp = Join-Path $env:TEMP ("govkit-test-" + [guid]::NewGuid().ToString("N"))
+    try {
+      New-Item -ItemType Directory -Path (Join-Path $tmp "scripts\lib") -Force | Out-Null
+      New-Item -ItemType Directory -Path (Join-Path $tmp "config") -Force | Out-Null
+      Copy-Item -Path (Join-Path $repoRoot "scripts\lib\common.ps1") -Destination (Join-Path $tmp "scripts\lib\common.ps1") -Force
+      . (Join-Path $tmp "scripts\lib\common.ps1")
+
+      @'
+{
+  "schema_version": "1.0",
+  "enabled_by_default": false,
+  "default_files": [".codex/config.toml"],
+  "repos": []
+}
+'@ | Set-Content -Path (Join-Path $tmp "config\codex-runtime-policy.json") -Encoding UTF8
+
+      $fallbackPath = Resolve-AgentRuntimePolicyPath -KitRoot $tmp
+      ([string]$fallbackPath -replace '\\','/') | should match "config/codex-runtime-policy.json$"
+
+      @'
+{
+  "schema_version": "1.0",
+  "enabled_by_default": false,
+  "default_files": [".codex/config.toml"],
+  "repos": []
+}
+'@ | Set-Content -Path (Join-Path $tmp "config\agent-runtime-policy.json") -Encoding UTF8
+
+      $preferredPath = Resolve-AgentRuntimePolicyPath -KitRoot $tmp
+      ([string]$preferredPath -replace '\\','/') | should match "config/agent-runtime-policy.json$"
+    } finally {
+      if (Test-Path $tmp) { Remove-Item -LiteralPath $tmp -Recurse -Force }
+    }
+  }
+
   it "set-codex-runtime-policy updates repoName entry enabled flag" {
     $tmp = Join-Path $env:TEMP ("govkit-test-" + [guid]::NewGuid().ToString("N"))
     try {
@@ -4326,6 +4533,37 @@ jobs:
 
       $obj = Get-Content -Path (Join-Path $tmp "config\codex-runtime-policy.json") -Raw | ConvertFrom-Json
       $entry = @($obj.repos | Where-Object { $_.repoName -eq "RepoB" })[0]
+      [bool]$entry.enabled | should be $true
+    } finally {
+      if (Test-Path $tmp) { Remove-Item -LiteralPath $tmp -Recurse -Force }
+    }
+  }
+
+  it "set-agent-runtime-policy updates agent runtime policy entry" {
+    $tmp = Join-Path $env:TEMP ("govkit-test-" + [guid]::NewGuid().ToString("N"))
+    try {
+      New-Item -ItemType Directory -Path (Join-Path $tmp "scripts\lib") -Force | Out-Null
+      New-Item -ItemType Directory -Path (Join-Path $tmp "scripts") -Force | Out-Null
+      New-Item -ItemType Directory -Path (Join-Path $tmp "config") -Force | Out-Null
+
+      Copy-Item -Path (Join-Path $repoRoot "scripts\lib\common.ps1") -Destination (Join-Path $tmp "scripts\lib\common.ps1") -Force
+      Copy-Item -Path (Join-Path $repoRoot "scripts\set-codex-runtime-policy.ps1") -Destination (Join-Path $tmp "scripts\set-codex-runtime-policy.ps1") -Force
+      Copy-Item -Path (Join-Path $repoRoot "scripts\set-agent-runtime-policy.ps1") -Destination (Join-Path $tmp "scripts\set-agent-runtime-policy.ps1") -Force
+
+      @'
+{
+  "schema_version": "1.0",
+  "enabled_by_default": false,
+  "default_files": [".codex/config.toml"],
+  "repos": []
+}
+'@ | Set-Content -Path (Join-Path $tmp "config\agent-runtime-policy.json") -Encoding UTF8
+
+      & powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $tmp "scripts\set-agent-runtime-policy.ps1") -RepoName RepoC -Enabled true -Mode safe | Out-Null
+      if ($LASTEXITCODE -ne 0) { throw "set-agent-runtime-policy.ps1 failed with exit code $LASTEXITCODE" }
+
+      $obj = Get-Content -Path (Join-Path $tmp "config\agent-runtime-policy.json") -Raw | ConvertFrom-Json
+      $entry = @($obj.repos | Where-Object { $_.repoName -eq "RepoC" })[0]
       [bool]$entry.enabled | should be $true
     } finally {
       if (Test-Path $tmp) { Remove-Item -LiteralPath $tmp -Recurse -Force }
@@ -6674,6 +6912,7 @@ exit 0
     }
   }
 }
+
 
 
 

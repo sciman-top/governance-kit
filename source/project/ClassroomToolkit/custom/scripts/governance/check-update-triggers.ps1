@@ -123,6 +123,20 @@ if ($null -eq $policy) {
         max_gate_latency_delta_ms = 5000
         alert_on_data_gap = $false
       }
+      stale_progressive_controls_present = [pscustomobject]@{
+        enabled = $false
+        severity = "medium"
+        max_allowed_count = 0
+      }
+      not_observable_controls_present = [pscustomobject]@{
+        enabled = $false
+        severity = "medium"
+        max_allowed_count = 0
+      }
+      rule_duplication_detected = [pscustomobject]@{
+        enabled = $false
+        severity = "medium"
+      }
       dependency_review_policy_drift = [pscustomobject]@{
         enabled = $false
         severity = "high"
@@ -295,6 +309,103 @@ if ($null -ne $policy.triggers.PSObject.Properties['gate_noise_budget_breach'] -
       -Reason ([string]::Join("; ", @($breachReasons))) `
       -RecommendedAction "Tune noisy checks to advisory, reduce false positives, and keep gate latency delta within policy threshold." `
       -Evidence "docs/governance/alerts-latest.md"
+  }
+}
+
+# 3.6) control registry signals
+$staleProgressiveControlCount = 0
+$notObservableControlCount = 0
+$controlRegistryPath = Join-Path $kitRoot "config\governance-control-registry.json"
+$controlRegistry = $null
+if (Test-Path -LiteralPath $controlRegistryPath -PathType Leaf) {
+  try {
+    $controlRegistry = Read-JsonFile -Path $controlRegistryPath -DisplayName "governance-control-registry.json"
+  } catch {
+    $controlRegistry = $null
+  }
+}
+if ($null -ne $controlRegistry -and $null -ne $controlRegistry.controls) {
+  foreach ($control in @($controlRegistry.controls)) {
+    $inventoryStatus = ""
+    if ($null -ne $control.PSObject.Properties['inventory_status']) {
+      $inventoryStatus = ([string]$control.inventory_status).Trim()
+    }
+    if ($inventoryStatus -eq "not_observable_candidate") {
+      $notObservableControlCount++
+      continue
+    }
+    if ($inventoryStatus -eq "stale_candidate") {
+      $staleProgressiveControlCount++
+      continue
+    }
+    if ($inventoryStatus -eq "too_loose_candidate") {
+      $controlClass = ""
+      if ($null -ne $control.PSObject.Properties['class']) {
+        $controlClass = ([string]$control.class).Trim()
+      }
+      if ($controlClass -eq "progressive") {
+        $staleProgressiveControlCount++
+      }
+    }
+  }
+}
+
+if ($null -ne $policy.triggers.PSObject.Properties['stale_progressive_controls_present'] -and [bool]$policy.triggers.stale_progressive_controls_present.enabled) {
+  $maxAllowedCount = 0
+  if ($null -ne $policy.triggers.stale_progressive_controls_present.PSObject.Properties['max_allowed_count']) {
+    $maxAllowedCount = [int]$policy.triggers.stale_progressive_controls_present.max_allowed_count
+  }
+  $steps.Add([pscustomobject]@{ name = "stale-progressive-controls"; exit_code = 0 }) | Out-Null
+  if ($staleProgressiveControlCount -gt $maxAllowedCount) {
+    Add-Alert -List $alerts `
+      -Id "stale_progressive_controls_present" `
+      -Severity ([string]$policy.triggers.stale_progressive_controls_present.severity) `
+      -Reason ("stale progressive control count={0} > {1}" -f $staleProgressiveControlCount, $maxAllowedCount) `
+      -RecommendedAction "Review stale or too-loose progressive controls and either mature, downgrade, or retire them." `
+      -Evidence "config/governance-control-registry.json"
+  }
+}
+
+if ($null -ne $policy.triggers.PSObject.Properties['not_observable_controls_present'] -and [bool]$policy.triggers.not_observable_controls_present.enabled) {
+  $maxAllowedCount = 0
+  if ($null -ne $policy.triggers.not_observable_controls_present.PSObject.Properties['max_allowed_count']) {
+    $maxAllowedCount = [int]$policy.triggers.not_observable_controls_present.max_allowed_count
+  }
+  $steps.Add([pscustomobject]@{ name = "not-observable-controls"; exit_code = 0 }) | Out-Null
+  if ($notObservableControlCount -gt $maxAllowedCount) {
+    Add-Alert -List $alerts `
+      -Id "not_observable_controls_present" `
+      -Severity ([string]$policy.triggers.not_observable_controls_present.severity) `
+      -Reason ("not observable control count={0} > {1}" -f $notObservableControlCount, $maxAllowedCount) `
+      -RecommendedAction "Add direct metrics or recurring review fields before promoting these controls." `
+      -Evidence "config/governance-control-registry.json"
+  }
+}
+
+# 3.7) rule duplication trigger
+$ruleDuplicationCount = 0
+if ($null -ne $policy.triggers.PSObject.Properties['rule_duplication_detected'] -and [bool]$policy.triggers.rule_duplication_detected.enabled) {
+  $ruleDupScript = Join-Path $kitRoot "scripts\governance\check-rule-duplication.ps1"
+  if (Test-Path -LiteralPath $ruleDupScript -PathType Leaf) {
+    $ruleDupOut = & $psExe -NoProfile -ExecutionPolicy Bypass -File $ruleDupScript -RepoRoot $repoPath -AsJson 2>&1
+    $ruleDupExit = $LASTEXITCODE
+    $steps.Add([pscustomobject]@{ name = "rule-duplication-scan"; exit_code = [int]$ruleDupExit }) | Out-Null
+    $ruleDupObj = $null
+    $ruleDupText = [string]::Join([Environment]::NewLine, @($ruleDupOut))
+    if (-not [string]::IsNullOrWhiteSpace($ruleDupText)) {
+      try { $ruleDupObj = $ruleDupText | ConvertFrom-Json } catch { $ruleDupObj = $null }
+    }
+    if ($null -ne $ruleDupObj -and $ruleDupObj.PSObject.Properties.Name -contains "issue_count") {
+      $ruleDuplicationCount = [int]$ruleDupObj.issue_count
+    }
+    if ($ruleDuplicationCount -gt 0) {
+      Add-Alert -List $alerts `
+        -Id "rule_duplication_detected" `
+        -Severity ([string]$policy.triggers.rule_duplication_detected.severity) `
+        -Reason ("rule_duplication_issue_count={0}" -f $ruleDuplicationCount) `
+        -RecommendedAction "Run scripts/governance/check-rule-duplication.ps1, deduplicate repeated blocks, and keep long details in docs instead of top rule files." `
+        -Evidence "scripts/governance/check-rule-duplication.ps1"
+    }
   }
 }
 
@@ -615,6 +726,9 @@ $result = [pscustomobject]@{
   alert_count = $alerts.Count
   skill_trigger_eval_alert_count = [int]$skillTriggerEvalAlertCount
   gate_noise_budget_alert_count = [int]$gateNoiseBudgetAlertCount
+  stale_progressive_control_count = [int]$staleProgressiveControlCount
+  not_observable_control_count = [int]$notObservableControlCount
+  rule_duplication_count = [int]$ruleDuplicationCount
   orphan_custom_source_count = [int]$orphanCustomCount
   release_distribution_policy_drift_count = [int]$releasePolicyDriftCount
   dependency_review_policy_drift_count = [int]$dependencyReviewPolicyDriftCount

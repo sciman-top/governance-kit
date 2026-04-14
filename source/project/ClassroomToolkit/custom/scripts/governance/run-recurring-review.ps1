@@ -32,6 +32,7 @@ $skillFamilyHealthScript = Join-Path $kitRoot "scripts\governance\check-skill-fa
 $skillLifecycleHealthScript = Join-Path $kitRoot "scripts\governance\check-skill-lifecycle-health.ps1"
 $crossRepoCompatibilityScript = Join-Path $kitRoot "scripts\governance\check-cross-repo-compatibility.ps1"
 $tokenEfficiencyTrendScript = Join-Path $kitRoot "scripts\governance\check-token-efficiency-trend.ps1"
+$sessionCompactionScript = Join-Path $kitRoot "scripts\governance\check-session-compaction-trigger.ps1"
 $tokenBalanceScript = Join-Path $kitRoot "scripts\governance\check-token-balance.ps1"
 $proactiveSuggestionScript = Join-Path $kitRoot "scripts\governance\check-proactive-suggestion-balance.ps1"
 $externalBaselineScript = Join-Path $kitRoot "scripts\governance\check-external-baselines.ps1"
@@ -53,6 +54,7 @@ $hasSkillFamilyHealthScript = (Test-Path -LiteralPath $skillFamilyHealthScript -
 $hasSkillLifecycleHealthScript = (Test-Path -LiteralPath $skillLifecycleHealthScript -PathType Leaf)
 $hasCrossRepoCompatibilityScript = (Test-Path -LiteralPath $crossRepoCompatibilityScript -PathType Leaf)
 $hasTokenEfficiencyTrendScript = (Test-Path -LiteralPath $tokenEfficiencyTrendScript -PathType Leaf)
+$hasSessionCompactionScript = (Test-Path -LiteralPath $sessionCompactionScript -PathType Leaf)
 $hasProactiveSuggestionScript = (Test-Path -LiteralPath $proactiveSuggestionScript -PathType Leaf)
 
 $psExe = Get-CurrentPowerShellPath
@@ -134,6 +136,9 @@ function Write-AlertSnapshot([object]$ReviewResult, [string]$RootPath) {
   [void]$lines.Add(("observe_overdue={0}" -f $ReviewResult.summary.observe_overdue))
   [void]$lines.Add(("waiver_remind_count={0}" -f $ReviewResult.summary.waiver_remind_count))
   [void]$lines.Add(("waiver_block_count={0}" -f $ReviewResult.summary.waiver_block_count))
+  [void]$lines.Add(("stale_progressive_control_count={0}" -f $ReviewResult.summary.stale_progressive_control_count))
+  [void]$lines.Add(("not_observable_control_count={0}" -f $ReviewResult.summary.not_observable_control_count))
+  [void]$lines.Add(("rule_duplication_count={0}" -f $ReviewResult.summary.rule_duplication_count))
   [void]$lines.Add(("release_distribution_policy_drift_count={0}" -f $ReviewResult.summary.release_distribution_policy_drift_count))
   [void]$lines.Add(("skill_trigger_eval_status={0}" -f $ReviewResult.summary.skill_trigger_eval_status))
   [void]$lines.Add(("skill_trigger_eval_grouped_query_count={0}" -f $ReviewResult.summary.skill_trigger_eval_grouped_query_count))
@@ -161,6 +166,13 @@ function Write-AlertSnapshot([object]$ReviewResult, [string]$RootPath) {
   [void]$lines.Add(("token_efficiency_trend_status={0}" -f $ReviewResult.summary.token_efficiency_trend_status))
   [void]$lines.Add(("token_efficiency_trend_history_count={0}" -f $ReviewResult.summary.token_efficiency_trend_history_count))
   [void]$lines.Add(("token_efficiency_trend_latest_value={0}" -f $ReviewResult.summary.token_efficiency_trend_latest_value))
+  [void]$lines.Add(("session_compaction_status={0}" -f $ReviewResult.summary.session_compaction_status))
+  [void]$lines.Add(("session_compaction_recommend={0}" -f $ReviewResult.summary.session_compaction_recommend))
+  [void]$lines.Add(("session_compaction_reason_count={0}" -f $ReviewResult.summary.session_compaction_reason_count))
+  [void]$lines.Add(("quality_first_pass_rate={0}" -f $ReviewResult.summary.quality_first_pass_rate))
+  [void]$lines.Add(("quality_rework_after_clarification_rate={0}" -f $ReviewResult.summary.quality_rework_after_clarification_rate))
+  [void]$lines.Add(("token_average_response={0}" -f $ReviewResult.summary.token_average_response))
+  [void]$lines.Add(("token_per_effective_conclusion={0}" -f $ReviewResult.summary.token_per_effective_conclusion))
   [void]$lines.Add(("slo_error_budget_status={0}" -f $ReviewResult.summary.slo_error_budget_status))
   [void]$lines.Add(("slo_gate_pass_rate={0}" -f $ReviewResult.summary.slo_gate_pass_rate))
   [void]$lines.Add(("error_budget_burn_rate={0}" -f $ReviewResult.summary.error_budget_burn_rate))
@@ -276,6 +288,16 @@ if ($hasTokenEfficiencyTrendScript) {
     elapsed_ms = 0
   }
 }
+if ($hasSessionCompactionScript) {
+  $sessionCompaction = Invoke-StepText -Name "check-session-compaction-trigger" -ScriptPath $sessionCompactionScript -Args @("-RepoRoot", $repoPath, "-AsJson")
+} else {
+  $sessionCompaction = [pscustomobject]@{
+    name = "check-session-compaction-trigger"
+    exit_code = 0
+    output = ""
+    elapsed_ms = 0
+  }
+}
 if ($hasTokenBalanceScript) {
   $tokenBalance = Invoke-StepText -Name "check-token-balance" -ScriptPath $tokenBalanceScript -Args @("-RepoRoot", $repoPath)
 } else {
@@ -363,6 +385,10 @@ $sloErrorBudgetStatus = "UNAVAILABLE"
 $sloGatePassRate = "N/A"
 $errorBudgetBurnRate = "N/A"
 $errorBudgetRemaining = "N/A"
+$qualityFirstPassRate = "N/A"
+$qualityReworkAfterClarificationRate = "N/A"
+$tokenAverageResponse = "N/A"
+$tokenPerEffectiveConclusion = "N/A"
 
 if ($metrics.exit_code -ne 0) {
   [void]$alerts.Add("collect-governance-metrics failed")
@@ -378,6 +404,14 @@ if ($metrics.exit_code -eq 0) {
     if (-not [string]::IsNullOrWhiteSpace($rollbackRate)) {
       $errorBudgetBurnRate = $rollbackRate
     }
+    $qualityFirstPassRate = Get-MetricValueFromFile -Path $metricsAutoPath -Key "first_pass_rate"
+    if ([string]::IsNullOrWhiteSpace($qualityFirstPassRate)) { $qualityFirstPassRate = "N/A" }
+    $qualityReworkAfterClarificationRate = Get-MetricValueFromFile -Path $metricsAutoPath -Key "rework_after_clarification_rate"
+    if ([string]::IsNullOrWhiteSpace($qualityReworkAfterClarificationRate)) { $qualityReworkAfterClarificationRate = "N/A" }
+    $tokenAverageResponse = Get-MetricValueFromFile -Path $metricsAutoPath -Key "average_response_token"
+    if ([string]::IsNullOrWhiteSpace($tokenAverageResponse)) { $tokenAverageResponse = "N/A" }
+    $tokenPerEffectiveConclusion = Get-MetricValueFromFile -Path $metricsAutoPath -Key "token_per_effective_conclusion"
+    if ([string]::IsNullOrWhiteSpace($tokenPerEffectiveConclusion)) { $tokenPerEffectiveConclusion = "N/A" }
 
     $gateRateValue = Convert-PercentTextToDouble -Text $sloGatePassRate
     $rollbackRateValue = Convert-PercentTextToDouble -Text $errorBudgetBurnRate
@@ -422,6 +456,10 @@ $crossRepoCompatibilityRepoFailureCount = 0
 $tokenEfficiencyTrendStatus = "UNAVAILABLE"
 $tokenEfficiencyTrendHistoryCount = 0
 $tokenEfficiencyTrendLatestValue = 0
+$sessionCompactionStatus = "UNAVAILABLE"
+$sessionCompactionRecommend = $false
+$sessionCompactionReasonCount = 0
+$sessionCompactionReasons = @()
 
 if ($hasSkillTriggerEvalScript) {
   $skillTriggerEvalStatus = "UNKNOWN"
@@ -734,8 +772,46 @@ if ($hasTokenEfficiencyTrendScript) {
   }
 }
 
+if ($hasSessionCompactionScript) {
+  $sessionCompactionStatus = "UNKNOWN"
+  if (-not [string]::IsNullOrWhiteSpace($sessionCompaction.output)) {
+    $sessionCompactionObj = Parse-JsonLoose -RawText ([string]$sessionCompaction.output)
+    if ($null -ne $sessionCompactionObj) {
+      if ($sessionCompactionObj.PSObject.Properties.Name -contains "status") { $sessionCompactionStatus = [string]$sessionCompactionObj.status }
+      if ($sessionCompactionObj.PSObject.Properties.Name -contains "recommend_compaction") { $sessionCompactionRecommend = [bool]$sessionCompactionObj.recommend_compaction }
+      if ($sessionCompactionObj.PSObject.Properties.Name -contains "reason_count") { try { $sessionCompactionReasonCount = [int]$sessionCompactionObj.reason_count } catch { $sessionCompactionReasonCount = 0 } }
+      if ($sessionCompactionObj.PSObject.Properties.Name -contains "reasons") { $sessionCompactionReasons = @($sessionCompactionObj.reasons) }
+    } else {
+      $rawSessionCompaction = [string]$sessionCompaction.output
+      $statusMatch = [regex]::Match($rawSessionCompaction, "(?m)^session_compaction\.status=([A-Za-z_]+)\s*$")
+      $recommendMatch = [regex]::Match($rawSessionCompaction, "(?m)^session_compaction\.recommend=(True|False|true|false)\s*$")
+      $reasonCountMatch = [regex]::Match($rawSessionCompaction, "(?m)^session_compaction\.reason_count=([0-9]+)\s*$")
+      $reasonsMatch = [regex]::Match($rawSessionCompaction, "(?m)^session_compaction\.reasons=(.*)$")
+      if ($statusMatch.Success) {
+        $sessionCompactionStatus = [string]$statusMatch.Groups[1].Value
+        if ($recommendMatch.Success) { $sessionCompactionRecommend = [bool]::Parse([string]$recommendMatch.Groups[1].Value) }
+        if ($reasonCountMatch.Success) { $sessionCompactionReasonCount = [int]$reasonCountMatch.Groups[1].Value }
+        if ($reasonsMatch.Success -and -not [string]::IsNullOrWhiteSpace([string]$reasonsMatch.Groups[1].Value)) {
+          $sessionCompactionReasons = @(([string]$reasonsMatch.Groups[1].Value).Split(";") | Where-Object { -not [string]::IsNullOrWhiteSpace([string]$_) })
+        }
+      } else {
+        $sessionCompactionStatus = "PARSE_ERROR"
+      }
+    }
+  }
+  if ($sessionCompactionStatus -eq "PARSE_ERROR") {
+    [void]$alerts.Add("session compaction check parse error")
+  }
+  if ($sessionCompactionRecommend) {
+    [void]$alerts.Add(("session compaction recommended reason_count={0}" -f $sessionCompactionReasonCount))
+  }
+}
+
 $updateTriggerAlertCount = 0
 $orphanCustomSourceCount = 0
+$staleProgressiveControlCount = 0
+$notObservableControlCount = 0
+$ruleDuplicationCount = 0
 $releaseDistributionPolicyDriftCount = 0
 $tokenBalanceStatus = "UNKNOWN"
 $tokenBalanceWarningCount = 0
@@ -766,18 +842,39 @@ if ($trigger.exit_code -ne 0) {
   if ($null -ne $triggerObj -and $triggerObj.PSObject.Properties.Name -contains "orphan_custom_source_count") {
     $orphanCustomSourceCount = [int]$triggerObj.orphan_custom_source_count
   }
+  if ($null -ne $triggerObj -and $triggerObj.PSObject.Properties.Name -contains "stale_progressive_control_count") {
+    $staleProgressiveControlCount = [int]$triggerObj.stale_progressive_control_count
+  }
+  if ($null -ne $triggerObj -and $triggerObj.PSObject.Properties.Name -contains "not_observable_control_count") {
+    $notObservableControlCount = [int]$triggerObj.not_observable_control_count
+  }
+  if ($null -ne $triggerObj -and $triggerObj.PSObject.Properties.Name -contains "rule_duplication_count") {
+    $ruleDuplicationCount = [int]$triggerObj.rule_duplication_count
+  }
   if ($null -ne $triggerObj -and $triggerObj.PSObject.Properties.Name -contains "release_distribution_policy_drift_count") {
     $releaseDistributionPolicyDriftCount = [int]$triggerObj.release_distribution_policy_drift_count
   }
   if ($null -eq $triggerObj) {
     $alertCountMatch = [regex]::Match($rawTriggerText, "(?m)^alert_count=([0-9]+)\s*$")
     $orphanCountMatch = [regex]::Match($rawTriggerText, "(?m)^orphan_custom_source_count=([0-9]+)\s*$")
+    $staleProgressiveCountMatch = [regex]::Match($rawTriggerText, "(?m)^stale_progressive_control_count=([0-9]+)\s*$")
+    $notObservableCountMatch = [regex]::Match($rawTriggerText, "(?m)^not_observable_control_count=([0-9]+)\s*$")
+    $ruleDupCountMatch = [regex]::Match($rawTriggerText, "(?m)^rule_duplication_count=([0-9]+)\s*$")
     $driftCountMatch = [regex]::Match($rawTriggerText, "(?m)^release_distribution_policy_drift_count=([0-9]+)\s*$")
     if ($alertCountMatch.Success) {
       $updateTriggerAlertCount = [int]$alertCountMatch.Groups[1].Value
     }
     if ($orphanCountMatch.Success) {
       $orphanCustomSourceCount = [int]$orphanCountMatch.Groups[1].Value
+    }
+    if ($staleProgressiveCountMatch.Success) {
+      $staleProgressiveControlCount = [int]$staleProgressiveCountMatch.Groups[1].Value
+    }
+    if ($notObservableCountMatch.Success) {
+      $notObservableControlCount = [int]$notObservableCountMatch.Groups[1].Value
+    }
+    if ($ruleDupCountMatch.Success) {
+      $ruleDuplicationCount = [int]$ruleDupCountMatch.Groups[1].Value
     }
     if ($driftCountMatch.Success) {
       $releaseDistributionPolicyDriftCount = [int]$driftCountMatch.Groups[1].Value
@@ -1009,6 +1106,9 @@ $result = [pscustomobject]@{
     metrics_exit_code = [int]$metrics.exit_code
     update_trigger_alert_count = [int]$updateTriggerAlertCount
     orphan_custom_source_count = [int]$orphanCustomSourceCount
+    stale_progressive_control_count = [int]$staleProgressiveControlCount
+    not_observable_control_count = [int]$notObservableControlCount
+    rule_duplication_count = [int]$ruleDuplicationCount
     release_distribution_policy_drift_count = [int]$releaseDistributionPolicyDriftCount
     token_balance_status = $tokenBalanceStatus
     token_balance_warning_count = [int]$tokenBalanceWarningCount
@@ -1045,6 +1145,14 @@ $result = [pscustomobject]@{
     token_efficiency_trend_status = $tokenEfficiencyTrendStatus
     token_efficiency_trend_history_count = [int]$tokenEfficiencyTrendHistoryCount
     token_efficiency_trend_latest_value = [Math]::Round([double]$tokenEfficiencyTrendLatestValue, 6)
+    session_compaction_status = $sessionCompactionStatus
+    session_compaction_recommend = [bool]$sessionCompactionRecommend
+    session_compaction_reason_count = [int]$sessionCompactionReasonCount
+    session_compaction_reasons = @($sessionCompactionReasons)
+    quality_first_pass_rate = $qualityFirstPassRate
+    quality_rework_after_clarification_rate = $qualityReworkAfterClarificationRate
+    token_average_response = $tokenAverageResponse
+    token_per_effective_conclusion = $tokenPerEffectiveConclusion
     slo_error_budget_status = $sloErrorBudgetStatus
     slo_gate_pass_rate = $sloGatePassRate
     error_budget_burn_rate = $errorBudgetBurnRate
@@ -1064,6 +1172,7 @@ $result = [pscustomobject]@{
     skill_lifecycle_health_exit_code = [int]$skillLifecycleHealth.exit_code
     cross_repo_compatibility_exit_code = [int]$crossRepoCompatibility.exit_code
     token_efficiency_trend_exit_code = [int]$tokenEfficiencyTrend.exit_code
+    session_compaction_exit_code = [int]$sessionCompaction.exit_code
     token_balance_exit_code = [int]$tokenBalance.exit_code
     proactive_suggestion_balance_exit_code = [int]$proactiveSuggestion.exit_code
     external_baseline_exit_code = [int]$externalBaseline.exit_code
@@ -1083,6 +1192,7 @@ $result = [pscustomobject]@{
     [pscustomobject]@{ name = "check-skill-lifecycle-health"; exit_code = [int]$skillLifecycleHealth.exit_code },
     [pscustomobject]@{ name = "check-cross-repo-compatibility"; exit_code = [int]$crossRepoCompatibility.exit_code },
     [pscustomobject]@{ name = "check-token-efficiency-trend"; exit_code = [int]$tokenEfficiencyTrend.exit_code },
+    [pscustomobject]@{ name = "check-session-compaction-trigger"; exit_code = [int]$sessionCompaction.exit_code },
     [pscustomobject]@{ name = "check-token-balance"; exit_code = [int]$tokenBalance.exit_code },
     [pscustomobject]@{ name = "check-proactive-suggestion-balance"; exit_code = [int]$proactiveSuggestion.exit_code },
     [pscustomobject]@{ name = "check-external-baselines"; exit_code = [int]$externalBaseline.exit_code }
@@ -1112,6 +1222,9 @@ Write-Host ("waiver_remind_count={0}" -f $result.summary.waiver_remind_count)
 Write-Host ("waiver_block_count={0}" -f $result.summary.waiver_block_count)
 Write-Host ("update_trigger_alert_count={0}" -f $result.summary.update_trigger_alert_count)
 Write-Host ("orphan_custom_source_count={0}" -f $result.summary.orphan_custom_source_count)
+Write-Host ("stale_progressive_control_count={0}" -f $result.summary.stale_progressive_control_count)
+Write-Host ("not_observable_control_count={0}" -f $result.summary.not_observable_control_count)
+Write-Host ("rule_duplication_count={0}" -f $result.summary.rule_duplication_count)
 Write-Host ("release_distribution_policy_drift_count={0}" -f $result.summary.release_distribution_policy_drift_count)
 Write-Host ("token_balance_status={0}" -f $result.summary.token_balance_status)
 Write-Host ("token_balance_warning_count={0}" -f $result.summary.token_balance_warning_count)
@@ -1148,6 +1261,13 @@ Write-Host ("cross_repo_compatibility_repo_failure_count={0}" -f $result.summary
 Write-Host ("token_efficiency_trend_status={0}" -f $result.summary.token_efficiency_trend_status)
 Write-Host ("token_efficiency_trend_history_count={0}" -f $result.summary.token_efficiency_trend_history_count)
 Write-Host ("token_efficiency_trend_latest_value={0}" -f $result.summary.token_efficiency_trend_latest_value)
+Write-Host ("session_compaction_status={0}" -f $result.summary.session_compaction_status)
+Write-Host ("session_compaction_recommend={0}" -f $result.summary.session_compaction_recommend)
+Write-Host ("session_compaction_reason_count={0}" -f $result.summary.session_compaction_reason_count)
+Write-Host ("quality_first_pass_rate={0}" -f $result.summary.quality_first_pass_rate)
+Write-Host ("quality_rework_after_clarification_rate={0}" -f $result.summary.quality_rework_after_clarification_rate)
+Write-Host ("token_average_response={0}" -f $result.summary.token_average_response)
+Write-Host ("token_per_effective_conclusion={0}" -f $result.summary.token_per_effective_conclusion)
 Write-Host ("slo_error_budget_status={0}" -f $result.summary.slo_error_budget_status)
 Write-Host ("slo_gate_pass_rate={0}" -f $result.summary.slo_gate_pass_rate)
 Write-Host ("error_budget_burn_rate={0}" -f $result.summary.error_budget_burn_rate)

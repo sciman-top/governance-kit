@@ -1,0 +1,382 @@
+{
+  "schema_version": "1.0",
+  "inventory_date": "2026-04-14",
+  "source_repo": "E:/CODE/repo-governance-hub",
+  "control_classes": [
+    "hard",
+    "progressive",
+    "advisory"
+  ],
+  "repo_scopes": [
+    "source_only",
+    "common_distributable",
+    "repo_specific_distributable"
+  ],
+  "inventory_statuses": [
+    "balanced",
+    "too_strict_candidate",
+    "too_loose_candidate",
+    "duplicate_candidate",
+    "stale_candidate",
+    "not_observable_candidate"
+  ],
+  "controls": [
+    {
+      "control_id": "rule.main_protocol",
+      "plane": "rule",
+      "owner": "repo-governance-hub",
+      "repo_scope": "source_only",
+      "class": "hard",
+      "mode": "enforce",
+      "inventory_status": "balanced",
+      "signal_value": "high",
+      "cost": "medium",
+      "artifacts": [
+        "AGENTS.md",
+        "CLAUDE.md",
+        "GEMINI.md"
+      ],
+      "rollback_path": "git restore AGENTS.md CLAUDE.md GEMINI.md source/project/repo-governance-hub/*",
+      "distributable": false
+    },
+    {
+      "control_id": "rule.project_source_mirror",
+      "plane": "rule",
+      "owner": "repo-governance-hub",
+      "repo_scope": "source_only",
+      "class": "hard",
+      "mode": "enforce",
+      "inventory_status": "balanced",
+      "signal_value": "high",
+      "cost": "low",
+      "artifacts": [
+        "source/project/repo-governance-hub/AGENTS.md",
+        "source/project/repo-governance-hub/CLAUDE.md",
+        "source/project/repo-governance-hub/GEMINI.md"
+      ],
+      "rollback_path": "git restore source/project/repo-governance-hub/*",
+      "distributable": false
+    },
+    {
+      "control_id": "rule.index_indirection",
+      "plane": "rule",
+      "owner": "repo-governance-hub",
+      "repo_scope": "source_only",
+      "class": "advisory",
+      "mode": "advisory",
+      "inventory_status": "balanced",
+      "signal_value": "medium",
+      "cost": "low",
+      "artifacts": [
+        "docs/governance/rule-index.md"
+      ],
+      "rollback_path": "git restore docs/governance/rule-index.md",
+      "distributable": false
+    },
+    {
+      "control_id": "runtime.clarification_upgrade",
+      "plane": "runtime_policy",
+      "owner": "repo-governance-hub",
+      "repo_scope": "common_distributable",
+      "class": "progressive",
+      "mode": "observe",
+      "inventory_status": "balanced",
+      "signal_value": "high",
+      "cost": "low",
+      "artifacts": [
+        "config/clarification-policy.json"
+      ],
+      "rollback_path": "git restore config/clarification-policy.json source/project/_common/custom/config/clarification-policy.json",
+      "distributable": true
+    },
+    {
+      "control_id": "runtime.proactive_suggestion_balance",
+      "plane": "runtime_policy",
+      "owner": "repo-governance-hub",
+      "repo_scope": "common_distributable",
+      "class": "progressive",
+      "mode": "advisory",
+      "inventory_status": "balanced",
+      "signal_value": "medium",
+      "cost": "low",
+      "artifacts": [
+        ".governance/proactive-suggestion-policy.json",
+        "scripts/governance/check-proactive-suggestion-balance.ps1"
+      ],
+      "rollback_path": "git restore .governance/proactive-suggestion-policy.json scripts/governance/check-proactive-suggestion-balance.ps1 source/project/_common/custom/.governance/proactive-suggestion-policy.json",
+      "distributable": true
+    },
+    {
+      "control_id": "runtime.subagent_trigger",
+      "plane": "runtime_policy",
+      "owner": "repo-governance-hub",
+      "repo_scope": "common_distributable",
+      "class": "hard",
+      "mode": "enforce",
+      "inventory_status": "balanced",
+      "signal_value": "high",
+      "cost": "low",
+      "artifacts": [
+        "config/subagent-trigger-policy.json",
+        ".governance/subagent-trigger-policy.json",
+        "scripts/governance/run-target-autopilot.ps1"
+      ],
+      "rollback_path": "git restore config/subagent-trigger-policy.json .governance/subagent-trigger-policy.json scripts/governance/run-target-autopilot.ps1 source/project/_common/custom/scripts/governance/run-target-autopilot.ps1",
+      "distributable": true
+    },
+    {
+      "control_id": "runtime.agent_runtime_profile",
+      "plane": "runtime_policy",
+      "owner": "repo-governance-hub",
+      "repo_scope": "repo_specific_distributable",
+      "class": "progressive",
+      "mode": "observe",
+      "inventory_status": "not_observable_candidate",
+      "signal_value": "medium",
+      "cost": "low",
+      "artifacts": [
+        "config/agent-runtime-policy.json",
+        "scripts/set-agent-runtime-policy.ps1"
+      ],
+      "rollback_path": "git restore config/agent-runtime-policy.json scripts/set-agent-runtime-policy.ps1",
+      "distributable": true
+    },
+    {
+      "control_id": "gate.hard_chain",
+      "plane": "gate",
+      "owner": "repo-governance-hub",
+      "repo_scope": "source_only",
+      "class": "hard",
+      "mode": "enforce",
+      "inventory_status": "balanced",
+      "signal_value": "high",
+      "cost": "high",
+      "artifacts": [
+        "scripts/verify-kit.ps1",
+        "tests/repo-governance-hub.optimization.tests.ps1",
+        "scripts/validate-config.ps1",
+        "scripts/verify.ps1",
+        "scripts/doctor.ps1"
+      ],
+      "rollback_path": "git restore scripts/verify-kit.ps1 tests/repo-governance-hub.optimization.tests.ps1 scripts/validate-config.ps1 scripts/verify.ps1 scripts/doctor.ps1",
+      "distributable": false
+    },
+    {
+      "control_id": "gate.fast_check_escalation",
+      "plane": "gate",
+      "owner": "repo-governance-hub",
+      "repo_scope": "common_distributable",
+      "class": "progressive",
+      "mode": "advisory",
+      "inventory_status": "balanced",
+      "signal_value": "medium",
+      "cost": "low",
+      "artifacts": [
+        "scripts/governance/fast-check.ps1"
+      ],
+      "rollback_path": "git restore scripts/governance/fast-check.ps1 source/project/repo-governance-hub/custom/scripts/governance/fast-check.ps1",
+      "distributable": true
+    },
+    {
+      "control_id": "gate.tracked_files_scope",
+      "plane": "gate",
+      "owner": "repo-governance-hub",
+      "repo_scope": "common_distributable",
+      "class": "hard",
+      "mode": "enforce",
+      "inventory_status": "balanced",
+      "signal_value": "high",
+      "cost": "low",
+      "artifacts": [
+        "scripts/governance/check-tracked-files.ps1",
+        ".governance/tracked-files-policy.json"
+      ],
+      "rollback_path": "git restore scripts/governance/check-tracked-files.ps1 .governance/tracked-files-policy.json source/project/_common/custom/scripts/governance/check-tracked-files.ps1 source/project/_common/custom/.governance/tracked-files-policy.json",
+      "distributable": true
+    },
+    {
+      "control_id": "gate.update_trigger_review",
+      "plane": "gate",
+      "owner": "repo-governance-hub",
+      "repo_scope": "source_only",
+      "class": "progressive",
+      "mode": "observe",
+      "inventory_status": "balanced",
+      "signal_value": "high",
+      "cost": "medium",
+      "artifacts": [
+        "config/update-trigger-policy.json",
+        "scripts/governance/check-update-triggers.ps1"
+      ],
+      "rollback_path": "git restore config/update-trigger-policy.json scripts/governance/check-update-triggers.ps1 source/project/_common/custom/scripts/governance/check-update-triggers.ps1",
+      "distributable": false
+    },
+    {
+      "control_id": "gate.gate_noise_budget",
+      "plane": "gate",
+      "owner": "repo-governance-hub",
+      "repo_scope": "source_only",
+      "class": "progressive",
+      "mode": "observe",
+      "inventory_status": "balanced",
+      "signal_value": "high",
+      "cost": "low",
+      "artifacts": [
+        "config/update-trigger-policy.json"
+      ],
+      "rollback_path": "git restore config/update-trigger-policy.json",
+      "distributable": false
+    },
+    {
+      "control_id": "evidence.change_evidence_template",
+      "plane": "evidence_metrics",
+      "owner": "repo-governance-hub",
+      "repo_scope": "common_distributable",
+      "class": "hard",
+      "mode": "enforce",
+      "inventory_status": "balanced",
+      "signal_value": "high",
+      "cost": "medium",
+      "artifacts": [
+        "docs/change-evidence/template.md",
+        "docs/change-evidence"
+      ],
+      "rollback_path": "git restore docs/change-evidence/template.md",
+      "distributable": true
+    },
+    {
+      "control_id": "metrics.token_efficiency_trend",
+      "plane": "evidence_metrics",
+      "owner": "repo-governance-hub",
+      "repo_scope": "common_distributable",
+      "class": "progressive",
+      "mode": "observe",
+      "inventory_status": "balanced",
+      "signal_value": "medium",
+      "cost": "low",
+      "artifacts": [
+        "docs/governance/token-efficiency-trend-loop.md",
+        ".governance/token-efficiency-history.jsonl",
+        "scripts/governance/check-token-efficiency-trend.ps1"
+      ],
+      "rollback_path": "git restore docs/governance/token-efficiency-trend-loop.md .governance/token-efficiency-history.jsonl scripts/governance/check-token-efficiency-trend.ps1",
+      "distributable": true
+    },
+    {
+      "control_id": "metrics.recurring_review_output",
+      "plane": "evidence_metrics",
+      "owner": "repo-governance-hub",
+      "repo_scope": "source_only",
+      "class": "hard",
+      "mode": "enforce",
+      "inventory_status": "balanced",
+      "signal_value": "high",
+      "cost": "medium",
+      "artifacts": [
+        "scripts/governance/run-recurring-review.ps1",
+        "docs/governance/metrics-auto.md"
+      ],
+      "rollback_path": "git restore scripts/governance/run-recurring-review.ps1 docs/governance/metrics-auto.md source/project/repo-governance-hub/custom/scripts/governance/run-recurring-review.ps1",
+      "distributable": false
+    },
+    {
+      "control_id": "distribution.custom_file_mapping",
+      "plane": "distribution",
+      "owner": "repo-governance-hub",
+      "repo_scope": "source_only",
+      "class": "hard",
+      "mode": "enforce",
+      "inventory_status": "balanced",
+      "signal_value": "high",
+      "cost": "medium",
+      "artifacts": [
+        "config/project-custom-files.json",
+        "config/targets.json"
+      ],
+      "rollback_path": "git restore config/project-custom-files.json config/targets.json",
+      "distributable": false
+    },
+    {
+      "control_id": "distribution.rollout_phase",
+      "plane": "distribution",
+      "owner": "repo-governance-hub",
+      "repo_scope": "source_only",
+      "class": "progressive",
+      "mode": "observe",
+      "inventory_status": "too_loose_candidate",
+      "signal_value": "medium",
+      "cost": "low",
+      "artifacts": [
+        "config/rule-rollout.json"
+      ],
+      "rollback_path": "git restore config/rule-rollout.json",
+      "distributable": false
+    },
+    {
+      "control_id": "distribution.install_safe",
+      "plane": "distribution",
+      "owner": "repo-governance-hub",
+      "repo_scope": "source_only",
+      "class": "hard",
+      "mode": "enforce",
+      "inventory_status": "balanced",
+      "signal_value": "high",
+      "cost": "medium",
+      "artifacts": [
+        "scripts/install.ps1"
+      ],
+      "rollback_path": "git restore scripts/install.ps1",
+      "distributable": false
+    },
+    {
+      "control_id": "review.weekly_trigger_loop",
+      "plane": "review_evolution",
+      "owner": "repo-governance-hub",
+      "repo_scope": "source_only",
+      "class": "hard",
+      "mode": "enforce",
+      "inventory_status": "balanced",
+      "signal_value": "high",
+      "cost": "medium",
+      "artifacts": [
+        "scripts/governance/run-recurring-review.ps1",
+        "config/update-trigger-policy.json"
+      ],
+      "rollback_path": "git restore scripts/governance/run-recurring-review.ps1 config/update-trigger-policy.json",
+      "distributable": false
+    },
+    {
+      "control_id": "review.monthly_policy_review",
+      "plane": "review_evolution",
+      "owner": "repo-governance-hub",
+      "repo_scope": "source_only",
+      "class": "progressive",
+      "mode": "observe",
+      "inventory_status": "balanced",
+      "signal_value": "medium",
+      "cost": "low",
+      "artifacts": [
+        "scripts/governance/run-monthly-policy-review.ps1"
+      ],
+      "rollback_path": "git restore scripts/governance/run-monthly-policy-review.ps1",
+      "distributable": false
+    },
+    {
+      "control_id": "review.cross_repo_compatibility",
+      "plane": "review_evolution",
+      "owner": "repo-governance-hub",
+      "repo_scope": "repo_specific_distributable",
+      "class": "hard",
+      "mode": "enforce",
+      "inventory_status": "balanced",
+      "signal_value": "high",
+      "cost": "medium",
+      "artifacts": [
+        "scripts/governance/check-cross-repo-compatibility.ps1",
+        ".governance/cross-repo-compatibility-signal.json"
+      ],
+      "rollback_path": "git restore scripts/governance/check-cross-repo-compatibility.ps1 .governance/cross-repo-compatibility-signal.json",
+      "distributable": true
+    }
+  ]
+}

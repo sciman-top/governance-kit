@@ -13,6 +13,8 @@
 - `evidence and rollback details`: [evidence-and-rollback-runbook.md](./evidence-and-rollback-runbook.md)
 - `backflow and source-of-truth`: [backflow-runbook.md](./backflow-runbook.md)
 - `tracked files and commit scope`: [git-scope-and-tracked-files.md](./git-scope-and-tracked-files.md)
+- `token 降本轻量执行清单`: [token-cost-lightweight-checklist.md](./token-cost-lightweight-checklist.md)
+- `rule duplication audit`: [rule-duplication-audit-2026Q2.md](./rule-duplication-audit-2026Q2.md)
 - `teaching output protocol`: skill `governance-teaching-lite-output`
 - `clarification protocol`: skill `governance-clarification-protocol`
 - `skill creation gate`: [skill-creation-gate-checklist.md](./skill-creation-gate-checklist.md)
