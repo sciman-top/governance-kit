@@ -76,6 +76,12 @@
       "enabled": true,
       "severity": "medium"
     },
+    "target_rollout_matrix_gap": {
+      "enabled": true,
+      "severity": "medium",
+      "max_allowed_missing_control_count": 0,
+      "max_allowed_missing_repo_state_count": 0
+    },
     "dependency_review_policy_drift": {
       "enabled": true,
       "severity": "high",

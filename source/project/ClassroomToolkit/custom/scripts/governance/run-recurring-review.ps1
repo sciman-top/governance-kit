@@ -142,6 +142,8 @@ function Write-AlertSnapshot([object]$ReviewResult, [string]$RootPath) {
   [void]$lines.Add(("control_retirement_active_candidate_count={0}" -f $ReviewResult.summary.control_retirement_active_candidate_count))
   [void]$lines.Add(("control_retirement_overdue_candidate_count={0}" -f $ReviewResult.summary.control_retirement_overdue_candidate_count))
   [void]$lines.Add(("evidence_template_missing_field_count={0}" -f $ReviewResult.summary.evidence_template_missing_field_count))
+  [void]$lines.Add(("target_rollout_matrix_missing_control_count={0}" -f $ReviewResult.summary.target_rollout_matrix_missing_control_count))
+  [void]$lines.Add(("target_rollout_matrix_missing_repo_state_count={0}" -f $ReviewResult.summary.target_rollout_matrix_missing_repo_state_count))
   [void]$lines.Add(("rollout_metadata_coverage_gap_count={0}" -f $ReviewResult.summary.rollout_metadata_coverage_gap_count))
   [void]$lines.Add(("rollout_metadata_orphan_count={0}" -f $ReviewResult.summary.rollout_metadata_orphan_count))
   [void]$lines.Add(("control_plane_top_noisy_controls={0}" -f $ReviewResult.summary.control_plane_top_noisy_controls))
@@ -822,6 +824,8 @@ $ruleDuplicationCount = 0
 $controlRetirementActiveCandidateCount = 0
 $controlRetirementOverdueCandidateCount = 0
 $evidenceTemplateMissingFieldCount = 0
+$targetRolloutMatrixMissingControlCount = 0
+$targetRolloutMatrixMissingRepoStateCount = 0
 $rolloutMetadataCoverageGapCount = 0
 $rolloutMetadataOrphanCount = 0
 $releaseDistributionPolicyDriftCount = 0
@@ -866,6 +870,12 @@ if ($trigger.exit_code -ne 0) {
   if ($null -ne $triggerObj -and $triggerObj.PSObject.Properties.Name -contains "evidence_template_missing_field_count") {
     $evidenceTemplateMissingFieldCount = [int]$triggerObj.evidence_template_missing_field_count
   }
+  if ($null -ne $triggerObj -and $triggerObj.PSObject.Properties.Name -contains "target_rollout_matrix_missing_control_count") {
+    $targetRolloutMatrixMissingControlCount = [int]$triggerObj.target_rollout_matrix_missing_control_count
+  }
+  if ($null -ne $triggerObj -and $triggerObj.PSObject.Properties.Name -contains "target_rollout_matrix_missing_repo_state_count") {
+    $targetRolloutMatrixMissingRepoStateCount = [int]$triggerObj.target_rollout_matrix_missing_repo_state_count
+  }
   if ($null -ne $triggerObj -and $triggerObj.PSObject.Properties.Name -contains "rollout_metadata_coverage_gap_count") {
     $rolloutMetadataCoverageGapCount = [int]$triggerObj.rollout_metadata_coverage_gap_count
   }
@@ -884,6 +894,8 @@ if ($trigger.exit_code -ne 0) {
     $controlRetirementActiveCountMatch = [regex]::Match($rawTriggerText, "(?m)^control_retirement_active_candidate_count=([0-9]+)\s*$")
     $controlRetirementOverdueCountMatch = [regex]::Match($rawTriggerText, "(?m)^control_retirement_overdue_candidate_count=([0-9]+)\s*$")
     $evidenceTemplateMissingFieldCountMatch = [regex]::Match($rawTriggerText, "(?m)^evidence_template_missing_field_count=([0-9]+)\s*$")
+    $targetRolloutMissingControlCountMatch = [regex]::Match($rawTriggerText, "(?m)^target_rollout_matrix_missing_control_count=([0-9]+)\s*$")
+    $targetRolloutMissingRepoStateCountMatch = [regex]::Match($rawTriggerText, "(?m)^target_rollout_matrix_missing_repo_state_count=([0-9]+)\s*$")
     $rolloutMetadataCoverageGapMatch = [regex]::Match($rawTriggerText, "(?m)^rollout_metadata_coverage_gap_count=([0-9]+)\s*$")
     $rolloutMetadataOrphanMatch = [regex]::Match($rawTriggerText, "(?m)^rollout_metadata_orphan_count=([0-9]+)\s*$")
     $driftCountMatch = [regex]::Match($rawTriggerText, "(?m)^release_distribution_policy_drift_count=([0-9]+)\s*$")
@@ -910,6 +922,12 @@ if ($trigger.exit_code -ne 0) {
     }
     if ($evidenceTemplateMissingFieldCountMatch.Success) {
       $evidenceTemplateMissingFieldCount = [int]$evidenceTemplateMissingFieldCountMatch.Groups[1].Value
+    }
+    if ($targetRolloutMissingControlCountMatch.Success) {
+      $targetRolloutMatrixMissingControlCount = [int]$targetRolloutMissingControlCountMatch.Groups[1].Value
+    }
+    if ($targetRolloutMissingRepoStateCountMatch.Success) {
+      $targetRolloutMatrixMissingRepoStateCount = [int]$targetRolloutMissingRepoStateCountMatch.Groups[1].Value
     }
     if ($rolloutMetadataCoverageGapMatch.Success) {
       $rolloutMetadataCoverageGapCount = [int]$rolloutMetadataCoverageGapMatch.Groups[1].Value
@@ -1134,6 +1152,7 @@ if ($updateTriggerAlertCount -gt 0) { [void]$controlPlaneTopNoisyControls.Add(("
 if ($staleProgressiveControlCount -gt 0) { [void]$controlPlaneTopNoisyControls.Add(("stale_progressive_controls:{0}" -f [int]$staleProgressiveControlCount)) }
 if ($notObservableControlCount -gt 0) { [void]$controlPlaneTopNoisyControls.Add(("not_observable_controls:{0}" -f [int]$notObservableControlCount)) }
 if ($rolloutMetadataCoverageGapCount -gt 0) { [void]$controlPlaneTopNoisyControls.Add(("rollout_metadata_coverage_gap:{0}" -f [int]$rolloutMetadataCoverageGapCount)) }
+if ($targetRolloutMatrixMissingControlCount -gt 0 -or $targetRolloutMatrixMissingRepoStateCount -gt 0) { [void]$controlPlaneTopNoisyControls.Add(("target_rollout_matrix_gap:{0}/{1}" -f [int]$targetRolloutMatrixMissingControlCount, [int]$targetRolloutMatrixMissingRepoStateCount)) }
 if ($controlRetirementOverdueCandidateCount -gt 0) { [void]$controlPlaneTopNoisyControls.Add(("retirement_overdue_candidates:{0}" -f [int]$controlRetirementOverdueCandidateCount)) }
 if ($controlPlaneTopNoisyControls.Count -eq 0) { [void]$controlPlaneTopNoisyControls.Add("none") }
 $controlPlaneTopNoisyControlsText = [string]::Join(";", @($controlPlaneTopNoisyControls | Select-Object -First 3))
@@ -1169,6 +1188,8 @@ $result = [pscustomobject]@{
     control_retirement_active_candidate_count = [int]$controlRetirementActiveCandidateCount
     control_retirement_overdue_candidate_count = [int]$controlRetirementOverdueCandidateCount
     evidence_template_missing_field_count = [int]$evidenceTemplateMissingFieldCount
+    target_rollout_matrix_missing_control_count = [int]$targetRolloutMatrixMissingControlCount
+    target_rollout_matrix_missing_repo_state_count = [int]$targetRolloutMatrixMissingRepoStateCount
     rollout_metadata_coverage_gap_count = [int]$rolloutMetadataCoverageGapCount
     rollout_metadata_orphan_count = [int]$rolloutMetadataOrphanCount
     control_plane_top_noisy_controls = $controlPlaneTopNoisyControlsText
@@ -1292,6 +1313,8 @@ Write-Host ("rule_duplication_count={0}" -f $result.summary.rule_duplication_cou
 Write-Host ("control_retirement_active_candidate_count={0}" -f $result.summary.control_retirement_active_candidate_count)
 Write-Host ("control_retirement_overdue_candidate_count={0}" -f $result.summary.control_retirement_overdue_candidate_count)
 Write-Host ("evidence_template_missing_field_count={0}" -f $result.summary.evidence_template_missing_field_count)
+Write-Host ("target_rollout_matrix_missing_control_count={0}" -f $result.summary.target_rollout_matrix_missing_control_count)
+Write-Host ("target_rollout_matrix_missing_repo_state_count={0}" -f $result.summary.target_rollout_matrix_missing_repo_state_count)
 Write-Host ("rollout_metadata_coverage_gap_count={0}" -f $result.summary.rollout_metadata_coverage_gap_count)
 Write-Host ("rollout_metadata_orphan_count={0}" -f $result.summary.rollout_metadata_orphan_count)
 Write-Host ("control_plane_top_noisy_controls={0}" -f $result.summary.control_plane_top_noisy_controls)

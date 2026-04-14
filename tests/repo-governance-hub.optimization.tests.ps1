@@ -3695,6 +3695,8 @@ exit 0
       ($snapshot -match "stale_progressive_control_count=0") | should be $true
       ($snapshot -match "not_observable_control_count=0") | should be $true
       ($snapshot -match "evidence_template_missing_field_count=0") | should be $true
+      ($snapshot -match "target_rollout_matrix_missing_control_count=0") | should be $true
+      ($snapshot -match "target_rollout_matrix_missing_repo_state_count=0") | should be $true
       ($snapshot -match "control_plane_top_noisy_controls=none") | should be $true
       ($snapshot -match "control_plane_most_bypassed_advisories=none") | should be $true
       ($snapshot -match "skill_trigger_eval_status=UNAVAILABLE") | should be $true
@@ -4519,6 +4521,83 @@ jobs:
       $obj = $json | ConvertFrom-Json
       [int]$obj.evidence_template_missing_field_count | should be 5
       @($obj.alerts | Where-Object { $_.id -eq "evidence_template_fields_missing" }).Count | should be 1
+    } finally {
+      if (Test-Path $tmp) { Remove-Item -LiteralPath $tmp -Recurse -Force }
+    }
+  }
+
+  it "check-update-triggers reports target rollout matrix gap" {
+    $tmp = Join-Path $env:TEMP ("govkit-test-" + [guid]::NewGuid().ToString("N"))
+    try {
+      New-Item -ItemType Directory -Path (Join-Path $tmp "scripts\governance") -Force | Out-Null
+      New-Item -ItemType Directory -Path (Join-Path $tmp "scripts\lib") -Force | Out-Null
+      New-Item -ItemType Directory -Path (Join-Path $tmp "config") -Force | Out-Null
+
+      Copy-Item -Path (Join-Path $repoRoot "scripts\governance\check-update-triggers.ps1") -Destination (Join-Path $tmp "scripts\governance\check-update-triggers.ps1") -Force
+      Copy-Item -Path (Join-Path $repoRoot "scripts\governance\check-target-rollout-matrix.ps1") -Destination (Join-Path $tmp "scripts\governance\check-target-rollout-matrix.ps1") -Force
+      Copy-Item -Path (Join-Path $repoRoot "scripts\lib\common.ps1") -Destination (Join-Path $tmp "scripts\lib\common.ps1") -Force
+
+      @(
+        "E:/CODE/ClassroomToolkit",
+        "E:/CODE/skills-manager"
+      ) | ConvertTo-Json | Set-Content -Path (Join-Path $tmp "config\repositories.json") -Encoding UTF8
+
+      @'
+{
+  "schema_version": "1.0",
+  "controls": [
+    { "control_id": "runtime.clarification_upgrade", "class": "progressive", "distributable": true, "repo_scope": "common_distributable" },
+    { "control_id": "metrics.token_efficiency_trend", "class": "progressive", "distributable": true, "repo_scope": "common_distributable" }
+  ]
+}
+'@ | Set-Content -Path (Join-Path $tmp "config\governance-control-registry.json") -Encoding UTF8
+
+      @'
+{
+  "schema_version": "1.0",
+  "controls": [
+    {
+      "control_id": "runtime.clarification_upgrade",
+      "repo_scope": "common_distributable",
+      "repo_states": [
+        { "repo": "E:/CODE/ClassroomToolkit", "phase": "observe" }
+      ]
+    }
+  ]
+}
+'@ | Set-Content -Path (Join-Path $tmp "config\target-control-rollout-matrix.json") -Encoding UTF8
+
+      @'
+{
+  "schema_version": "1.0",
+  "cadence": { "recurring_review_days": 7, "monthly_review_day": 1 },
+  "triggers": {
+    "cli_version_drift": { "enabled": false, "severity": "high" },
+    "rollout_observe_overdue": { "enabled": false, "severity": "medium" },
+    "rollout_metadata_coverage_gap": { "enabled": false, "severity": "medium", "max_allowed_gap_count": 0, "max_allowed_orphan_count": 0 },
+    "metrics_snapshot_stale": { "enabled": false, "severity": "medium", "max_age_days": 8 },
+    "waiver_expired_unrecovered": { "enabled": false, "severity": "high" },
+    "platform_na_expired": { "enabled": false, "severity": "medium" },
+    "release_distribution_policy_drift": { "enabled": false, "severity": "high" },
+    "skill_trigger_eval_summary_stale": { "enabled": false, "severity": "medium", "max_age_days": 8 },
+    "low_value_orphan_custom_sources": { "enabled": false, "severity": "medium" },
+    "gate_noise_budget_breach": { "enabled": false, "severity": "medium", "max_false_positive_rate": 0.05, "max_gate_latency_delta_ms": 5000, "alert_on_data_gap": false },
+    "stale_progressive_controls_present": { "enabled": false, "severity": "medium", "max_allowed_count": 0 },
+    "not_observable_controls_present": { "enabled": false, "severity": "medium", "max_allowed_count": 0 },
+    "rule_duplication_detected": { "enabled": false, "severity": "medium" },
+    "control_retirement_backlog": { "enabled": false, "severity": "medium", "max_active_candidate_count": 8, "max_overdue_candidate_count": 0 },
+    "evidence_template_fields_missing": { "enabled": false, "severity": "medium" },
+    "target_rollout_matrix_gap": { "enabled": true, "severity": "medium", "max_allowed_missing_control_count": 0, "max_allowed_missing_repo_state_count": 0 }
+  }
+}
+'@ | Set-Content -Path (Join-Path $tmp "config\update-trigger-policy.json") -Encoding UTF8
+
+      $json = & powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $tmp "scripts\governance\check-update-triggers.ps1") -RepoRoot $tmp -AsJson
+      $LASTEXITCODE | should be 1
+      $obj = $json | ConvertFrom-Json
+      [int]$obj.target_rollout_matrix_missing_control_count | should be 1
+      [int]$obj.target_rollout_matrix_missing_repo_state_count | should be 1
+      @($obj.alerts | Where-Object { $_.id -eq "target_rollout_matrix_gap" }).Count | should be 1
     } finally {
       if (Test-Path $tmp) { Remove-Item -LiteralPath $tmp -Recurse -Force }
     }

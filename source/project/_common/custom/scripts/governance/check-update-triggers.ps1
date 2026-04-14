@@ -153,6 +153,12 @@ if ($null -eq $policy) {
         enabled = $false
         severity = "medium"
       }
+      target_rollout_matrix_gap = [pscustomobject]@{
+        enabled = $false
+        severity = "medium"
+        max_allowed_missing_control_count = 0
+        max_allowed_missing_repo_state_count = 0
+      }
       dependency_review_policy_drift = [pscustomobject]@{
         enabled = $false
         severity = "high"
@@ -535,6 +541,48 @@ if ($null -ne $policy.triggers.PSObject.Properties['evidence_template_fields_mis
   }
 }
 
+# 3.10) target rollout matrix gap
+$targetRolloutMatrixMissingControlCount = 0
+$targetRolloutMatrixMissingRepoStateCount = 0
+if ($null -ne $policy.triggers.PSObject.Properties['target_rollout_matrix_gap'] -and [bool]$policy.triggers.target_rollout_matrix_gap.enabled) {
+  $targetRolloutScript = Join-Path $kitRoot "scripts\governance\check-target-rollout-matrix.ps1"
+  if (Test-Path -LiteralPath $targetRolloutScript -PathType Leaf) {
+    $targetRolloutOut = & $psExe -NoProfile -ExecutionPolicy Bypass -File $targetRolloutScript -RepoRoot $repoPath -AsJson 2>&1
+    $targetRolloutExit = $LASTEXITCODE
+    $steps.Add([pscustomobject]@{ name = "target-rollout-matrix-gap"; exit_code = [int]$targetRolloutExit }) | Out-Null
+    $targetRolloutText = [string]::Join([Environment]::NewLine, @($targetRolloutOut))
+    $targetRolloutObj = $null
+    if (-not [string]::IsNullOrWhiteSpace($targetRolloutText)) {
+      try { $targetRolloutObj = $targetRolloutText | ConvertFrom-Json } catch { $targetRolloutObj = $null }
+    }
+    if ($null -ne $targetRolloutObj) {
+      if ($targetRolloutObj.PSObject.Properties.Name -contains "missing_control_count") {
+        $targetRolloutMatrixMissingControlCount = [int]$targetRolloutObj.missing_control_count
+      }
+      if ($targetRolloutObj.PSObject.Properties.Name -contains "missing_repo_state_count") {
+        $targetRolloutMatrixMissingRepoStateCount = [int]$targetRolloutObj.missing_repo_state_count
+      }
+    }
+
+    $maxMissingControlCount = 0
+    $maxMissingRepoStateCount = 0
+    if ($null -ne $policy.triggers.target_rollout_matrix_gap.PSObject.Properties['max_allowed_missing_control_count']) {
+      $maxMissingControlCount = [int]$policy.triggers.target_rollout_matrix_gap.max_allowed_missing_control_count
+    }
+    if ($null -ne $policy.triggers.target_rollout_matrix_gap.PSObject.Properties['max_allowed_missing_repo_state_count']) {
+      $maxMissingRepoStateCount = [int]$policy.triggers.target_rollout_matrix_gap.max_allowed_missing_repo_state_count
+    }
+    if ($targetRolloutMatrixMissingControlCount -gt $maxMissingControlCount -or $targetRolloutMatrixMissingRepoStateCount -gt $maxMissingRepoStateCount) {
+      Add-Alert -List $alerts `
+        -Id "target_rollout_matrix_gap" `
+        -Severity ([string]$policy.triggers.target_rollout_matrix_gap.severity) `
+        -Reason ("missing_control_count={0} > {1} or missing_repo_state_count={2} > {3}" -f $targetRolloutMatrixMissingControlCount, $maxMissingControlCount, $targetRolloutMatrixMissingRepoStateCount, $maxMissingRepoStateCount) `
+        -RecommendedAction "Backfill config/target-control-rollout-matrix.json for all distributable progressive controls and target repos." `
+        -Evidence "scripts/governance/check-target-rollout-matrix.ps1"
+    }
+  }
+}
+
 # 4) platform_na expired
 if ([bool]$policy.triggers.platform_na_expired.enabled) {
   $evidenceDir = Join-Path $kitRoot "docs\change-evidence"
@@ -858,6 +906,8 @@ $result = [pscustomobject]@{
   control_retirement_active_candidate_count = [int]$controlRetirementActiveCandidateCount
   control_retirement_overdue_candidate_count = [int]$controlRetirementOverdueCandidateCount
   evidence_template_missing_field_count = [int]$evidenceTemplateMissingFieldCount
+  target_rollout_matrix_missing_control_count = [int]$targetRolloutMatrixMissingControlCount
+  target_rollout_matrix_missing_repo_state_count = [int]$targetRolloutMatrixMissingRepoStateCount
   rollout_metadata_coverage_gap_count = [int]$rolloutCoverageGapCount
   rollout_metadata_orphan_count = [int]$rolloutCoverageOrphanCount
   orphan_custom_source_count = [int]$orphanCustomCount

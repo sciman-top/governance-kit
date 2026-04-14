@@ -342,6 +342,11 @@ Every control should be assigned one of these classes:
   - recurring review summary added control-plane digest fields:
     - `control_plane_top_noisy_controls`
     - `control_plane_most_bypassed_advisories`
+- completed (Phase 4 slice A)
+  - per-target rollout matrix source landed: `config/target-control-rollout-matrix.json`.
+  - matrix validator landed: `scripts/governance/check-target-rollout-matrix.ps1`.
+  - update trigger support for `target_rollout_matrix_gap`.
+  - target matrix document landed: `docs/governance/target-rollout-status-matrix-2026Q2.md`.
 - next
-  - add per-target rollout state matrix for distributable progressive controls.
   - integrate cross-repo feedback counters into recurring review summary.
+  - add cross-repo feedback report and ingest counters into recurring review summary.

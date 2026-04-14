@@ -1,0 +1,112 @@
+{
+  "schema_version": "1.0",
+  "last_updated": "2026-04-14",
+  "owner": "repo-governance-hub",
+  "default_repo_phase": "observe",
+  "controls": [
+    {
+      "control_id": "runtime.clarification_upgrade",
+      "repo_scope": "common_distributable",
+      "target_mode": "observe",
+      "repo_states": [
+        {
+          "repo": "E:/CODE/ClassroomToolkit",
+          "phase": "observe",
+          "observe_started_at": "2026-04-01",
+          "planned_enforce_date": "2026-05-01"
+        },
+        {
+          "repo": "E:/CODE/skills-manager",
+          "phase": "observe",
+          "observe_started_at": "2026-04-01",
+          "planned_enforce_date": "2026-05-01"
+        },
+        {
+          "repo": "E:/CODE/repo-governance-hub",
+          "phase": "observe",
+          "observe_started_at": "2026-04-01",
+          "planned_enforce_date": "2026-05-01"
+        }
+      ]
+    },
+    {
+      "control_id": "runtime.proactive_suggestion_balance",
+      "repo_scope": "common_distributable",
+      "target_mode": "advisory",
+      "repo_states": [
+        {
+          "repo": "E:/CODE/ClassroomToolkit",
+          "phase": "advisory"
+        },
+        {
+          "repo": "E:/CODE/skills-manager",
+          "phase": "advisory"
+        },
+        {
+          "repo": "E:/CODE/repo-governance-hub",
+          "phase": "advisory"
+        }
+      ]
+    },
+    {
+      "control_id": "runtime.agent_runtime_profile",
+      "repo_scope": "repo_specific_distributable",
+      "target_mode": "observe",
+      "applies_to_repos": [
+        "E:/CODE/repo-governance-hub"
+      ],
+      "repo_states": [
+        {
+          "repo": "E:/CODE/repo-governance-hub",
+          "phase": "observe",
+          "observe_started_at": "2026-04-10",
+          "planned_enforce_date": "2026-05-10"
+        }
+      ]
+    },
+    {
+      "control_id": "gate.fast_check_escalation",
+      "repo_scope": "common_distributable",
+      "target_mode": "advisory",
+      "repo_states": [
+        {
+          "repo": "E:/CODE/ClassroomToolkit",
+          "phase": "advisory"
+        },
+        {
+          "repo": "E:/CODE/skills-manager",
+          "phase": "advisory"
+        },
+        {
+          "repo": "E:/CODE/repo-governance-hub",
+          "phase": "advisory"
+        }
+      ]
+    },
+    {
+      "control_id": "metrics.token_efficiency_trend",
+      "repo_scope": "common_distributable",
+      "target_mode": "observe",
+      "repo_states": [
+        {
+          "repo": "E:/CODE/ClassroomToolkit",
+          "phase": "observe",
+          "observe_started_at": "2026-04-01",
+          "planned_enforce_date": "2026-05-15"
+        },
+        {
+          "repo": "E:/CODE/skills-manager",
+          "phase": "observe",
+          "observe_started_at": "2026-04-01",
+          "planned_enforce_date": "2026-05-15"
+        },
+        {
+          "repo": "E:/CODE/repo-governance-hub",
+          "phase": "observe",
+          "observe_started_at": "2026-04-01",
+          "planned_enforce_date": "2026-05-15"
+        }
+      ]
+    }
+  ]
+}

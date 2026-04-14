@@ -266,6 +266,25 @@
       "distributable": false
     },
     {
+      "control_id": "gate.target_rollout_matrix_gap",
+      "plane": "gate",
+      "owner": "repo-governance-hub",
+      "repo_scope": "source_only",
+      "class": "progressive",
+      "mode": "observe",
+      "inventory_status": "balanced",
+      "signal_value": "high",
+      "cost": "low",
+      "artifacts": [
+        "config/target-control-rollout-matrix.json",
+        "scripts/governance/check-target-rollout-matrix.ps1",
+        "config/update-trigger-policy.json",
+        "scripts/governance/check-update-triggers.ps1"
+      ],
+      "rollback_path": "git restore config/target-control-rollout-matrix.json scripts/governance/check-target-rollout-matrix.ps1 config/update-trigger-policy.json scripts/governance/check-update-triggers.ps1",
+      "distributable": false
+    },
+    {
       "control_id": "evidence.change_evidence_template",
       "plane": "evidence_metrics",
       "owner": "repo-governance-hub",
