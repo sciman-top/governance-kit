@@ -361,6 +361,30 @@ if ([bool]$pruneObj.should_fail_gate) {
 $dupScript = Join-Path $root "scripts\governance\check-rule-duplication.ps1"
 Invoke-ChildScript -ScriptPath $dupScript -ScriptArgs @("-RepoRoot", $root)
 
+$agentRuntimeBaselineScript = Join-Path $root "scripts\governance\check-agent-runtime-baseline.ps1"
+if (Test-Path -LiteralPath $agentRuntimeBaselineScript -PathType Leaf) {
+  try {
+    $runtimeRaw = Invoke-ChildScriptCapture -ScriptPath $agentRuntimeBaselineScript -ScriptArgs @("-RepoRoot", $root, "-AsJson")
+    $runtimeObj = $null
+    if (-not [string]::IsNullOrWhiteSpace([string]($runtimeRaw | Out-String))) {
+      $runtimeObj = ([string]::Join([Environment]::NewLine, @($runtimeRaw))) | ConvertFrom-Json
+    }
+    if ($null -ne $runtimeObj) {
+      Write-Host ("agent_runtime_baseline.status=" + [string]$runtimeObj.status)
+      Write-Host ("agent_runtime_baseline.warning_count=" + [string]$runtimeObj.warning_count)
+      Write-Host ("agent_runtime_baseline.policy_path=" + [string]$runtimeObj.policy_path)
+    } else {
+      Write-Host "agent_runtime_baseline.status=warn"
+      Write-Host "agent_runtime_baseline.warning_count=1"
+      Write-Host "agent_runtime_baseline.policy_path=unknown"
+    }
+  } catch {
+    Write-Host "agent_runtime_baseline.status=warn"
+    Write-Host "agent_runtime_baseline.warning_count=1"
+    Write-Host "agent_runtime_baseline.policy_path=error"
+  }
+}
+
 $sizeGuardPath = Join-Path $root "config\install-size-guard.json"
 $sizeGuard = Read-JsonFile -Path $sizeGuardPath -DefaultValue $null -UseCache -DisplayName "install-size-guard.json"
 if ($null -ne $sizeGuard) {

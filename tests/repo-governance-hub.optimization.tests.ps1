@@ -588,6 +588,60 @@ exit 0
     }
   }
 
+  it "validate-config fails when agent runtime policy is missing required sections" {
+    $tmp = Join-Path $env:TEMP ("govkit-test-" + [guid]::NewGuid().ToString("N"))
+    try {
+      New-Item -ItemType Directory -Path (Join-Path $tmp "scripts\lib") -Force | Out-Null
+      New-Item -ItemType Directory -Path (Join-Path $tmp "scripts") -Force | Out-Null
+      New-Item -ItemType Directory -Path (Join-Path $tmp "config") -Force | Out-Null
+      $fakeRepoPath = Get-TestRepoPath $tmp "FakeRepo"
+
+      Copy-Item -Path (Join-Path $repoRoot "scripts\lib\common.ps1") -Destination (Join-Path $tmp "scripts\lib\common.ps1") -Force
+      Copy-Item -Path (Join-Path $repoRoot "scripts\validate-config.ps1") -Destination (Join-Path $tmp "scripts\validate-config.ps1") -Force
+
+      @($fakeRepoPath) | ConvertTo-Json -Depth 3 | Set-Content -Path (Join-Path $tmp "config\repositories.json") -Encoding UTF8
+      @{
+        default = @()
+        repos = @(
+          @{
+            repoName = "FakeRepo"
+            files = @()
+          }
+        )
+      } | ConvertTo-Json -Depth 6 | Set-Content -Path (Join-Path $tmp "config\project-custom-files.json") -Encoding UTF8
+      Set-MinProjectRulePolicy -ConfigDir (Join-Path $tmp "config") -RepoPath $fakeRepoPath
+      Set-MinReleaseDistributionPolicy -ConfigDir (Join-Path $tmp "config")
+      Set-MinPracticeStackPolicy -ConfigDir (Join-Path $tmp "config") -RepoName "FakeRepo"
+      @(@{ source = "source/global/AGENTS.md"; target = '${USERPROFILE}/.codex/AGENTS.md' }) | ConvertTo-Json -Depth 4 | Set-Content -Path (Join-Path $tmp "config\targets.json") -Encoding UTF8
+      @{
+        default = @{ phase = "observe"; blockExpiredWaiver = $false }
+        repos = @(
+          @{
+            repo = $fakeRepoPath
+            phase = "observe"
+            planned_enforce_date = "2026-04-15"
+          }
+        )
+      } | ConvertTo-Json -Depth 8 | Set-Content -Path (Join-Path $tmp "config\rule-rollout.json") -Encoding UTF8
+
+      @'
+{
+  "schema_version": "1.0",
+  "enabled_by_default": false,
+  "default_files": [".codex/config.toml"],
+  "repos": []
+}
+'@ | Set-Content -Path (Join-Path $tmp "config\agent-runtime-policy.json") -Encoding UTF8
+
+      $output = & powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $tmp "scripts\validate-config.ps1") 2>&1 | Out-String
+      $LASTEXITCODE | should be 1
+      $output | should match "agent-runtime-policy.prompt_registry missing"
+      $output | should match "agent-runtime-policy.mode missing"
+    } finally {
+      if (Test-Path $tmp) { Remove-Item -LiteralPath $tmp -Recurse -Force }
+    }
+  }
+
   it "validate-config fails when skill source is not registered in project-custom-files" {
     $tmp = Join-Path $env:TEMP ("govkit-test-" + [guid]::NewGuid().ToString("N"))
     try {
@@ -872,6 +926,7 @@ Fixture body.
     $tmp = Join-Path $env:TEMP ("govkit-test-" + [guid]::NewGuid().ToString("N"))
     try {
       New-Item -ItemType Directory -Path (Join-Path $tmp "scripts") -Force | Out-Null
+      New-Item -ItemType Directory -Path (Join-Path $tmp "config") -Force | Out-Null
 
       Copy-Item -Path (Join-Path $repoRoot "scripts\doctor.ps1") -Destination (Join-Path $tmp "scripts\doctor.ps1") -Force
 
@@ -898,6 +953,7 @@ Fixture body.
     $tmp = Join-Path $env:TEMP ("govkit-test-" + [guid]::NewGuid().ToString("N"))
     try {
       New-Item -ItemType Directory -Path (Join-Path $tmp "scripts") -Force | Out-Null
+      New-Item -ItemType Directory -Path (Join-Path $tmp "config") -Force | Out-Null
 
       Copy-Item -Path (Join-Path $repoRoot "scripts\doctor.ps1") -Destination (Join-Path $tmp "scripts\doctor.ps1") -Force
 
@@ -949,6 +1005,7 @@ Fixture body.
     $tmp = Join-Path $env:TEMP ("govkit-test-" + [guid]::NewGuid().ToString("N"))
     try {
       New-Item -ItemType Directory -Path (Join-Path $tmp "scripts") -Force | Out-Null
+      New-Item -ItemType Directory -Path (Join-Path $tmp "config") -Force | Out-Null
 
       Copy-Item -Path (Join-Path $repoRoot "scripts\doctor.ps1") -Destination (Join-Path $tmp "scripts\doctor.ps1") -Force
 
@@ -961,6 +1018,11 @@ Fixture body.
       Set-StubScript -Path (Join-Path $tmp "scripts\governance\check-practice-stack.ps1")
       Set-StubScript -Path (Join-Path $tmp "scripts\status.ps1")
       Set-StubScript -Path (Join-Path $tmp "scripts\rollout-status.ps1")
+      @'
+{
+  "mode": "observe"
+}
+'@ | Set-Content -Path (Join-Path $tmp "config\agent-runtime-policy.json") -Encoding UTF8
 
       $json = & powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $tmp "scripts\doctor.ps1") -AsJson
       if ($LASTEXITCODE -ne 0) { throw "doctor.ps1 -AsJson failed with exit code $LASTEXITCODE" }
@@ -970,6 +1032,10 @@ Fixture body.
       $obj.health | should be "GREEN"
       @($obj.failed_steps).Count | should be 0
       (@($obj.steps).Count -ge 5) | should be $true
+      ($null -ne $obj.runtime_readiness) | should be $true
+      @("GREEN","YELLOW") -contains ([string]$obj.runtime_readiness.status) | should be $true
+      $obj.runtime_readiness.policy_present | should be $true
+      $obj.runtime_readiness.metrics_present | should be $false
     } finally {
       if (Test-Path $tmp) { Remove-Item -LiteralPath $tmp -Recurse -Force }
     }
@@ -3768,6 +3834,12 @@ exit 0
       ($snapshot -match "token_efficiency_trend_status=UNAVAILABLE") | should be $true
       ($snapshot -match "token_efficiency_trend_history_count=0") | should be $true
       ($snapshot -match "token_efficiency_trend_latest_value=0") | should be $true
+      ($snapshot -match "runtime_agent_task_success_rate=N/A") | should be $true
+      ($snapshot -match "runtime_eval_pass_rate=N/A") | should be $true
+      ($snapshot -match "runtime_cache_hit_rate=N/A") | should be $true
+      ($snapshot -match "runtime_cost_per_successful_run=N/A") | should be $true
+      ($snapshot -match "runtime_tool_error_rate=N/A") | should be $true
+      ($snapshot -match "runtime_compaction_count=N/A") | should be $true
       ($snapshot -match "slo_error_budget_status=UNAVAILABLE") | should be $true
       ($snapshot -match "slo_gate_pass_rate=N/A") | should be $true
       ($snapshot -match "error_budget_burn_rate=N/A") | should be $true
@@ -3775,6 +3847,76 @@ exit 0
       ($snapshot -match "auto_rollback_triggered=False") | should be $true
       ($snapshot -match "auto_rollback_reason_count=0") | should be $true
       ($snapshot -match "auto_rollback_action=none") | should be $true
+    } finally {
+      if (Test-Path $tmp) { Remove-Item -LiteralPath $tmp -Recurse -Force }
+    }
+  }
+
+  it "run-recurring-review exposes runtime metrics from metrics-auto summary" {
+    $tmp = Join-Path $env:TEMP ("govkit-test-" + [guid]::NewGuid().ToString("N"))
+    try {
+      New-Item -ItemType Directory -Path (Join-Path $tmp "scripts\governance") -Force | Out-Null
+      New-Item -ItemType Directory -Path (Join-Path $tmp "scripts\lib") -Force | Out-Null
+      New-Item -ItemType Directory -Path (Join-Path $tmp "docs\governance") -Force | Out-Null
+
+      Copy-Item -Path (Join-Path $repoRoot "scripts\governance\run-recurring-review.ps1") -Destination (Join-Path $tmp "scripts\governance\run-recurring-review.ps1") -Force
+      Copy-Item -Path (Join-Path $repoRoot "scripts\governance\check-update-triggers.ps1") -Destination (Join-Path $tmp "scripts\governance\check-update-triggers.ps1") -Force
+      Copy-Item -Path (Join-Path $repoRoot "scripts\lib\common.ps1") -Destination (Join-Path $tmp "scripts\lib\common.ps1") -Force
+
+      @'
+param()
+Write-Host "HEALTH=GREEN"
+exit 0
+'@ | Set-Content -Path (Join-Path $tmp "scripts\doctor.ps1") -Encoding UTF8
+
+      @'
+param()
+Write-Host "phase.observe_overdue=0"
+exit 0
+'@ | Set-Content -Path (Join-Path $tmp "scripts\rollout-status.ps1") -Encoding UTF8
+
+      @'
+param()
+Write-Host "Waiver check done. files=0 expired=0 blocked=0"
+exit 0
+'@ | Set-Content -Path (Join-Path $tmp "scripts\check-waivers.ps1") -Encoding UTF8
+
+      @'
+param()
+Write-Host "collect-governance-metrics done"
+exit 0
+'@ | Set-Content -Path (Join-Path $tmp "scripts\collect-governance-metrics.ps1") -Encoding UTF8
+
+      @'
+param()
+Write-Output (@{
+  schema_version = "1.0"
+  status = "OK"
+  alert_count = 0
+  alerts = @()
+} | ConvertTo-Json -Depth 6)
+exit 0
+'@ | Set-Content -Path (Join-Path $tmp "scripts\governance\check-update-triggers.ps1") -Encoding UTF8
+
+      @'
+agent_task_success_rate=97.5%
+runtime_eval_pass_rate=99%
+cache_hit_rate=72%
+cost_per_successful_run=$0.013
+tool_error_rate=0.8%
+compaction_count=2
+'@ | Set-Content -Path (Join-Path $tmp "docs\governance\metrics-auto.md") -Encoding UTF8
+
+      $json = & powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $tmp "scripts\governance\run-recurring-review.ps1") -RepoRoot $tmp -NoNotifyOnAlert -AsJson
+      $LASTEXITCODE | should be 0
+      $obj = $json | ConvertFrom-Json
+      $obj.ok | should be $true
+      [string]$obj.summary.runtime_agent_task_success_rate | should be "97.5%"
+      [string]$obj.summary.runtime_eval_pass_rate | should be "99%"
+      [string]$obj.summary.runtime_cache_hit_rate | should be "72%"
+      [string]$obj.summary.runtime_cost_per_successful_run | should be '$0.013'
+      [string]$obj.summary.runtime_tool_error_rate | should be "0.8%"
+      [string]$obj.summary.runtime_compaction_count | should be "2"
     } finally {
       if (Test-Path $tmp) { Remove-Item -LiteralPath $tmp -Recurse -Force }
     }
@@ -4780,6 +4922,83 @@ jobs:
     } finally {
       if (Test-Path $tmp) { Remove-Item -LiteralPath $tmp -Recurse -Force }
     }
+  }
+
+  it "check-agent-runtime-baseline reports WARN for missing sections and PASS when complete" {
+    $tmp = Join-Path $env:TEMP ("govkit-test-" + [guid]::NewGuid().ToString("N"))
+    try {
+      New-Item -ItemType Directory -Path (Join-Path $tmp "scripts\lib") -Force | Out-Null
+      New-Item -ItemType Directory -Path (Join-Path $tmp "scripts\governance") -Force | Out-Null
+      New-Item -ItemType Directory -Path (Join-Path $tmp "config") -Force | Out-Null
+
+      Copy-Item -Path (Join-Path $repoRoot "scripts\lib\common.ps1") -Destination (Join-Path $tmp "scripts\lib\common.ps1") -Force
+      Copy-Item -Path (Join-Path $repoRoot "scripts\governance\check-agent-runtime-baseline.ps1") -Destination (Join-Path $tmp "scripts\governance\check-agent-runtime-baseline.ps1") -Force
+
+      @'
+{
+  "schema_version": "1.0",
+  "enabled_by_default": false,
+  "default_files": [".codex/config.toml"],
+  "repos": []
+}
+'@ | Set-Content -Path (Join-Path $tmp "config\agent-runtime-policy.json") -Encoding UTF8
+
+      $warnJson = & powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $tmp "scripts\governance\check-agent-runtime-baseline.ps1") -RepoRoot $tmp -AsJson
+      if ($LASTEXITCODE -ne 0) { throw "check-agent-runtime-baseline.ps1 warn fixture failed with exit code $LASTEXITCODE" }
+      $warnObj = $warnJson | ConvertFrom-Json
+      $warnObj.status | should be "WARN"
+      ((@($warnObj.checks | Where-Object { $_.id -eq "section_prompt_registry" -and $_.status -eq "WARN" }).Count) -ge 1) | should be $true
+
+      @'
+{
+  "schema_version": "1.0",
+  "mode": "observe",
+  "enabled_by_default": false,
+  "default_files": [".codex/config.toml"],
+  "repos": [],
+  "prompt_registry": {},
+  "tool_contracts": {},
+  "context_management": {},
+  "memory_policy": {},
+  "agent_evals": {},
+  "agent_observability": {},
+  "cost_controls": {},
+  "observe_to_enforce": {}
+}
+'@ | Set-Content -Path (Join-Path $tmp "config\agent-runtime-policy.json") -Encoding UTF8
+
+      $passJson = & powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $tmp "scripts\governance\check-agent-runtime-baseline.ps1") -RepoRoot $tmp -AsJson
+      if ($LASTEXITCODE -ne 0) { throw "check-agent-runtime-baseline.ps1 pass fixture failed with exit code $LASTEXITCODE" }
+      $passObj = $passJson | ConvertFrom-Json
+      $passObj.status | should be "PASS"
+      [int]$passObj.warning_count | should be 0
+    } finally {
+      if (Test-Path $tmp) { Remove-Item -LiteralPath $tmp -Recurse -Force }
+    }
+  }
+
+  it "agent runtime policy includes concrete prompt tool and memory baselines" {
+    $policyPath = Join-Path $repoRoot "config\agent-runtime-policy.json"
+    (Test-Path -LiteralPath $policyPath) | should be $true
+
+    $policy = Get-Content -LiteralPath $policyPath -Raw | ConvertFrom-Json
+
+    (@($policy.prompt_registry.entries).Count -ge 1) | should be $true
+    $promptEntry = @($policy.prompt_registry.entries)[0]
+    foreach ($name in @("prompt_id", "owner", "eval_set", "rollback_ref", "cacheability")) {
+      [string]$promptEntry.$name | should not be ""
+    }
+
+    (@($policy.tool_contracts.entries).Count -ge 1) | should be $true
+    $toolEntry = @($policy.tool_contracts.entries)[0]
+    foreach ($name in @("tool_name", "risk_class", "approval_policy", "timeout_ms", "retry_policy")) {
+      [string]$toolEntry.$name | should not be ""
+    }
+
+    ($null -ne $policy.memory_policy.session_memory) | should be $true
+    ($null -ne $policy.memory_policy.durable_memory) | should be $true
+    (@($policy.memory_policy.forbidden_memory_classes).Count -ge 1) | should be $true
+    ($null -ne $policy.memory_policy.retention_rules) | should be $true
   }
 
   it "set-codex-runtime-policy updates repoName entry enabled flag" {

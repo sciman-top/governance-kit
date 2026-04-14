@@ -805,6 +805,7 @@ if (Test-Path -LiteralPath $codexProfileRegistryPath -PathType Leaf) {
 }
 if (Test-Path -LiteralPath $codexRuntimePolicyPath -PathType Leaf) {
   $runtimePolicyName = Split-Path -Leaf $codexRuntimePolicyPath
+  $isAgentRuntimePolicy = $runtimePolicyName.Equals("agent-runtime-policy.json", [System.StringComparison]::OrdinalIgnoreCase)
   $codexRuntimePolicy = Read-OptionalJsonConfig -Path $codexRuntimePolicyPath -InvalidNotice ("[CFG] {0} invalid JSON" -f $runtimePolicyName)
   if ($null -ne $codexRuntimePolicy) {
     [void](Validate-RequiredNonEmptyStringProperty -Object $codexRuntimePolicy -PropertyName "schema_version" -MissingMessage "[CFG] codex-runtime-policy.schema_version missing")
@@ -840,6 +841,32 @@ if (Test-Path -LiteralPath $codexRuntimePolicyPath -PathType Leaf) {
           $fail++
         }
         [void](Validate-RequiredBooleanProperty -Object $entry -PropertyName "enabled" -Message "[CFG] codex-runtime-policy.repos.enabled must be boolean")
+      }
+    }
+    if ($isAgentRuntimePolicy) {
+      $agentRequiredSections = @(
+        "prompt_registry",
+        "tool_contracts",
+        "context_management",
+        "memory_policy",
+        "agent_evals",
+        "agent_observability",
+        "cost_controls",
+        "observe_to_enforce"
+      )
+      foreach ($sectionName in $agentRequiredSections) {
+        if ($null -eq $codexRuntimePolicy.PSObject.Properties[$sectionName] -or $null -eq $codexRuntimePolicy.$sectionName) {
+          Write-Host ("[CFG] agent-runtime-policy.{0} missing" -f $sectionName)
+          $fail++
+        }
+      }
+      $runtimeMode = Validate-RequiredNonEmptyStringProperty -Object $codexRuntimePolicy -PropertyName "mode" -MissingMessage "[CFG] agent-runtime-policy.mode missing"
+      if ($null -ne $runtimeMode) {
+        $modeText = ([string]$runtimeMode).ToLowerInvariant()
+        if (@("observe", "enforce", "advisory") -notcontains $modeText) {
+          Write-Host "[CFG] agent-runtime-policy.mode invalid: expected observe/enforce/advisory"
+          $fail++
+        }
       }
     }
   }

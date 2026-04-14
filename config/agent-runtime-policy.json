@@ -1,5 +1,6 @@
 {
   "schema_version": "1.0",
+  "mode": "observe",
   "enabled_by_default": false,
   "default_files": [
     ".codex/config.toml",
@@ -20,5 +21,96 @@
       "repoName": "ClassroomToolkit",
       "enabled": true
     }
-  ]
+  ],
+  "prompt_registry": {
+    "required_fields": [
+      "prompt_id",
+      "owner",
+      "eval_set",
+      "rollback_ref",
+      "cacheability"
+    ],
+    "entries": [
+      {
+        "prompt_id": "runtime.observe.default.v1",
+        "owner": "repo-governance-hub",
+        "eval_set": "agent-runtime-smoke",
+        "rollback_ref": "git restore config/agent-runtime-policy.json",
+        "cacheability": "cacheable"
+      }
+    ]
+  },
+  "tool_contracts": {
+    "required_fields": [
+      "tool_name",
+      "risk_class",
+      "approval_policy",
+      "timeout_ms",
+      "retry_policy",
+      "trace_attrs"
+    ],
+    "entries": [
+      {
+        "tool_name": "powershell",
+        "risk_class": "medium",
+        "approval_policy": "auto_if_reversible",
+        "timeout_ms": 300000,
+        "retry_policy": "retry_once_on_timeout",
+        "trace_attrs": [
+          "tool_name",
+          "exit_code",
+          "duration_ms"
+        ]
+      }
+    ]
+  },
+  "context_management": {
+    "compaction": {
+      "enabled": true,
+      "strategy": "advisory"
+    },
+    "cacheability_markers_enabled": true
+  },
+  "memory_policy": {
+    "session_memory": {
+      "enabled": true
+    },
+    "durable_memory": {
+      "enabled": false
+    },
+    "forbidden_memory_classes": [
+      "secrets",
+      "raw_credentials"
+    ],
+    "retention_rules": {
+      "session_memory_days": 7,
+      "durable_memory_days": 30,
+      "purge_on_user_delete": true
+    }
+  },
+  "agent_evals": {
+    "required_suites": [
+      "smoke",
+      "regression",
+      "adversarial",
+      "cost"
+    ]
+  },
+  "agent_observability": {
+    "required_metrics": [
+      "agent_task_success_rate",
+      "runtime_eval_pass_rate",
+      "cache_hit_rate",
+      "cost_per_successful_run",
+      "tool_error_rate",
+      "compaction_count"
+    ]
+  },
+  "cost_controls": {
+    "track_token_cost": true
+  },
+  "observe_to_enforce": {
+    "enabled": true,
+    "minimum_observe_days": 14
+  }
 }

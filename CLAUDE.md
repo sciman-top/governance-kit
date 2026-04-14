@@ -178,6 +178,7 @@
 - standalone 发布判定由 `scripts/verify-release-profile.ps1` + `config/standalone-release-policy.json` 执行：`release_enabled=true` 命中外部绝对路径依赖即阻断，`release_enabled=false` 记 advisory。
 - 规则/文档中允许描述协作路径，但发布脚本与发布产物不得隐式要求 `${WORKSPACE_ROOT}/skills-manager` 存在。
 - `config/repositories.json` 只保存仓名级注册项（例如 `ClassroomToolkit`），脚本运行时再通过 `${WORKSPACE_ROOT}` 解析回实际根路径。
+- 仓名注册表只允许表示“谁参与”，不允许表示“实际目录”；任何需要真实路径的脚本必须在运行时解析，禁止把展开后的绝对路径回写进 `config/repositories.json`。
 - 详情：`docs/governance/standalone-release-dependency-contract.md`。
 ### C.19 Worktree 隔离目录约定
 - 默认归宿：`~/.config/superpowers/worktrees/repo-governance-hub/`（项目外全局目录，避免仓内污染）。

@@ -262,6 +262,46 @@ if (Test-Path -LiteralPath (Join-Path $PSScriptRoot 'governance\check-external-b
   }
 }
 
+$runtimePolicyPath = Join-Path $kitRoot "config\agent-runtime-policy.json"
+$runtimeMetricsPath = Join-Path $kitRoot "docs\governance\metrics-auto.md"
+$runtimeCheckerPath = Join-Path $PSScriptRoot "governance\check-agent-runtime-baseline.ps1"
+$runtimePolicyPresent = Test-Path -LiteralPath $runtimePolicyPath -PathType Leaf
+$runtimeMetricsPresent = Test-Path -LiteralPath $runtimeMetricsPath -PathType Leaf
+$runtimeCheckerStatus = "N/A"
+$runtimeCheckerWarningCount = -1
+$runtimeProbeStatus = "not_run"
+$runtimeReadinessStatus = "YELLOW"
+if ($runtimePolicyPresent -and $runtimeMetricsPresent) {
+  $runtimeReadinessStatus = "GREEN"
+}
+
+if (Test-Path -LiteralPath $runtimeCheckerPath -PathType Leaf) {
+  try {
+    $runtimeProbeRaw = Invoke-ChildScriptCapture -ScriptPath $runtimeCheckerPath -ScriptArgs @("-RepoRoot", $kitRoot, "-AsJson")
+    $runtimeObj = Parse-JsonFromText -RawText (($runtimeProbeRaw | Out-String).TrimEnd())
+    if ($null -ne $runtimeObj) {
+      if ($null -ne $runtimeObj.PSObject.Properties["status"]) {
+        $runtimeCheckerStatus = [string]$runtimeObj.status
+      }
+      if ($null -ne $runtimeObj.summary -and $null -ne $runtimeObj.summary.PSObject.Properties["warning_count"]) {
+        $runtimeCheckerWarningCount = [int]$runtimeObj.summary.warning_count
+      }
+      if ($runtimeCheckerStatus -eq "PASS") {
+        $runtimeReadinessStatus = "GREEN"
+      } else {
+        $runtimeReadinessStatus = "YELLOW"
+      }
+      $runtimeProbeStatus = "ok"
+    } else {
+      $runtimeProbeStatus = "parse_failed"
+    }
+  } catch {
+    $runtimeProbeStatus = "probe_failed"
+  }
+} else {
+  $runtimeProbeStatus = "checker_missing"
+}
+
 if ($AsJson) {
   $jsonResult = [pscustomobject]@{
     schema_version = "1.0"
@@ -274,6 +314,14 @@ if ($AsJson) {
       status = $externalBaselineStatus
       advisory_count = $externalBaselineAdvisoryCount
       warn_count = $externalBaselineWarnCount
+    }
+    runtime_readiness = [pscustomobject]@{
+      status = $runtimeReadinessStatus
+      policy_present = $runtimePolicyPresent
+      metrics_present = $runtimeMetricsPresent
+      checker_status = $runtimeCheckerStatus
+      checker_warning_count = $runtimeCheckerWarningCount
+      probe_status = $runtimeProbeStatus
     }
     slow_steps_top3 = @($slowStepsTop3)
     steps = @($stepResults)
@@ -290,6 +338,12 @@ Write-Host ("clarification_tracked_files=" + $clarification.tracked_files)
 Write-Host ("external_baseline_status=" + $externalBaselineStatus)
 Write-Host ("external_baseline_advisory_count=" + $externalBaselineAdvisoryCount)
 Write-Host ("external_baseline_warn_count=" + $externalBaselineWarnCount)
+Write-Host ("runtime_readiness_status=" + $runtimeReadinessStatus)
+Write-Host ("runtime_policy_present=" + $runtimePolicyPresent)
+Write-Host ("runtime_metrics_present=" + $runtimeMetricsPresent)
+Write-Host ("runtime_checker_status=" + $runtimeCheckerStatus)
+Write-Host ("runtime_checker_warning_count=" + $runtimeCheckerWarningCount)
+Write-Host ("runtime_probe_status=" + $runtimeProbeStatus)
 if (@($slowStepsTop3).Count -gt 0) {
   $slowSummary = @($slowStepsTop3 | ForEach-Object { "{0}:{1}" -f $_.step, $_.duration_ms }) -join ","
   Write-Host ("slow_steps_top3=" + $slowSummary)
