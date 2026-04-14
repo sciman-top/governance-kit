@@ -143,6 +143,12 @@ if ($null -eq $policy) {
         enabled = $false
         severity = "medium"
       }
+      control_retirement_backlog = [pscustomobject]@{
+        enabled = $false
+        severity = "medium"
+        max_active_candidate_count = 8
+        max_overdue_candidate_count = 0
+      }
       dependency_review_policy_drift = [pscustomobject]@{
         enabled = $false
         severity = "high"
@@ -452,6 +458,48 @@ if ($null -ne $policy.triggers.PSObject.Properties['rule_duplication_detected'] 
         -Reason ("rule_duplication_issue_count={0}" -f $ruleDuplicationCount) `
         -RecommendedAction "Run scripts/governance/check-rule-duplication.ps1, deduplicate repeated blocks, and keep long details in docs instead of top rule files." `
         -Evidence "scripts/governance/check-rule-duplication.ps1"
+    }
+  }
+}
+
+# 3.8) control retirement backlog
+$controlRetirementActiveCandidateCount = 0
+$controlRetirementOverdueCandidateCount = 0
+if ($null -ne $policy.triggers.PSObject.Properties['control_retirement_backlog'] -and [bool]$policy.triggers.control_retirement_backlog.enabled) {
+  $retirementScript = Join-Path $kitRoot "scripts\governance\check-control-retirement-candidates.ps1"
+  if (Test-Path -LiteralPath $retirementScript -PathType Leaf) {
+    $retirementOut = & $psExe -NoProfile -ExecutionPolicy Bypass -File $retirementScript -RepoRoot $repoPath -AsJson 2>&1
+    $retirementExit = $LASTEXITCODE
+    $steps.Add([pscustomobject]@{ name = "control-retirement-backlog"; exit_code = [int]$retirementExit }) | Out-Null
+    $retirementText = [string]::Join([Environment]::NewLine, @($retirementOut))
+    $retirementObj = $null
+    if (-not [string]::IsNullOrWhiteSpace($retirementText)) {
+      try { $retirementObj = $retirementText | ConvertFrom-Json } catch { $retirementObj = $null }
+    }
+    if ($null -ne $retirementObj) {
+      if ($retirementObj.PSObject.Properties.Name -contains "active_candidate_count") {
+        $controlRetirementActiveCandidateCount = [int]$retirementObj.active_candidate_count
+      }
+      if ($retirementObj.PSObject.Properties.Name -contains "overdue_candidate_count") {
+        $controlRetirementOverdueCandidateCount = [int]$retirementObj.overdue_candidate_count
+      }
+    }
+
+    $maxActiveCandidateCount = 8
+    $maxOverdueCandidateCount = 0
+    if ($null -ne $policy.triggers.control_retirement_backlog.PSObject.Properties['max_active_candidate_count']) {
+      $maxActiveCandidateCount = [int]$policy.triggers.control_retirement_backlog.max_active_candidate_count
+    }
+    if ($null -ne $policy.triggers.control_retirement_backlog.PSObject.Properties['max_overdue_candidate_count']) {
+      $maxOverdueCandidateCount = [int]$policy.triggers.control_retirement_backlog.max_overdue_candidate_count
+    }
+    if ($controlRetirementActiveCandidateCount -gt $maxActiveCandidateCount -or $controlRetirementOverdueCandidateCount -gt $maxOverdueCandidateCount) {
+      Add-Alert -List $alerts `
+        -Id "control_retirement_backlog" `
+        -Severity ([string]$policy.triggers.control_retirement_backlog.severity) `
+        -Reason ("active_candidate_count={0} > {1} or overdue_candidate_count={2} > {3}" -f $controlRetirementActiveCandidateCount, $maxActiveCandidateCount, $controlRetirementOverdueCandidateCount, $maxOverdueCandidateCount) `
+        -RecommendedAction "Close or downgrade retirement candidates and keep decision_due_date within cadence." `
+        -Evidence "config/control-retirement-candidates.json"
     }
   }
 }
@@ -776,6 +824,8 @@ $result = [pscustomobject]@{
   stale_progressive_control_count = [int]$staleProgressiveControlCount
   not_observable_control_count = [int]$notObservableControlCount
   rule_duplication_count = [int]$ruleDuplicationCount
+  control_retirement_active_candidate_count = [int]$controlRetirementActiveCandidateCount
+  control_retirement_overdue_candidate_count = [int]$controlRetirementOverdueCandidateCount
   rollout_metadata_coverage_gap_count = [int]$rolloutCoverageGapCount
   rollout_metadata_orphan_count = [int]$rolloutCoverageOrphanCount
   orphan_custom_source_count = [int]$orphanCustomCount

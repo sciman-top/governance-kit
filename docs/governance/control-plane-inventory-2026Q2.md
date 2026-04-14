@@ -46,6 +46,7 @@
 | `gate.tracked_files_scope` | gate | `scripts/governance/check-tracked-files.ps1`, `.governance/tracked-files-policy.json` | `common_distributable` | `hard` | `enforce` | `balanced` | Protects commit scope and prevents accidental inclusion of unrelated files. |
 | `gate.update_trigger_review` | gate | `scripts/governance/check-update-triggers.ps1`, `config/update-trigger-policy.json` | `source_only` | `progressive` | `observe` | `balanced` | This is the main policy evolution trigger surface; some triggers are intentionally still in observe. |
 | `gate.gate_noise_budget` | gate | `config/update-trigger-policy.json` (`gate_noise_budget_breach`) | `source_only` | `progressive` | `observe` | `balanced` | Critical anti-bloat control for preventing governance cost inflation. |
+| `gate.control_retirement_backlog` | gate | `scripts/governance/check-control-retirement-candidates.ps1`, `config/control-retirement-candidates.json` | `source_only` | `progressive` | `observe` | `balanced` | Makes retirement backlog measurable and alerts when decision windows expire. |
 | `evidence.change_evidence_template` | evidence_metrics | `docs/change-evidence/*`, `docs/change-evidence/template.md` | `common_distributable` | `hard` | `enforce` | `balanced` | Evidence must remain auditable and replay-ready. |
 | `metrics.token_efficiency_trend` | evidence_metrics | `docs/governance/token-efficiency-trend-loop.md`, `.governance/token-efficiency-history.jsonl` | `common_distributable` | `progressive` | `observe` | `balanced` | Tracks governance cost quality ratio and should inform downgrade decisions. |
 | `metrics.recurring_review_output` | evidence_metrics | `scripts/governance/run-recurring-review.ps1`, `docs/governance/metrics-auto.md` | `source_only` | `hard` | `enforce` | `balanced` | Weekly review is the main observability aggregator for policy tuning. |
@@ -54,6 +55,7 @@
 | `distribution.install_safe` | distribution | `scripts/install.ps1 -Mode safe` | `source_only` | `hard` | `enforce` | `balanced` | Safe install is the canonical distribution path and rollback boundary. |
 | `review.weekly_trigger_loop` | review_evolution | `scripts/governance/run-recurring-review.ps1` | `source_only` | `hard` | `enforce` | `balanced` | Weekly loop already exists and should become the main policy adjustment input. |
 | `review.monthly_policy_review` | review_evolution | `scripts/governance/run-monthly-policy-review.ps1` | `source_only` | `progressive` | `observe` | `balanced` | Good anchor for promotion and retirement decisions; needs stronger control-plane framing. |
+| `review.noise_budget_baseline` | review_evolution | `docs/governance/governance-noise-budget.md` | `source_only` | `progressive` | `observe` | `balanced` | Establishes per-control friction budget and keeps promotion tied to stable signal quality. |
 | `review.cross_repo_compatibility` | review_evolution | `scripts/governance/check-cross-repo-compatibility.ps1` | `repo_specific_distributable` | `hard` | `enforce` | `balanced` | Prevents source-side changes from being redistributed without downstream compatibility confidence. |
 
 ## Initial Findings
@@ -105,4 +107,3 @@
 2. Extend recurring review output with per-control noise and staleness summary.
 3. Expand rollout metadata beyond current sparse `rule-rollout.json` usage.
 4. Start a duplicate-audit against `AGENTS/CLAUDE/GEMINI/source mirrors`.
-

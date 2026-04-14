@@ -15,6 +15,8 @@
 - `tracked files and commit scope`: [git-scope-and-tracked-files.md](./git-scope-and-tracked-files.md)
 - `token 降本轻量执行清单`: [token-cost-lightweight-checklist.md](./token-cost-lightweight-checklist.md)
 - `rule duplication audit`: [rule-duplication-audit-2026Q2.md](./rule-duplication-audit-2026Q2.md)
+- `governance noise budget`: [governance-noise-budget.md](./governance-noise-budget.md)
+- `control retirement candidates`: [control-retirement-candidates-2026Q2.md](./control-retirement-candidates-2026Q2.md)
 - `teaching output protocol`: skill `governance-teaching-lite-output`
 - `clarification protocol`: skill `governance-clarification-protocol`
 - `skill creation gate`: [skill-creation-gate-checklist.md](./skill-creation-gate-checklist.md)

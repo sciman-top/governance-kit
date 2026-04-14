@@ -4410,6 +4410,66 @@ jobs:
     }
   }
 
+  it "check-update-triggers reports control retirement backlog" {
+    $tmp = Join-Path $env:TEMP ("govkit-test-" + [guid]::NewGuid().ToString("N"))
+    try {
+      New-Item -ItemType Directory -Path (Join-Path $tmp "scripts\governance") -Force | Out-Null
+      New-Item -ItemType Directory -Path (Join-Path $tmp "scripts\lib") -Force | Out-Null
+      New-Item -ItemType Directory -Path (Join-Path $tmp "config") -Force | Out-Null
+
+      Copy-Item -Path (Join-Path $repoRoot "scripts\governance\check-update-triggers.ps1") -Destination (Join-Path $tmp "scripts\governance\check-update-triggers.ps1") -Force
+      Copy-Item -Path (Join-Path $repoRoot "scripts\governance\check-control-retirement-candidates.ps1") -Destination (Join-Path $tmp "scripts\governance\check-control-retirement-candidates.ps1") -Force
+      Copy-Item -Path (Join-Path $repoRoot "scripts\lib\common.ps1") -Destination (Join-Path $tmp "scripts\lib\common.ps1") -Force
+
+      @'
+{
+  "schema_version": "1.0",
+  "owner": "repo-governance-hub",
+  "candidates": [
+    {
+      "control_id": "runtime.agent_runtime_profile",
+      "candidate_status": "proposed",
+      "decision_due_date": "2026-01-01",
+      "target_action": "add_observability_or_downgrade"
+    }
+  ]
+}
+'@ | Set-Content -Path (Join-Path $tmp "config\control-retirement-candidates.json") -Encoding UTF8
+
+      @'
+{
+  "schema_version": "1.0",
+  "cadence": { "recurring_review_days": 7, "monthly_review_day": 1 },
+  "triggers": {
+    "cli_version_drift": { "enabled": false, "severity": "high" },
+    "rollout_observe_overdue": { "enabled": false, "severity": "medium" },
+    "rollout_metadata_coverage_gap": { "enabled": false, "severity": "medium", "max_allowed_gap_count": 0, "max_allowed_orphan_count": 0 },
+    "metrics_snapshot_stale": { "enabled": false, "severity": "medium", "max_age_days": 8 },
+    "waiver_expired_unrecovered": { "enabled": false, "severity": "high" },
+    "platform_na_expired": { "enabled": false, "severity": "medium" },
+    "release_distribution_policy_drift": { "enabled": false, "severity": "high" },
+    "skill_trigger_eval_summary_stale": { "enabled": false, "severity": "medium", "max_age_days": 8 },
+    "low_value_orphan_custom_sources": { "enabled": false, "severity": "medium" },
+    "gate_noise_budget_breach": { "enabled": false, "severity": "medium", "max_false_positive_rate": 0.05, "max_gate_latency_delta_ms": 5000, "alert_on_data_gap": false },
+    "stale_progressive_controls_present": { "enabled": false, "severity": "medium", "max_allowed_count": 0 },
+    "not_observable_controls_present": { "enabled": false, "severity": "medium", "max_allowed_count": 0 },
+    "rule_duplication_detected": { "enabled": false, "severity": "medium" },
+    "control_retirement_backlog": { "enabled": true, "severity": "medium", "max_active_candidate_count": 8, "max_overdue_candidate_count": 0 }
+  }
+}
+'@ | Set-Content -Path (Join-Path $tmp "config\update-trigger-policy.json") -Encoding UTF8
+
+      $json = & powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $tmp "scripts\governance\check-update-triggers.ps1") -RepoRoot $tmp -AsJson
+      $LASTEXITCODE | should be 1
+      $obj = $json | ConvertFrom-Json
+      [int]$obj.control_retirement_active_candidate_count | should be 1
+      [int]$obj.control_retirement_overdue_candidate_count | should be 1
+      @($obj.alerts | Where-Object { $_.id -eq "control_retirement_backlog" }).Count | should be 1
+    } finally {
+      if (Test-Path $tmp) { Remove-Item -LiteralPath $tmp -Recurse -Force }
+    }
+  }
+
   it "check-update-triggers reports slsa provenance placeholder" {
     $tmp = Join-Path $env:TEMP ("govkit-test-" + [guid]::NewGuid().ToString("N"))
     try {

@@ -139,6 +139,8 @@ function Write-AlertSnapshot([object]$ReviewResult, [string]$RootPath) {
   [void]$lines.Add(("stale_progressive_control_count={0}" -f $ReviewResult.summary.stale_progressive_control_count))
   [void]$lines.Add(("not_observable_control_count={0}" -f $ReviewResult.summary.not_observable_control_count))
   [void]$lines.Add(("rule_duplication_count={0}" -f $ReviewResult.summary.rule_duplication_count))
+  [void]$lines.Add(("control_retirement_active_candidate_count={0}" -f $ReviewResult.summary.control_retirement_active_candidate_count))
+  [void]$lines.Add(("control_retirement_overdue_candidate_count={0}" -f $ReviewResult.summary.control_retirement_overdue_candidate_count))
   [void]$lines.Add(("rollout_metadata_coverage_gap_count={0}" -f $ReviewResult.summary.rollout_metadata_coverage_gap_count))
   [void]$lines.Add(("rollout_metadata_orphan_count={0}" -f $ReviewResult.summary.rollout_metadata_orphan_count))
   [void]$lines.Add(("release_distribution_policy_drift_count={0}" -f $ReviewResult.summary.release_distribution_policy_drift_count))
@@ -814,6 +816,8 @@ $orphanCustomSourceCount = 0
 $staleProgressiveControlCount = 0
 $notObservableControlCount = 0
 $ruleDuplicationCount = 0
+$controlRetirementActiveCandidateCount = 0
+$controlRetirementOverdueCandidateCount = 0
 $rolloutMetadataCoverageGapCount = 0
 $rolloutMetadataOrphanCount = 0
 $releaseDistributionPolicyDriftCount = 0
@@ -833,13 +837,7 @@ $autoRollbackPolicyPathNormalized = ""
 if ($trigger.exit_code -ne 0) {
   $triggerObj = $null
   $rawTriggerText = [string]$trigger.output
-  if (-not [string]::IsNullOrWhiteSpace($trigger.output)) {
-    try {
-      $triggerObj = $trigger.output | ConvertFrom-Json
-    } catch {
-      $triggerObj = $null
-    }
-  }
+  $triggerObj = Parse-JsonLoose -RawText $rawTriggerText
   if ($null -ne $triggerObj -and $triggerObj.PSObject.Properties.Name -contains "alert_count") {
     $updateTriggerAlertCount = [int]$triggerObj.alert_count
   }
@@ -854,6 +852,12 @@ if ($trigger.exit_code -ne 0) {
   }
   if ($null -ne $triggerObj -and $triggerObj.PSObject.Properties.Name -contains "rule_duplication_count") {
     $ruleDuplicationCount = [int]$triggerObj.rule_duplication_count
+  }
+  if ($null -ne $triggerObj -and $triggerObj.PSObject.Properties.Name -contains "control_retirement_active_candidate_count") {
+    $controlRetirementActiveCandidateCount = [int]$triggerObj.control_retirement_active_candidate_count
+  }
+  if ($null -ne $triggerObj -and $triggerObj.PSObject.Properties.Name -contains "control_retirement_overdue_candidate_count") {
+    $controlRetirementOverdueCandidateCount = [int]$triggerObj.control_retirement_overdue_candidate_count
   }
   if ($null -ne $triggerObj -and $triggerObj.PSObject.Properties.Name -contains "rollout_metadata_coverage_gap_count") {
     $rolloutMetadataCoverageGapCount = [int]$triggerObj.rollout_metadata_coverage_gap_count
@@ -870,6 +874,8 @@ if ($trigger.exit_code -ne 0) {
     $staleProgressiveCountMatch = [regex]::Match($rawTriggerText, "(?m)^stale_progressive_control_count=([0-9]+)\s*$")
     $notObservableCountMatch = [regex]::Match($rawTriggerText, "(?m)^not_observable_control_count=([0-9]+)\s*$")
     $ruleDupCountMatch = [regex]::Match($rawTriggerText, "(?m)^rule_duplication_count=([0-9]+)\s*$")
+    $controlRetirementActiveCountMatch = [regex]::Match($rawTriggerText, "(?m)^control_retirement_active_candidate_count=([0-9]+)\s*$")
+    $controlRetirementOverdueCountMatch = [regex]::Match($rawTriggerText, "(?m)^control_retirement_overdue_candidate_count=([0-9]+)\s*$")
     $rolloutMetadataCoverageGapMatch = [regex]::Match($rawTriggerText, "(?m)^rollout_metadata_coverage_gap_count=([0-9]+)\s*$")
     $rolloutMetadataOrphanMatch = [regex]::Match($rawTriggerText, "(?m)^rollout_metadata_orphan_count=([0-9]+)\s*$")
     $driftCountMatch = [regex]::Match($rawTriggerText, "(?m)^release_distribution_policy_drift_count=([0-9]+)\s*$")
@@ -887,6 +893,12 @@ if ($trigger.exit_code -ne 0) {
     }
     if ($ruleDupCountMatch.Success) {
       $ruleDuplicationCount = [int]$ruleDupCountMatch.Groups[1].Value
+    }
+    if ($controlRetirementActiveCountMatch.Success) {
+      $controlRetirementActiveCandidateCount = [int]$controlRetirementActiveCountMatch.Groups[1].Value
+    }
+    if ($controlRetirementOverdueCountMatch.Success) {
+      $controlRetirementOverdueCandidateCount = [int]$controlRetirementOverdueCountMatch.Groups[1].Value
     }
     if ($rolloutMetadataCoverageGapMatch.Success) {
       $rolloutMetadataCoverageGapCount = [int]$rolloutMetadataCoverageGapMatch.Groups[1].Value
@@ -1127,6 +1139,8 @@ $result = [pscustomobject]@{
     stale_progressive_control_count = [int]$staleProgressiveControlCount
     not_observable_control_count = [int]$notObservableControlCount
     rule_duplication_count = [int]$ruleDuplicationCount
+    control_retirement_active_candidate_count = [int]$controlRetirementActiveCandidateCount
+    control_retirement_overdue_candidate_count = [int]$controlRetirementOverdueCandidateCount
     rollout_metadata_coverage_gap_count = [int]$rolloutMetadataCoverageGapCount
     rollout_metadata_orphan_count = [int]$rolloutMetadataOrphanCount
     release_distribution_policy_drift_count = [int]$releaseDistributionPolicyDriftCount
@@ -1245,6 +1259,8 @@ Write-Host ("orphan_custom_source_count={0}" -f $result.summary.orphan_custom_so
 Write-Host ("stale_progressive_control_count={0}" -f $result.summary.stale_progressive_control_count)
 Write-Host ("not_observable_control_count={0}" -f $result.summary.not_observable_control_count)
 Write-Host ("rule_duplication_count={0}" -f $result.summary.rule_duplication_count)
+Write-Host ("control_retirement_active_candidate_count={0}" -f $result.summary.control_retirement_active_candidate_count)
+Write-Host ("control_retirement_overdue_candidate_count={0}" -f $result.summary.control_retirement_overdue_candidate_count)
 Write-Host ("rollout_metadata_coverage_gap_count={0}" -f $result.summary.rollout_metadata_coverage_gap_count)
 Write-Host ("rollout_metadata_orphan_count={0}" -f $result.summary.rollout_metadata_orphan_count)
 Write-Host ("release_distribution_policy_drift_count={0}" -f $result.summary.release_distribution_policy_drift_count)

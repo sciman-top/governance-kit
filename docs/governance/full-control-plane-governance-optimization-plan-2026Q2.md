@@ -326,3 +326,16 @@ Every control should be assigned one of these classes:
 3. Extend recurring review to report control noise and stale progressive items.
 4. Draft source-only vs distributable boundary rules for every control class.
 
+## Execution Progress (as of 2026-04-14)
+- completed
+  - unified control inventory + machine-readable registry.
+  - rule duplication trigger + rollout metadata coverage trigger.
+  - recurring review summary passthrough for duplication/staleness/rollout-coverage signals.
+- completed (Phase 1 baseline)
+  - `docs/governance/governance-noise-budget.md`
+  - `docs/governance/control-retirement-candidates-2026Q2.md`
+  - `config/control-retirement-candidates.json`
+  - update trigger support for `control_retirement_backlog`.
+- next
+  - add per-target rollout state matrix for distributable progressive controls.
+  - integrate cross-repo feedback counters into recurring review summary.

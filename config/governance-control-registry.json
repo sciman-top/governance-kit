@@ -228,6 +228,25 @@
       "distributable": false
     },
     {
+      "control_id": "gate.control_retirement_backlog",
+      "plane": "gate",
+      "owner": "repo-governance-hub",
+      "repo_scope": "source_only",
+      "class": "progressive",
+      "mode": "observe",
+      "inventory_status": "balanced",
+      "signal_value": "medium",
+      "cost": "low",
+      "artifacts": [
+        "config/control-retirement-candidates.json",
+        "scripts/governance/check-control-retirement-candidates.ps1",
+        "config/update-trigger-policy.json",
+        "scripts/governance/check-update-triggers.ps1"
+      ],
+      "rollback_path": "git restore config/control-retirement-candidates.json scripts/governance/check-control-retirement-candidates.ps1 config/update-trigger-policy.json scripts/governance/check-update-triggers.ps1",
+      "distributable": false
+    },
+    {
       "control_id": "evidence.change_evidence_template",
       "plane": "evidence_metrics",
       "owner": "repo-governance-hub",
@@ -359,6 +378,23 @@
         "scripts/governance/run-monthly-policy-review.ps1"
       ],
       "rollback_path": "git restore scripts/governance/run-monthly-policy-review.ps1",
+      "distributable": false
+    },
+    {
+      "control_id": "review.noise_budget_baseline",
+      "plane": "review_evolution",
+      "owner": "repo-governance-hub",
+      "repo_scope": "source_only",
+      "class": "progressive",
+      "mode": "observe",
+      "inventory_status": "balanced",
+      "signal_value": "medium",
+      "cost": "low",
+      "artifacts": [
+        "docs/governance/governance-noise-budget.md",
+        "docs/governance/control-retirement-candidates-2026Q2.md"
+      ],
+      "rollback_path": "git restore docs/governance/governance-noise-budget.md docs/governance/control-retirement-candidates-2026Q2.md",
       "distributable": false
     },
     {

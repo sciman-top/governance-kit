@@ -1,0 +1,25 @@
+{
+  "schema_version": "1.0",
+  "last_updated": "2026-04-14",
+  "owner": "repo-governance-hub",
+  "candidates": [
+    {
+      "control_id": "runtime.agent_runtime_profile",
+      "plane": "runtime_policy",
+      "reason": "not_observable_candidate",
+      "candidate_status": "proposed",
+      "decision_due_date": "2026-05-15",
+      "target_action": "add_observability_or_downgrade",
+      "evidence_link": "docs/governance/control-retirement-candidates-2026Q2.md#runtimeagentruntimeprofile"
+    },
+    {
+      "control_id": "distribution.rollout_phase",
+      "plane": "distribution",
+      "reason": "too_loose_candidate",
+      "candidate_status": "proposed",
+      "decision_due_date": "2026-05-15",
+      "target_action": "promote_or_split_scope",
+      "evidence_link": "docs/governance/control-retirement-candidates-2026Q2.md#distributionrolloutphase"
+    }
+  ]
+}
