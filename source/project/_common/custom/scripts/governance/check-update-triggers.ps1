@@ -149,6 +149,10 @@ if ($null -eq $policy) {
         max_active_candidate_count = 8
         max_overdue_candidate_count = 0
       }
+      evidence_template_fields_missing = [pscustomobject]@{
+        enabled = $false
+        severity = "medium"
+      }
       dependency_review_policy_drift = [pscustomobject]@{
         enabled = $false
         severity = "high"
@@ -504,6 +508,33 @@ if ($null -ne $policy.triggers.PSObject.Properties['control_retirement_backlog']
   }
 }
 
+# 3.9) evidence template fields
+$evidenceTemplateMissingFieldCount = 0
+if ($null -ne $policy.triggers.PSObject.Properties['evidence_template_fields_missing'] -and [bool]$policy.triggers.evidence_template_fields_missing.enabled) {
+  $evidenceTemplateScript = Join-Path $kitRoot "scripts\governance\check-evidence-template-fields.ps1"
+  if (Test-Path -LiteralPath $evidenceTemplateScript -PathType Leaf) {
+    $evidenceOut = & $psExe -NoProfile -ExecutionPolicy Bypass -File $evidenceTemplateScript -RepoRoot $repoPath -AsJson 2>&1
+    $evidenceExit = $LASTEXITCODE
+    $steps.Add([pscustomobject]@{ name = "evidence-template-fields"; exit_code = [int]$evidenceExit }) | Out-Null
+    $evidenceText = [string]::Join([Environment]::NewLine, @($evidenceOut))
+    $evidenceObj = $null
+    if (-not [string]::IsNullOrWhiteSpace($evidenceText)) {
+      try { $evidenceObj = $evidenceText | ConvertFrom-Json } catch { $evidenceObj = $null }
+    }
+    if ($null -ne $evidenceObj -and $evidenceObj.PSObject.Properties.Name -contains "missing_field_count") {
+      $evidenceTemplateMissingFieldCount = [int]$evidenceObj.missing_field_count
+    }
+    if ($evidenceTemplateMissingFieldCount -gt 0) {
+      Add-Alert -List $alerts `
+        -Id "evidence_template_fields_missing" `
+        -Severity ([string]$policy.triggers.evidence_template_fields_missing.severity) `
+        -Reason ("missing_field_count={0}" -f $evidenceTemplateMissingFieldCount) `
+        -RecommendedAction "Backfill required Phase2 evidence fields in docs/change-evidence/template.md and regenerate dependent evidence." `
+        -Evidence "scripts/governance/check-evidence-template-fields.ps1"
+    }
+  }
+}
+
 # 4) platform_na expired
 if ([bool]$policy.triggers.platform_na_expired.enabled) {
   $evidenceDir = Join-Path $kitRoot "docs\change-evidence"
@@ -826,6 +857,7 @@ $result = [pscustomobject]@{
   rule_duplication_count = [int]$ruleDuplicationCount
   control_retirement_active_candidate_count = [int]$controlRetirementActiveCandidateCount
   control_retirement_overdue_candidate_count = [int]$controlRetirementOverdueCandidateCount
+  evidence_template_missing_field_count = [int]$evidenceTemplateMissingFieldCount
   rollout_metadata_coverage_gap_count = [int]$rolloutCoverageGapCount
   rollout_metadata_orphan_count = [int]$rolloutCoverageOrphanCount
   orphan_custom_source_count = [int]$orphanCustomCount

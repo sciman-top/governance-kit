@@ -247,6 +247,25 @@
       "distributable": false
     },
     {
+      "control_id": "gate.evidence_template_fields",
+      "plane": "gate",
+      "owner": "repo-governance-hub",
+      "repo_scope": "source_only",
+      "class": "progressive",
+      "mode": "observe",
+      "inventory_status": "balanced",
+      "signal_value": "medium",
+      "cost": "low",
+      "artifacts": [
+        "docs/change-evidence/template.md",
+        "scripts/governance/check-evidence-template-fields.ps1",
+        "config/update-trigger-policy.json",
+        "scripts/governance/check-update-triggers.ps1"
+      ],
+      "rollback_path": "git restore docs/change-evidence/template.md scripts/governance/check-evidence-template-fields.ps1 config/update-trigger-policy.json scripts/governance/check-update-triggers.ps1",
+      "distributable": false
+    },
+    {
       "control_id": "evidence.change_evidence_template",
       "plane": "evidence_metrics",
       "owner": "repo-governance-hub",

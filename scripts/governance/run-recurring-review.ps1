@@ -141,8 +141,11 @@ function Write-AlertSnapshot([object]$ReviewResult, [string]$RootPath) {
   [void]$lines.Add(("rule_duplication_count={0}" -f $ReviewResult.summary.rule_duplication_count))
   [void]$lines.Add(("control_retirement_active_candidate_count={0}" -f $ReviewResult.summary.control_retirement_active_candidate_count))
   [void]$lines.Add(("control_retirement_overdue_candidate_count={0}" -f $ReviewResult.summary.control_retirement_overdue_candidate_count))
+  [void]$lines.Add(("evidence_template_missing_field_count={0}" -f $ReviewResult.summary.evidence_template_missing_field_count))
   [void]$lines.Add(("rollout_metadata_coverage_gap_count={0}" -f $ReviewResult.summary.rollout_metadata_coverage_gap_count))
   [void]$lines.Add(("rollout_metadata_orphan_count={0}" -f $ReviewResult.summary.rollout_metadata_orphan_count))
+  [void]$lines.Add(("control_plane_top_noisy_controls={0}" -f $ReviewResult.summary.control_plane_top_noisy_controls))
+  [void]$lines.Add(("control_plane_most_bypassed_advisories={0}" -f $ReviewResult.summary.control_plane_most_bypassed_advisories))
   [void]$lines.Add(("release_distribution_policy_drift_count={0}" -f $ReviewResult.summary.release_distribution_policy_drift_count))
   [void]$lines.Add(("skill_trigger_eval_status={0}" -f $ReviewResult.summary.skill_trigger_eval_status))
   [void]$lines.Add(("skill_trigger_eval_grouped_query_count={0}" -f $ReviewResult.summary.skill_trigger_eval_grouped_query_count))
@@ -818,6 +821,7 @@ $notObservableControlCount = 0
 $ruleDuplicationCount = 0
 $controlRetirementActiveCandidateCount = 0
 $controlRetirementOverdueCandidateCount = 0
+$evidenceTemplateMissingFieldCount = 0
 $rolloutMetadataCoverageGapCount = 0
 $rolloutMetadataOrphanCount = 0
 $releaseDistributionPolicyDriftCount = 0
@@ -859,6 +863,9 @@ if ($trigger.exit_code -ne 0) {
   if ($null -ne $triggerObj -and $triggerObj.PSObject.Properties.Name -contains "control_retirement_overdue_candidate_count") {
     $controlRetirementOverdueCandidateCount = [int]$triggerObj.control_retirement_overdue_candidate_count
   }
+  if ($null -ne $triggerObj -and $triggerObj.PSObject.Properties.Name -contains "evidence_template_missing_field_count") {
+    $evidenceTemplateMissingFieldCount = [int]$triggerObj.evidence_template_missing_field_count
+  }
   if ($null -ne $triggerObj -and $triggerObj.PSObject.Properties.Name -contains "rollout_metadata_coverage_gap_count") {
     $rolloutMetadataCoverageGapCount = [int]$triggerObj.rollout_metadata_coverage_gap_count
   }
@@ -876,6 +883,7 @@ if ($trigger.exit_code -ne 0) {
     $ruleDupCountMatch = [regex]::Match($rawTriggerText, "(?m)^rule_duplication_count=([0-9]+)\s*$")
     $controlRetirementActiveCountMatch = [regex]::Match($rawTriggerText, "(?m)^control_retirement_active_candidate_count=([0-9]+)\s*$")
     $controlRetirementOverdueCountMatch = [regex]::Match($rawTriggerText, "(?m)^control_retirement_overdue_candidate_count=([0-9]+)\s*$")
+    $evidenceTemplateMissingFieldCountMatch = [regex]::Match($rawTriggerText, "(?m)^evidence_template_missing_field_count=([0-9]+)\s*$")
     $rolloutMetadataCoverageGapMatch = [regex]::Match($rawTriggerText, "(?m)^rollout_metadata_coverage_gap_count=([0-9]+)\s*$")
     $rolloutMetadataOrphanMatch = [regex]::Match($rawTriggerText, "(?m)^rollout_metadata_orphan_count=([0-9]+)\s*$")
     $driftCountMatch = [regex]::Match($rawTriggerText, "(?m)^release_distribution_policy_drift_count=([0-9]+)\s*$")
@@ -899,6 +907,9 @@ if ($trigger.exit_code -ne 0) {
     }
     if ($controlRetirementOverdueCountMatch.Success) {
       $controlRetirementOverdueCandidateCount = [int]$controlRetirementOverdueCountMatch.Groups[1].Value
+    }
+    if ($evidenceTemplateMissingFieldCountMatch.Success) {
+      $evidenceTemplateMissingFieldCount = [int]$evidenceTemplateMissingFieldCountMatch.Groups[1].Value
     }
     if ($rolloutMetadataCoverageGapMatch.Success) {
       $rolloutMetadataCoverageGapCount = [int]$rolloutMetadataCoverageGapMatch.Groups[1].Value
@@ -1118,6 +1129,22 @@ if ($autoRollbackEnabled -and $autoRollbackReasons.Count -gt 0) {
   [void]$alerts.Add(("auto rollback triggered reason_count={0} action={1}" -f [int]$autoRollbackReasons.Count, $autoRollbackAction))
 }
 
+$controlPlaneTopNoisyControls = [System.Collections.Generic.List[string]]::new()
+if ($updateTriggerAlertCount -gt 0) { [void]$controlPlaneTopNoisyControls.Add(("update_trigger_alerts:{0}" -f [int]$updateTriggerAlertCount)) }
+if ($staleProgressiveControlCount -gt 0) { [void]$controlPlaneTopNoisyControls.Add(("stale_progressive_controls:{0}" -f [int]$staleProgressiveControlCount)) }
+if ($notObservableControlCount -gt 0) { [void]$controlPlaneTopNoisyControls.Add(("not_observable_controls:{0}" -f [int]$notObservableControlCount)) }
+if ($rolloutMetadataCoverageGapCount -gt 0) { [void]$controlPlaneTopNoisyControls.Add(("rollout_metadata_coverage_gap:{0}" -f [int]$rolloutMetadataCoverageGapCount)) }
+if ($controlRetirementOverdueCandidateCount -gt 0) { [void]$controlPlaneTopNoisyControls.Add(("retirement_overdue_candidates:{0}" -f [int]$controlRetirementOverdueCandidateCount)) }
+if ($controlPlaneTopNoisyControls.Count -eq 0) { [void]$controlPlaneTopNoisyControls.Add("none") }
+$controlPlaneTopNoisyControlsText = [string]::Join(";", @($controlPlaneTopNoisyControls | Select-Object -First 3))
+
+$controlPlaneBypassedAdvisories = [System.Collections.Generic.List[string]]::new()
+if ($proactiveSuggestionBalanceWarningCount -gt 0) { [void]$controlPlaneBypassedAdvisories.Add(("proactive_suggestion_balance:{0}" -f [int]$proactiveSuggestionBalanceWarningCount)) }
+if ($externalBaselineAdvisoryCount -gt 0) { [void]$controlPlaneBypassedAdvisories.Add(("external_baseline_advisory:{0}" -f [int]$externalBaselineAdvisoryCount)) }
+if ($tokenBalanceWarningCount -gt 0) { [void]$controlPlaneBypassedAdvisories.Add(("token_balance_warning:{0}" -f [int]$tokenBalanceWarningCount)) }
+if ($controlPlaneBypassedAdvisories.Count -eq 0) { [void]$controlPlaneBypassedAdvisories.Add("none") }
+$controlPlaneBypassedAdvisoriesText = [string]::Join(";", @($controlPlaneBypassedAdvisories | Select-Object -First 3))
+
 $result = [pscustomobject]@{
   schema_version = "1.0"
   generated_at = (Get-Date).ToString("yyyy-MM-dd HH:mm:ss")
@@ -1141,8 +1168,11 @@ $result = [pscustomobject]@{
     rule_duplication_count = [int]$ruleDuplicationCount
     control_retirement_active_candidate_count = [int]$controlRetirementActiveCandidateCount
     control_retirement_overdue_candidate_count = [int]$controlRetirementOverdueCandidateCount
+    evidence_template_missing_field_count = [int]$evidenceTemplateMissingFieldCount
     rollout_metadata_coverage_gap_count = [int]$rolloutMetadataCoverageGapCount
     rollout_metadata_orphan_count = [int]$rolloutMetadataOrphanCount
+    control_plane_top_noisy_controls = $controlPlaneTopNoisyControlsText
+    control_plane_most_bypassed_advisories = $controlPlaneBypassedAdvisoriesText
     release_distribution_policy_drift_count = [int]$releaseDistributionPolicyDriftCount
     token_balance_status = $tokenBalanceStatus
     token_balance_warning_count = [int]$tokenBalanceWarningCount
@@ -1261,8 +1291,11 @@ Write-Host ("not_observable_control_count={0}" -f $result.summary.not_observable
 Write-Host ("rule_duplication_count={0}" -f $result.summary.rule_duplication_count)
 Write-Host ("control_retirement_active_candidate_count={0}" -f $result.summary.control_retirement_active_candidate_count)
 Write-Host ("control_retirement_overdue_candidate_count={0}" -f $result.summary.control_retirement_overdue_candidate_count)
+Write-Host ("evidence_template_missing_field_count={0}" -f $result.summary.evidence_template_missing_field_count)
 Write-Host ("rollout_metadata_coverage_gap_count={0}" -f $result.summary.rollout_metadata_coverage_gap_count)
 Write-Host ("rollout_metadata_orphan_count={0}" -f $result.summary.rollout_metadata_orphan_count)
+Write-Host ("control_plane_top_noisy_controls={0}" -f $result.summary.control_plane_top_noisy_controls)
+Write-Host ("control_plane_most_bypassed_advisories={0}" -f $result.summary.control_plane_most_bypassed_advisories)
 Write-Host ("release_distribution_policy_drift_count={0}" -f $result.summary.release_distribution_policy_drift_count)
 Write-Host ("token_balance_status={0}" -f $result.summary.token_balance_status)
 Write-Host ("token_balance_warning_count={0}" -f $result.summary.token_balance_warning_count)

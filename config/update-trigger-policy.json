@@ -72,6 +72,10 @@
       "max_active_candidate_count": 8,
       "max_overdue_candidate_count": 0
     },
+    "evidence_template_fields_missing": {
+      "enabled": true,
+      "severity": "medium"
+    },
     "dependency_review_policy_drift": {
       "enabled": true,
       "severity": "high",

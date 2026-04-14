@@ -33,6 +33,11 @@ release_template_presence=
 trigger_eval_status=
 trigger_eval_validation_pass_rate=
 trigger_eval_validation_false_trigger_rate=
+friction_cost_signal=
+rollout_decision=
+downgrade_reason=
+retirement_reason=
+replay_ready_evidence_links=
 
 任务理解快照=
 术语解释点=

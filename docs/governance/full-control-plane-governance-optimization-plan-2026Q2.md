@@ -336,6 +336,12 @@ Every control should be assigned one of these classes:
   - `docs/governance/control-retirement-candidates-2026Q2.md`
   - `config/control-retirement-candidates.json`
   - update trigger support for `control_retirement_backlog`.
+- completed (Phase 2 slice A)
+  - evidence template standardized fields: friction/rollout/downgrade/retirement/replay links.
+  - update trigger support for `evidence_template_fields_missing`.
+  - recurring review summary added control-plane digest fields:
+    - `control_plane_top_noisy_controls`
+    - `control_plane_most_bypassed_advisories`
 - next
   - add per-target rollout state matrix for distributable progressive controls.
   - integrate cross-repo feedback counters into recurring review summary.

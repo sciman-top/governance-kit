@@ -3694,6 +3694,9 @@ exit 0
       ($snapshot -match "gate_latency_delta_ms=N/A") | should be $true
       ($snapshot -match "stale_progressive_control_count=0") | should be $true
       ($snapshot -match "not_observable_control_count=0") | should be $true
+      ($snapshot -match "evidence_template_missing_field_count=0") | should be $true
+      ($snapshot -match "control_plane_top_noisy_controls=none") | should be $true
+      ($snapshot -match "control_plane_most_bypassed_advisories=none") | should be $true
       ($snapshot -match "skill_trigger_eval_status=UNAVAILABLE") | should be $true
       ($snapshot -match "skill_trigger_eval_grouped_query_count=0") | should be $true
       ($snapshot -match "risk_tier_approval_status=UNAVAILABLE") | should be $true
@@ -4465,6 +4468,57 @@ jobs:
       [int]$obj.control_retirement_active_candidate_count | should be 1
       [int]$obj.control_retirement_overdue_candidate_count | should be 1
       @($obj.alerts | Where-Object { $_.id -eq "control_retirement_backlog" }).Count | should be 1
+    } finally {
+      if (Test-Path $tmp) { Remove-Item -LiteralPath $tmp -Recurse -Force }
+    }
+  }
+
+  it "check-update-triggers reports evidence template fields missing" {
+    $tmp = Join-Path $env:TEMP ("govkit-test-" + [guid]::NewGuid().ToString("N"))
+    try {
+      New-Item -ItemType Directory -Path (Join-Path $tmp "scripts\governance") -Force | Out-Null
+      New-Item -ItemType Directory -Path (Join-Path $tmp "scripts\lib") -Force | Out-Null
+      New-Item -ItemType Directory -Path (Join-Path $tmp "config") -Force | Out-Null
+      New-Item -ItemType Directory -Path (Join-Path $tmp "docs\change-evidence") -Force | Out-Null
+
+      Copy-Item -Path (Join-Path $repoRoot "scripts\governance\check-update-triggers.ps1") -Destination (Join-Path $tmp "scripts\governance\check-update-triggers.ps1") -Force
+      Copy-Item -Path (Join-Path $repoRoot "scripts\governance\check-evidence-template-fields.ps1") -Destination (Join-Path $tmp "scripts\governance\check-evidence-template-fields.ps1") -Force
+      Copy-Item -Path (Join-Path $repoRoot "scripts\lib\common.ps1") -Destination (Join-Path $tmp "scripts\lib\common.ps1") -Force
+
+      @'
+规则ID=
+规则版本=
+'@ | Set-Content -Path (Join-Path $tmp "docs\change-evidence\template.md") -Encoding UTF8
+
+      @'
+{
+  "schema_version": "1.0",
+  "cadence": { "recurring_review_days": 7, "monthly_review_day": 1 },
+  "triggers": {
+    "cli_version_drift": { "enabled": false, "severity": "high" },
+    "rollout_observe_overdue": { "enabled": false, "severity": "medium" },
+    "rollout_metadata_coverage_gap": { "enabled": false, "severity": "medium", "max_allowed_gap_count": 0, "max_allowed_orphan_count": 0 },
+    "metrics_snapshot_stale": { "enabled": false, "severity": "medium", "max_age_days": 8 },
+    "waiver_expired_unrecovered": { "enabled": false, "severity": "high" },
+    "platform_na_expired": { "enabled": false, "severity": "medium" },
+    "release_distribution_policy_drift": { "enabled": false, "severity": "high" },
+    "skill_trigger_eval_summary_stale": { "enabled": false, "severity": "medium", "max_age_days": 8 },
+    "low_value_orphan_custom_sources": { "enabled": false, "severity": "medium" },
+    "gate_noise_budget_breach": { "enabled": false, "severity": "medium", "max_false_positive_rate": 0.05, "max_gate_latency_delta_ms": 5000, "alert_on_data_gap": false },
+    "stale_progressive_controls_present": { "enabled": false, "severity": "medium", "max_allowed_count": 0 },
+    "not_observable_controls_present": { "enabled": false, "severity": "medium", "max_allowed_count": 0 },
+    "rule_duplication_detected": { "enabled": false, "severity": "medium" },
+    "control_retirement_backlog": { "enabled": false, "severity": "medium", "max_active_candidate_count": 8, "max_overdue_candidate_count": 0 },
+    "evidence_template_fields_missing": { "enabled": true, "severity": "medium" }
+  }
+}
+'@ | Set-Content -Path (Join-Path $tmp "config\update-trigger-policy.json") -Encoding UTF8
+
+      $json = & powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $tmp "scripts\governance\check-update-triggers.ps1") -RepoRoot $tmp -AsJson
+      $LASTEXITCODE | should be 1
+      $obj = $json | ConvertFrom-Json
+      [int]$obj.evidence_template_missing_field_count | should be 5
+      @($obj.alerts | Where-Object { $_.id -eq "evidence_template_fields_missing" }).Count | should be 1
     } finally {
       if (Test-Path $tmp) { Remove-Item -LiteralPath $tmp -Recurse -Force }
     }
