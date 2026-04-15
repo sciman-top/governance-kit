@@ -4956,14 +4956,69 @@ jobs:
   "enabled_by_default": false,
   "default_files": [".codex/config.toml"],
   "repos": [],
-  "prompt_registry": {},
-  "tool_contracts": {},
-  "context_management": {},
-  "memory_policy": {},
-  "agent_evals": {},
-  "agent_observability": {},
-  "cost_controls": {},
-  "observe_to_enforce": {}
+  "prompt_registry": {
+    "entries": [
+      {
+        "prompt_id": "runtime.baseline",
+        "owner": "governance",
+        "task_class": "baseline",
+        "eval_set": "smoke",
+        "last_eval_at": "2026-04-15",
+        "promotion_mode": "manual",
+        "rollback_ref": "docs/change-evidence/rollback.md",
+        "cacheability": "low"
+      }
+    ]
+  },
+  "tool_contracts": {
+    "entries": [
+      {
+        "tool_name": "shell_command",
+        "risk_class": "medium",
+        "approval_policy": "auto",
+        "timeout_ms": 120000,
+        "retry_policy": "none",
+        "trace_attrs": "stdout+stderr+exit_code",
+        "sandbox_boundary": "workspace",
+        "side_effect_class": "filesystem_and_process"
+      }
+    ]
+  },
+  "context_management": {
+    "max_context_tokens": 32768
+  },
+  "memory_policy": {
+    "session_memory": { "enabled": true },
+    "durable_memory": { "enabled": false },
+    "forbidden_memory_classes": ["secrets", "raw_credentials"],
+    "retention_rules": { "default_ttl_days": 7 },
+    "audit_requirements": { "enabled": true },
+    "purge_on_user_delete": true
+  },
+  "agent_evals": {
+    "required_suites": ["smoke"],
+    "minimum_eval_freshness_days": 14,
+    "promotion_blocks_on_missing_eval": true,
+    "trace_grading_enabled": true
+  },
+  "agent_observability": {
+    "trajectory_fields": [
+      "run_id",
+      "issue_id",
+      "problem_statement_ref",
+      "trajectory_ref",
+      "checkpoint_ref",
+      "replay_ref",
+      "rollback_ref",
+      "human_interrupt_count"
+    ]
+  },
+  "cost_controls": {
+    "token_budget_mode": "balanced"
+  },
+  "observe_to_enforce": {
+    "enabled": true
+  }
 }
 '@ | Set-Content -Path (Join-Path $tmp "config\agent-runtime-policy.json") -Encoding UTF8
 
@@ -4985,13 +5040,13 @@ jobs:
 
     (@($policy.prompt_registry.entries).Count -ge 1) | should be $true
     $promptEntry = @($policy.prompt_registry.entries)[0]
-    foreach ($name in @("prompt_id", "owner", "eval_set", "rollback_ref", "cacheability")) {
+    foreach ($name in @("prompt_id", "owner", "task_class", "eval_set", "last_eval_at", "promotion_mode", "rollback_ref", "cacheability")) {
       [string]$promptEntry.$name | should not be ""
     }
 
     (@($policy.tool_contracts.entries).Count -ge 1) | should be $true
     $toolEntry = @($policy.tool_contracts.entries)[0]
-    foreach ($name in @("tool_name", "risk_class", "approval_policy", "timeout_ms", "retry_policy")) {
+    foreach ($name in @("tool_name", "risk_class", "approval_policy", "timeout_ms", "retry_policy", "trace_attrs", "sandbox_boundary", "side_effect_class")) {
       [string]$toolEntry.$name | should not be ""
     }
 
@@ -4999,6 +5054,13 @@ jobs:
     ($null -ne $policy.memory_policy.durable_memory) | should be $true
     (@($policy.memory_policy.forbidden_memory_classes).Count -ge 1) | should be $true
     ($null -ne $policy.memory_policy.retention_rules) | should be $true
+    ($null -ne $policy.memory_policy.audit_requirements) | should be $true
+    ($null -ne $policy.memory_policy.purge_on_user_delete) | should be $true
+    (@($policy.agent_observability.trajectory_fields).Count -ge 8) | should be $true
+    (@($policy.agent_evals.required_suites).Count -ge 1) | should be $true
+    ($null -ne $policy.agent_evals.minimum_eval_freshness_days) | should be $true
+    ($null -ne $policy.agent_evals.promotion_blocks_on_missing_eval) | should be $true
+    ($null -ne $policy.agent_evals.trace_grading_enabled) | should be $true
   }
 
   it "set-codex-runtime-policy updates repoName entry enabled flag" {

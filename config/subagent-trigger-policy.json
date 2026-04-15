@@ -41,7 +41,10 @@
       "reason_codes",
       "hard_guard_hits",
       "signals",
-      "policy_path"
+      "policy_path",
+      "disjoint_write_set_refs",
+      "structured_result_schema",
+      "aggregation_owner"
     ]
   }
 }

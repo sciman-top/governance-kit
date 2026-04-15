@@ -419,6 +419,9 @@ function Resolve-SubagentDecision {
       high_risk_release = [bool]$highRiskSignal
       critical_path_blocking = [bool]$criticalPathBlocking
     }
+    disjoint_write_set_refs = if ($disjointWriteSetSignal) { @("max_work_iterations_signal") } else { @() }
+    structured_result_schema = "subagent_result_v1"
+    aggregation_owner = "main_agent"
     fallback_action = if ($spawn) { "delegate_parallel_to_outer_ai_session" } else { "delegate_serial_to_outer_ai_session" }
   }
 }

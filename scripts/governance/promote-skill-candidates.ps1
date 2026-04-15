@@ -1070,17 +1070,38 @@ foreach ($item in @($selectedToApply)) {
   }
   $reposUsed = @($item.repos | Sort-Object)
   $signatureVariants = @($item.raw_signatures | Sort-Object)
+  $candidateId = "{0}-{1}" -f (ConvertTo-Slug $signature), (Get-Date -Format "yyyyMMdd")
+  $triggerEvalSummaryRef = if ($null -ne $triggerEvalState -and -not [string]::IsNullOrWhiteSpace([string]$triggerEvalState.trigger_eval_summary_path)) { [string]$triggerEvalState.trigger_eval_summary_path } else { ".governance/skill-candidates/trigger-eval-summary.json" }
+  $sourceMaterialRefs = @()
+  foreach ($variant in @($signatureVariants)) {
+    if (-not [string]::IsNullOrWhiteSpace([string]$variant)) {
+      $sourceMaterialRefs += ("issue_signature:{0}" -f [string]$variant)
+    }
+  }
+  if ($sourceMaterialRefs.Count -eq 0) {
+    $sourceMaterialRefs = @("issue_signature:" + $signature)
+  }
+  $correctionLayerRef = if ([string]$item.action -eq "optimize") { "pending://manual-correction" } else { "none://initial-version" }
+  $versionArchiveRef = ("overrides/{0}/SKILL.md" -f $skillName)
+  $rollbackRef = ("git restore {0}" -f ($skillFile -replace '\\','/'))
   $skillContent = Build-SkillContent -SkillName $skillName -Signature $signature -Count ([int]$item.count) -Repos $reposUsed -Variants $signatureVariants
   Set-Content -LiteralPath $skillFile -Encoding utf8 -Value $skillContent
 
   $registryRecord = [pscustomobject]@{
     action = [string]$item.action
+    candidate_id = $candidateId
     issue_signature = $signature
+    family_signature = $signature
     skill_name = $skillName
     promoted_at = $now.ToString("o")
     hit_count = [int]$item.count
     repos = $reposUsed
     signature_variants = $signatureVariants
+    source_material_refs = @($sourceMaterialRefs)
+    trigger_eval_summary = $triggerEvalSummaryRef
+    correction_layer_ref = $correctionLayerRef
+    version_archive_ref = $versionArchiveRef
+    rollback_ref = $rollbackRef
   }
 
   $existing = @($registry.promoted | Where-Object { ([string]$_.issue_signature).ToLowerInvariant() -eq $signature })
@@ -1091,6 +1112,13 @@ foreach ($item in @($selectedToApply)) {
       $entry.hit_count = $registryRecord.hit_count
       $entry.repos = $registryRecord.repos
       $entry.signature_variants = $registryRecord.signature_variants
+      $entry.candidate_id = $registryRecord.candidate_id
+      $entry.family_signature = $registryRecord.family_signature
+      $entry.source_material_refs = $registryRecord.source_material_refs
+      $entry.trigger_eval_summary = $registryRecord.trigger_eval_summary
+      $entry.correction_layer_ref = $registryRecord.correction_layer_ref
+      $entry.version_archive_ref = $registryRecord.version_archive_ref
+      $entry.rollback_ref = $registryRecord.rollback_ref
     }
   } else {
     $registry.promoted += $registryRecord

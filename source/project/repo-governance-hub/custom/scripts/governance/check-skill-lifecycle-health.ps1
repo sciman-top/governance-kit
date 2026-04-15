@@ -49,6 +49,8 @@ $result = [ordered]@{
   retired_avg_health_score = 0
   active_avg_health_score = 0
   quality_impact_delta = 0
+  distillation_warning_count = 0
+  correction_layer_missing_count = 0
 }
 
 $policy = Read-Json -PathText $policyPath -DefaultValue $null
@@ -116,6 +118,18 @@ foreach ($entry in @($registry.promoted)) {
     if ($healthParsed) {
       $activeHealthSum += $health
       $activeHealthCount++
+    }
+
+    $variantCount = 0
+    if ($null -ne $entry.PSObject.Properties['signature_variants'] -and $entry.signature_variants -is [System.Array]) {
+      $variantCount = @($entry.signature_variants).Count
+    }
+    if ($variantCount -gt 1) {
+      $hasCorrectionLayer = ($null -ne $entry.PSObject.Properties['correction_layer_ref'] -and -not [string]::IsNullOrWhiteSpace([string]$entry.correction_layer_ref))
+      if (-not $hasCorrectionLayer) {
+        $result.distillation_warning_count = [int]$result.distillation_warning_count + 1
+        $result.correction_layer_missing_count = [int]$result.correction_layer_missing_count + 1
+      }
     }
   }
 
@@ -190,6 +204,8 @@ if ($AsJson) {
   Write-Host ("skill_lifecycle_health.retired_entry_count={0}" -f [int]$result.retired_entry_count)
   Write-Host ("skill_lifecycle_health.retired_avg_latency_days={0}" -f $result.retired_avg_latency_days)
   Write-Host ("skill_lifecycle_health.quality_impact_delta={0}" -f $result.quality_impact_delta)
+  Write-Host ("skill_lifecycle_health.distillation_warning_count={0}" -f $result.distillation_warning_count)
+  Write-Host ("skill_lifecycle_health.correction_layer_missing_count={0}" -f $result.correction_layer_missing_count)
 }
 
 if ($shouldFail) { exit 1 }

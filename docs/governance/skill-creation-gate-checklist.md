@@ -38,3 +38,12 @@
 - `reason_codes`
 - `user_ack_env_var`
 - `user_ack_received_value`
+
+## Distillation and Correction Evidence
+- `candidate_id`
+- `family_signature`
+- `source_material_refs`
+- `trigger_eval_summary`
+- `correction_layer_ref`
+- `version_archive_ref`
+- `rollback_ref`

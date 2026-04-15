@@ -26,17 +26,23 @@
     "required_fields": [
       "prompt_id",
       "owner",
+      "task_class",
       "eval_set",
       "rollback_ref",
-      "cacheability"
+      "cacheability",
+      "last_eval_at",
+      "promotion_mode"
     ],
     "entries": [
       {
         "prompt_id": "runtime.observe.default.v1",
         "owner": "repo-governance-hub",
+        "task_class": "governance_runtime",
         "eval_set": "agent-runtime-smoke",
         "rollback_ref": "git restore config/agent-runtime-policy.json",
-        "cacheability": "cacheable"
+        "cacheability": "cacheable",
+        "last_eval_at": "2026-04-15",
+        "promotion_mode": "observe"
       }
     ]
   },
@@ -47,7 +53,9 @@
       "approval_policy",
       "timeout_ms",
       "retry_policy",
-      "trace_attrs"
+      "trace_attrs",
+      "sandbox_boundary",
+      "side_effect_class"
     ],
     "entries": [
       {
@@ -60,7 +68,9 @@
           "tool_name",
           "exit_code",
           "duration_ms"
-        ]
+        ],
+        "sandbox_boundary": "repo_workspace",
+        "side_effect_class": "filesystem_and_process"
       }
     ]
   },
@@ -84,9 +94,14 @@
     ],
     "retention_rules": {
       "session_memory_days": 7,
-      "durable_memory_days": 30,
-      "purge_on_user_delete": true
-    }
+      "durable_memory_days": 30
+    },
+    "audit_requirements": {
+      "record_memory_write_reason": true,
+      "record_source_refs": true,
+      "record_purge_action": true
+    },
+    "purge_on_user_delete": true
   },
   "agent_evals": {
     "required_suites": [
@@ -94,7 +109,10 @@
       "regression",
       "adversarial",
       "cost"
-    ]
+    ],
+    "minimum_eval_freshness_days": 14,
+    "promotion_blocks_on_missing_eval": true,
+    "trace_grading_enabled": true
   },
   "agent_observability": {
     "required_metrics": [
@@ -104,6 +122,16 @@
       "cost_per_successful_run",
       "tool_error_rate",
       "compaction_count"
+    ],
+    "trajectory_fields": [
+      "run_id",
+      "issue_id",
+      "problem_statement_ref",
+      "trajectory_ref",
+      "checkpoint_ref",
+      "replay_ref",
+      "rollback_ref",
+      "human_interrupt_count"
     ]
   },
   "cost_controls": {

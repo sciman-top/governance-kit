@@ -868,6 +868,91 @@ if (Test-Path -LiteralPath $codexRuntimePolicyPath -PathType Leaf) {
           $fail++
         }
       }
+
+      if ($null -ne $codexRuntimePolicy.tool_contracts) {
+        $requiredToolFields = @(
+          "tool_name",
+          "risk_class",
+          "approval_policy",
+          "timeout_ms",
+          "retry_policy",
+          "trace_attrs",
+          "sandbox_boundary",
+          "side_effect_class"
+        )
+        $allowedRiskClasses = @("low", "medium", "high")
+        $allowedSideEffects = @("read_only", "filesystem", "process", "filesystem_and_process", "network", "external_service")
+        if ($null -eq $codexRuntimePolicy.tool_contracts.PSObject.Properties["entries"] -or $codexRuntimePolicy.tool_contracts.entries -isnot [System.Array] -or @($codexRuntimePolicy.tool_contracts.entries).Count -eq 0) {
+          Write-Host "[CFG] agent-runtime-policy.tool_contracts.entries must be non-empty array"
+          $fail++
+        } else {
+          foreach ($toolEntry in @($codexRuntimePolicy.tool_contracts.entries)) {
+            foreach ($fieldName in $requiredToolFields) {
+              if ($null -eq $toolEntry.PSObject.Properties[$fieldName]) {
+                Write-Host ("[CFG] agent-runtime-policy.tool_contracts.entries missing field: {0}" -f $fieldName)
+                $fail++
+              }
+            }
+            if ($null -ne $toolEntry.PSObject.Properties["risk_class"]) {
+              $riskText = ([string]$toolEntry.risk_class).ToLowerInvariant()
+              if ($allowedRiskClasses -notcontains $riskText) {
+                Write-Host "[CFG] agent-runtime-policy.tool_contracts.entries.risk_class invalid: expected low/medium/high"
+                $fail++
+              }
+            }
+            if ($null -ne $toolEntry.PSObject.Properties["side_effect_class"]) {
+              $sideEffectText = ([string]$toolEntry.side_effect_class).ToLowerInvariant()
+              if ($allowedSideEffects -notcontains $sideEffectText) {
+                Write-Host "[CFG] agent-runtime-policy.tool_contracts.entries.side_effect_class invalid"
+                $fail++
+              }
+            }
+          }
+        }
+      }
+
+      if ($null -ne $codexRuntimePolicy.memory_policy) {
+        foreach ($fieldName in @("session_memory", "durable_memory", "forbidden_memory_classes", "retention_rules", "audit_requirements", "purge_on_user_delete")) {
+          if ($null -eq $codexRuntimePolicy.memory_policy.PSObject.Properties[$fieldName]) {
+            Write-Host ("[CFG] agent-runtime-policy.memory_policy.{0} missing" -f $fieldName)
+            $fail++
+          }
+        }
+      }
+
+      if ($null -ne $codexRuntimePolicy.agent_evals) {
+        foreach ($fieldName in @("required_suites", "minimum_eval_freshness_days", "promotion_blocks_on_missing_eval", "trace_grading_enabled")) {
+          if ($null -eq $codexRuntimePolicy.agent_evals.PSObject.Properties[$fieldName]) {
+            Write-Host ("[CFG] agent-runtime-policy.agent_evals.{0} missing" -f $fieldName)
+            $fail++
+          }
+        }
+      }
+
+      if ($null -ne $codexRuntimePolicy.agent_observability) {
+        if ($null -eq $codexRuntimePolicy.agent_observability.PSObject.Properties["trajectory_fields"] -or $codexRuntimePolicy.agent_observability.trajectory_fields -isnot [System.Array]) {
+          Write-Host "[CFG] agent-runtime-policy.agent_observability.trajectory_fields missing"
+          $fail++
+        } else {
+          $requiredTrajectoryFields = @(
+            "run_id",
+            "issue_id",
+            "problem_statement_ref",
+            "trajectory_ref",
+            "checkpoint_ref",
+            "replay_ref",
+            "rollback_ref",
+            "human_interrupt_count"
+          )
+          $trajectorySet = @($codexRuntimePolicy.agent_observability.trajectory_fields | ForEach-Object { [string]$_ })
+          foreach ($fieldName in $requiredTrajectoryFields) {
+            if ($trajectorySet -notcontains $fieldName) {
+              Write-Host ("[CFG] agent-runtime-policy.agent_observability.trajectory_fields missing value: {0}" -f $fieldName)
+              $fail++
+            }
+          }
+        }
+      }
     }
   }
 }
