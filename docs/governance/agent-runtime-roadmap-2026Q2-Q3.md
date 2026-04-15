@@ -205,3 +205,27 @@
 - Restore last validated snapshot through `scripts/restore.ps1`.
 - Keep evidence in `docs/change-evidence/`.
 - Re-run full four-stage gate chain before redistributing.
+
+## 2026-04-15 Runtime Progress Snapshot
+- policy/checker coverage: `PASS` (no warnings) for runtime baseline.
+- hard gate chain: `PASS` (`verify-kit`, `tests`, `validate-config`, `verify`, `doctor`).
+- recurring review: runtime fields are present; current observe cycles still report governance alerts outside hard-gate failure.
+
+### Promotion posture
+- keep `observe` for runtime controls in Q2 current state.
+- do not promote to `enforce` until:
+  - `policy_drift_count = 0`
+  - runtime eval pass trend is available and meets threshold
+  - cross-repo feedback alert is cleared
+
+### Aggregation and lifecycle refinements now online
+- subagent evidence includes:
+  - `disjoint_write_set_refs`
+  - `structured_result_schema`
+  - `aggregation_owner`
+- skill lifecycle evidence includes distillation/correction fields:
+  - `source_material_refs`
+  - `trigger_eval_summary`
+  - `correction_layer_ref`
+  - `version_archive_ref`
+  - `rollback_ref`

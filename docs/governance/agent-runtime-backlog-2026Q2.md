@@ -224,3 +224,27 @@
 3. Missing runtime eval evidence blocks enforce promotion.
 4. Repeated noisy advisory without tuning blocks cross-repo rollout.
 5. Any runtime policy field that duplicates an existing canonical policy must be merged, not redefined.
+
+## 2026-04-15 Execution Update
+
+### Completed in this cycle
+- `P1-01` runtime baseline checker strengthened (trajectory/tool/memory/eval checks complete).
+- `P1-02` recurring review runtime fields expanded (trajectory/replay/checkpoint/interrupt/eval freshness).
+- `P1-04` prompt registry baseline extended with `task_class`, `last_eval_at`, `promotion_mode`.
+- `P1-05` tool contract baseline extended with `sandbox_boundary`, `side_effect_class`.
+- `P1-06` memory boundary completed with audit requirements and `purge_on_user_delete`.
+- `P2-01` promotion precondition fields added in policy/checker (`minimum_eval_freshness_days`, `promotion_blocks_on_missing_eval`, `trace_grading_enabled`).
+- `P2-04` subagent evidence model extended with structured aggregation fields.
+
+### Observe pilot status
+- 3 observe cycles captured on `2026-04-15` (see `docs/change-evidence/20260415-agent-runtime-external-practices.md`).
+- Current result: remain `observe`, do not promote to `enforce`.
+
+### Remaining items
+- clear update-trigger alert sources (`policy_drift_count` currently non-zero in recurring review).
+- complete runtime eval pass-rate data path in metrics for promotion readiness.
+- re-run 3-cycle observe with target thresholds:
+  - `false_positive_rate <= 5%`
+  - `gate_latency_delta_ms <= +3000`
+  - `policy_drift_count = 0`
+  - `runtime_eval_pass_rate >= 95%`
